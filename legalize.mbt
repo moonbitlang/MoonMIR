@@ -1,2 +1,68 @@
 
-// For RiscV, It has only 5 arg registers, 
+pub suberror LegalizeError String derive(Show)
+
+pub fn Module::legalize(self: Self) -> Module raise {
+  let new_module = Module::new()
+  self.functions.each(func => {
+    let legalized_func = legalize_func(func)
+    new_module.functions.push(legalized_func)
+  })
+  new_module
+}
+
+pub fn legalize_func(func: Function) -> Function raise {
+  let new_func = Function::new(func.name)
+  func.params.each(param => new_func.params.push(param))
+  for bb in func.body {
+    let legalized_bb = legalize_basic_block(bb)
+    new_func.body.push(legalized_bb)
+  }
+  new_func
+}
+
+pub fn legalize_basic_block(bb: BasicBlock) -> BasicBlock raise {
+  let new_bb = BasicBlock::new(bb.label)
+  new_bb.parent = bb.parent
+  for inst in bb.insts {
+    let legalized_insts = legalize_instruction(inst)
+    for lin in legalized_insts {
+      new_bb.insts.push(lin)
+    }
+  }
+  new_bb
+}
+
+pub fn legalize_instruction(inst: Instruction) -> Array[Instruction] raise {
+  let new_insts: Array[Instruction] = Array::new()
+  match inst {
+    { opcode: Ret, defs: [], uses: [v] } => {
+      match v {
+        VReg(0) => () // do nothing
+        VFReg(0) => ()
+        VReg(_) => {
+          let inst = Instruction::{ opcode: Movq, defs: [VReg(0)], uses: [v] }
+          new_insts.push(inst)
+        }
+        VFReg(_) => {
+          let inst = Instruction::{ opcode: FMovD, defs: [VFReg(0)], uses: [v] }
+          new_insts.push(inst)
+        }
+        Imm(i) => {
+          let inst = Instruction::{ opcode: Movq, defs: [VReg(0)], uses: [Imm(i)] }
+          new_insts.push(inst)
+        }
+        Mem(base, offset) => {
+          let inst = Instruction::{ opcode: Movq, defs: [VReg(0)], uses: [Mem(base, offset)] }
+          new_insts.push(inst)
+        }
+        _ => raise LegalizeError("Unsupported operand for return")
+      }
+      let ret_inst = Instruction::{ opcode: Ret, defs: [], uses: [] }
+      new_insts.push(ret_inst)
+    }
+    inst => {
+      new_insts.push(inst)
+    }
+  }
+  new_insts
+}

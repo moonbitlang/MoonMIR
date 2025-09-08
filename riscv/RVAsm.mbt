@@ -3,7 +3,10 @@ pub(all) struct Mem {
   offset: Int
 } derive(Eq, Compare, Hash)
 
-pub(all) struct Label (String) derive(Eq, Compare, Hash)
+pub impl Show for Mem with output(self, logger) {
+  let { base, offset } = self
+  logger.write_string("\{offset}(\{base})")
+}
 
 pub(all) enum Reg {
   Zero
@@ -40,6 +43,44 @@ pub(all) enum Reg {
   T6
 } derive(Eq, Compare, Hash)
 
+pub impl Show for Reg with output(self, logger) {
+  let s = match self {
+    Zero => "zero"
+    Ra => "ra"
+    Sp => "sp"
+    Gp => "gp"
+    Tp => "tp"
+    T0 => "t0"
+    T1 => "t1"
+    T2 => "t2"
+    Fp => "fp"
+    S1 => "s1"
+    A0 => "a0"
+    A1 => "a1"
+    A2 => "a2"
+    A3 => "a3"
+    A4 => "a4"
+    A5 => "a5"
+    A6 => "a6"
+    A7 => "a7"
+    S2 => "s2"
+    S3 => "s3"
+    S4 => "s4"
+    S5 => "s5"
+    S6 => "s6"
+    S7 => "s7"
+    S8 => "s8"
+    S9 => "s9"
+    S10 => "s10"
+    S11 => "s11"
+    T3 => "t3"
+    T4 => "t4"
+    T5 => "t5"
+    T6 => "t6"
+  }
+  logger.write_string(s)
+}
+
 ///| RISC-V floating point register
 pub(all) enum FReg {
   Ft0
@@ -75,6 +116,44 @@ pub(all) enum FReg {
   Ft10
   Ft11
 } derive(Eq, Compare, Hash)
+
+pub impl Show for FReg with output(self, logger) {
+  let s = match self {
+    Ft0 => "ft0"
+    Ft1 => "ft1"
+    Ft2 => "ft2"
+    Ft3 => "ft3"
+    Ft4 => "ft4"
+    Ft5 => "ft5"
+    Ft6 => "ft6"
+    Ft7 => "ft7"
+    Fs0 => "fs0"
+    Fs1 => "fs1"
+    Fa0 => "fa0"
+    Fa1 => "fa1"
+    Fa2 => "fa2"
+    Fa3 => "fa3"
+    Fa4 => "fa4"
+    Fa5 => "fa5"
+    Fa6 => "fa6"
+    Fa7 => "fa7"
+    Fs2 => "fs2"
+    Fs3 => "fs3"
+    Fs4 => "fs4"
+    Fs5 => "fs5"
+    Fs6 => "fs6"
+    Fs7 => "fs7"
+    Fs8 => "fs8"
+    Fs9 => "fs9"
+    Fs10 => "fs10"
+    Fs11 => "fs11"
+    Ft8 => "ft8"
+    Ft9 => "ft9"
+    Ft10 => "ft10"
+    Ft11 => "ft11"
+  }
+  logger.write_string(s)
+}
 
 ///|
 pub(all) enum RvAsm {
@@ -113,14 +192,14 @@ pub(all) enum RvAsm {
   Sw(Reg, Mem)
   Sd(Reg, Mem)
   // control 
-  Beq(Reg, Reg, Label)
-  Bne(Reg, Reg, Label)
-  Blt(Reg, Reg, Label)
-  Bge(Reg, Reg, Label)
-  Ble(Reg, Reg, Label)
-  Bgt(Reg, Reg, Label)
-  Bltu(Reg, Reg, Label)
-  Bgeu(Reg, Reg, Label)
+  Beq(Reg, Reg, String)
+  Bne(Reg, Reg, String)
+  Blt(Reg, Reg, String)
+  Bge(Reg, Reg, String)
+  Ble(Reg, Reg, String)
+  Bgt(Reg, Reg, String)
+  Bltu(Reg, Reg, String)
+  Bgeu(Reg, Reg, String)
   // system
   Ecall
   // rv32/64m
@@ -147,19 +226,116 @@ pub(all) enum RvAsm {
   FmvDX(FReg, Reg)
   // pseudo instructions
   Nop
-  La(Reg, Label)
+  La(Reg, String)
   Li(Reg, String)
   Neg(Reg, Reg)
   FnegD(FReg, FReg)
   Mv(Reg, Reg)
   FmvD(FReg, FReg)
-  J(Label)
+  J(String)
   Jalr(Reg)
   Jr(Reg)
-  Call(Label)
-  Tail(Label)
+  Call(String)
+  Tail(String)
   Ret
   // Comments
   Label(String)
   Comment(String)
 }
+
+pub impl Show for RvAsm with output(self, logger) {
+  let s = match self {
+    Add(dst, src1, src2) => "add \{dst}, \{src1}, \{src2}"
+    Sub(dst, src1, src2) => "sub \{dst}, \{src1}, \{src2}"
+    Xor(dst, src1, src2) => "xor \{dst}, \{src1}, \{src2}"
+    Or(dst, src1, src2) => "or \{dst}, \{src1}, \{src2}"
+    And(dst, src1, src2) => "and \{dst}, \{src1}, \{src2}"
+    Sll(dst, src1, src2) => "sll \{dst}, \{src1}, \{src2}"
+    Srl(dst, src1, src2) => "srl \{dst}, \{src1}, \{src2}"
+    Sra(dst, src1, src2) => "sra \{dst}, \{src1}, \{src2}"
+    Slt(dst, src1, src2) => "slt \{dst}, \{src1}, \{src2}"
+    Sltu(dst, src1, src2) => "sltu \{dst}, \{src1}, \{src2}"
+    Addi(dst, src, imm) => "addi \{dst}, \{src}, \{imm}"
+    Xori(dst, src, imm) => "xori \{dst}, \{src}, \{imm}"
+    Ori(dst, src, imm) => "ori \{dst}, \{src}, \{imm}"
+    Andi(dst, src, imm) => "andi \{dst}, \{src}, \{imm}"
+    Slli(dst, src, imm) => "slli \{dst}, \{src}, \{imm}"
+    Srli(dst, src, imm) => "srli \{dst}, \{src}, \{imm}"
+    Srai(dst, src, imm) => "srai \{dst}, \{src}, \{imm}"
+    Slti(dst, src, imm) => "slti \{dst}, \{src}, \{imm}"
+    Sltiu(dst, src, imm) => "sltiu \{dst}, \{src}, \{imm}"
+    Lb(dst, mem) => "lb \{dst}, \{mem}"
+    Lh(dst, mem) => "lh \{dst}, \{mem}"
+      
+    Lw(dst, mem) => "lw \{dst}, \{mem}"
+    Ld(dst, mem) => "ld \{dst}, \{mem}"
+    Lbu(dst, mem) => "lbu \{dst}, \{mem}"
+    Lhu(dst, mem) => "lhu \{dst}, \{mem}"
+    Lwu(dst, mem) => "lwu \{dst}, \{mem}"
+    Sb(src, mem) => "sb \{src}, \{mem}"
+    Sh(src, mem) => "sh \{src}, \{mem}"
+    Sw(src, mem) => "sw \{src}, \{mem}"
+    Sd(src, mem) => "sd \{src}, \{mem}"
+    Beq(src1, src2, label) => "beq \{src1}, \{src2}, \{label}"
+    Bne(src1, src2, label) => "bne \{src1}, \{src2}, \{label}"
+    Blt(src1, src2, label) => "blt \{src1}, \{src2}, \{label}"
+    Bge(src1, src2, label) => "bge \{src1}, \{src2}, \{label}"
+    Ble(src1, src2, label) => "ble \{src1}, \{src2}, \{label}"
+    Bgt(src1, src2, label) => "bgt \{src1}, \{src2}, \{label}"
+    Bltu(src1, src2, label) => "bltu \{src1}, \{src2}, \{label}"
+    Bgeu(src1, src2, label) => "bgeu \{src1}, \{src2}, \{label}"
+    Ecall => "ecall"
+    Mul(dst, src1, src2) => "mul \{dst}, \{src1}, \{src2}"
+    Mulw(dst, src1, src2) => "mulw \{dst}, \{src1}, \{src2}"
+    Mulh(dst, src1, src2) => "mulh \{dst}, \{src1}, \{src2}"
+    Mulhsu(dst, src1, src2) => "mulhsu \{dst}, \{src1}, \{src2}"
+    Mulhu(dst, src1, src2) => "mulhu \{dst}, \{src1}, \{src2}"
+    Div(dst, src1, src2) => "div \{dst}, \{src1}, \{src2}"
+      
+    Divw(dst, src1, src2) => "divw \{dst}, \{src1}, \{src2}"
+    Divu(dst, src1, src2) => "divu \{dst}, \{src1}, \{src2}"
+    Rem(dst, src1, src2) => "rem \{dst}, \{src1}, \{src2}"
+    Remw(dst, src1, src2) => "remw \{dst}, \{src1}, \{src2}"
+    Remu(dst, src1, src2) => "remu \{dst}, \{src1}, \{src2}"
+    FaddD(fd, fs1, fs2) => "fadd.d \{fd}, \{fs1}, \{fs2}"
+    FsubD(fd, fs1, fs2) => "fsub.d \{fd}, \{fs1}, \{fs2}"
+    FmulD(fd, fs1, fs2) => "fmul.d \{fd}, \{fs1}, \{fs2}"
+    FdivD(fd, fs1, fs2) => "fdiv.d \{fd}, \{fs1}, \{fs2}"
+    Fld(fd, mem) => "fld \{fd}, \{mem}"
+    Fsd(fs, mem) => "fsd \{fs}, \{mem}"
+    FeqD(rd, fs1, fs2) => "feq.d \{rd}, \{fs1}, \{fs2}"
+    FleD(rd, fs1, fs2) => "fle.d \{rd}, \{fs1}, \{fs2}"
+    FmvDX(fd, rs) => "fmv.x.d \{fd}, \{rs}"
+    Nop => "nop"
+    La(rd, label) => "la \{rd}, \{label}"
+    Li(rd, imm) => "li \{rd}, \{imm}"
+    Neg(rd, rs) => "neg \{rd}, \{rs}"
+    FnegD(fd, fs) => "fneg.d \{fd}, \{fs}"
+    Mv(rd, rs) => "mv \{rd}, \{rs}"
+    FmvD(fd, fs) => "fmv.d \{fd}, \{fs}"
+    J(label) => "j \{label}"
+    Jalr(rs) => "jalr \{rs}"
+    Jr(rs) => "jr \{rs}"
+    Call(label) => "call \{label}"
+    Tail(label) => "tail \{label}"
+    Ret => "ret"
+    Label(name) => "\{name}:"
+    Comment(text) => "# \{text}"
+  }
+  logger.write_string(s)
+}
+
+//pub struct RvAsmBlock {
+//  label: String
+//  body: Array[RvAsm]
+//}
+//
+//pub impl Show for RvAsmBlock with output(self, logger) {
+//  let { label, body } = self
+//  logger.write_string("\{label}:\n")
+//  for instr in body {
+//    logger.write_string("  ")
+//    logger.write_string(instr.to_string())
+//    logger.write_string("\n")
+//  }
+//}

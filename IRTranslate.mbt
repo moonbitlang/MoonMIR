@@ -44,10 +44,18 @@ fn ValueMap::get(self: Self, val: &LLVMValue) -> Operand? {
   self.map.get(val)
 }
 
+pub fn Module::from_llvm_module(llvm_mod: @IR.Module) -> Module raise {
+  let functions: Array[Function] = Array::new()
+  for func in llvm_mod.functions.values() {
+    let f = Function::from_llvm_function(func)
+    functions.push(f)
+  }
+  Module:: { functions }
+}
+
 pub fn Function::from_llvm_function(func: LLVMFunction) -> Function raise {
   let value_map = ValueMap::new()
   let stack_size : Ref[Int] = Ref::new(0)
-  let mut label_count = 0
 
   let params: Array[Operand] = Array::new();
 
@@ -63,17 +71,15 @@ pub fn Function::from_llvm_function(func: LLVMFunction) -> Function raise {
 
   // Get BasicBlocks labels
   let name = func.getName().unwrap_or("unnamed")
-  for llvm_bb in func.basicBlocks {
-    let label = "label.\{label_count}"
+  for i, llvm_bb in func.basicBlocks {
+    let label = "label.\{i}"
     value_map.map[llvm_bb] = Label(label)
   }
 
   let body: Array[BasicBlock] = Array::new()
-  label_count = 0
-  for llvm_bb in func.basicBlocks {
-    let label = "label.\{label_count}"
+  for i, llvm_bb in func.basicBlocks {
+    let label = "label.\{i}"
     let bb = BasicBlock::from_llvm_bb(llvm_bb, value_map, stack_size, label)
-    label_count += 1
     body.push(bb)
   }
 
@@ -92,10 +98,8 @@ fn BasicBlock::from_llvm_bb(
 ) -> BasicBlock raise {
   let insts: Array[Instruction] = Array::new()
   for inst in llvm_bb.instIter() {
-    let minst = Instruction::from_llvm_inst(inst, value_map, stack_size)
-    if minst is Some(minst) {
-      insts.push(minst)
-    }
+    let minsts = Instruction::from_llvm_inst(inst, value_map, stack_size)
+    minsts.each(m => insts.push(m))
   }
   let bb = BasicBlock:: { label, insts, parent: None }
   bb
@@ -105,7 +109,7 @@ fn Instruction::from_llvm_inst(
   inst: &@IR.Instruction,
   value_map: ValueMap,
   stack_size: Ref[Int]
-) -> Instruction? raise {
+) -> Array[Instruction] raise {
   let ctx = inst.getContext()
   let mod = inst.getModule()
   let data_layout = mod.getDataLayout()
@@ -115,7 +119,7 @@ fn Instruction::from_llvm_inst(
       let offset = stack_size.val
       stack_size.val += data_size
       let _ = value_map.add_mem(inst, offset)
-      None
+      []
     }
     LoadInst({vty, ptr, ..}) => {
       guard value_map.get(ptr) is Some(ptr_op) else {
@@ -135,7 +139,7 @@ fn Instruction::from_llvm_inst(
         _ => Load(data_size)
       }
       let minst = Instruction:: {opcode, defs: [op], uses: [ptr_op]}
-      Some(minst)
+      [minst]
     }
     StoreInst({value, ptr, ..}) => {
       guard value_map.get(value) is Some(value_op) else {
@@ -154,7 +158,7 @@ fn Instruction::from_llvm_inst(
         _ => Store(data_size)
       }
       let minst = Instruction:: {opcode, defs: [], uses: [ptr_op, value_op]}
-      Some(minst)
+      [minst]
     }
     BinaryInst({opcode, lhs, rhs, ..}) => {
       //let opcode = llvm_binary_opcode_to_opcode(opcode)
@@ -208,7 +212,7 @@ fn Instruction::from_llvm_inst(
         raise IRTranslateError("BinaryInst: rhs operand not found in value map")
       }
       let minst = Instruction:: {opcode, defs: [def_op], uses: [lhs_op, rhs_op]}
-      Some(minst)
+      [minst]
     }
     // TODO: Should be Branch Inst sometimes
     ICmpInst({predicate, lhs, rhs, ..}) => {
@@ -229,7 +233,7 @@ fn Instruction::from_llvm_inst(
         raise IRTranslateError("ICmpInst: rhs operand not found in value map")
       }
       let minst = Instruction:: {opcode, defs: [def_op], uses: [lhs_op, rhs_op]}
-      Some(minst)
+      [minst]
     }
     FCmpInst({predicate, lhs, rhs, ..}) => { ... }
     BranchInst(_) => { ... }
@@ -240,14 +244,24 @@ fn Instruction::from_llvm_inst(
     SelectInst(_) => { ... }
     ReturnInst({ retVal, ..}) => {
       if retVal is Some(retVal) {
-        guard value_map.get(retVal) is Some(ret_op) else {
-          raise IRTranslateError("ReturnInst: return value operand not found in value map")
+        let ret_op = match retVal.tryAsConstantEnum() {
+          Some(ConstantInt(c)) => Imm(c.value)
+          Some(ConstantFP(f)) => FImm(f.value)
+          None => {
+            guard value_map.get(retVal) is Some(op) else {
+              raise IRTranslateError("ReturnInst: return value operand not found in value map")
+            }
+            op
+          }
+          _ => {
+            raise IRTranslateError("ReturnInst: unsupported return value type")
+          }
         }
-        let minst = Instruction:: {opcode: Ret, defs: [], uses: [ret_op]}
-        Some(minst)
+        let ret_inst = Instruction:: {opcode: Ret, defs: [], uses: [ret_op]}
+        [ret_inst]
       } else {
         let minst = Instruction:: {opcode: Ret, defs: [], uses: []}
-        Some(minst)
+        [minst]
       }
     }
     CallInst(_) => { ... }

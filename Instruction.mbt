@@ -5,7 +5,8 @@ pub(all) enum Operand {
   VFReg(Int) // Virtual Floating Point Register
   Reg(Int) // Physical Register
   FReg(Int) // Physical Floating Point Register
-  Imm(Int) // Immediate Value
+  Imm(Int64) // Immediate Value
+  FImm(Double) // Floating Point Immediate Value
   Mem(Operand, Int) // Memory Addressing (Base, Offset)
   Label(String) // Label
   StackTop // Stack Top (for stack pointer)
@@ -18,6 +19,7 @@ pub impl Show for Operand with output(self, logger) {
     Reg(i) => "%r\{i}"
     FReg(i) => "%f\{i}"
     Imm(i) => "\{i}"
+    FImm(f) => "\{f}"
     Mem(base, offset) => "(\{base} + \{offset})"
     Label(name) => "\{name}"
     StackTop => "sp"
@@ -77,6 +79,15 @@ pub(all) struct Function {
   mut stack_size: Int
 }
 
+pub fn Function::new(name: String) -> Function {
+  Function:: {
+    name,
+    params: Array::new(),
+    body: Array::new(),
+    stack_size: 0
+  }
+}
+
 pub impl Show for Function with output(self, logger) {
   logger.write_string("func \{self.name}(")
   let pstr = self.params.map(p => p.to_string()).join(", ")
@@ -86,4 +97,22 @@ pub impl Show for Function with output(self, logger) {
     logger.write_string(bb.to_string())
   }
   logger.write_string("}\n")
+}
+
+pub(all) struct Module {
+  functions: Array[Function]
+  // globals: Array[GlobalVariable] (not implemented yet)
+}
+
+pub fn Module::new() -> Module {
+  Module:: {
+    functions: Array::new()
+  }
+}
+
+pub impl Show for Module with output(self, logger) {
+  for func in self.functions {
+    logger.write_string(func.to_string())
+    logger.write_string("\n")
+  }
 }
