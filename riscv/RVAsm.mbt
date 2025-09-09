@@ -174,6 +174,14 @@ pub(all) enum RvAsm {
   Sra(Reg, Reg, Reg)
   Slt(Reg, Reg, Reg)
   Sltu(Reg, Reg, Reg)
+
+  // reg-reg arith
+  Addw(Reg, Reg, Reg)
+  Subw(Reg, Reg, Reg)
+  Sllw(Reg, Reg, Reg)
+  Srlw(Reg, Reg, Reg)
+  Sraw(Reg, Reg, Reg)
+
   // reg-imm arith
   Addi(Reg, Reg, Int)
   Xori(Reg, Reg, Int)
@@ -262,6 +270,11 @@ pub impl Show for RvAsm with output(self, logger) {
     Sra(dst, src1, src2) => "sra \{dst}, \{src1}, \{src2}"
     Slt(dst, src1, src2) => "slt \{dst}, \{src1}, \{src2}"
     Sltu(dst, src1, src2) => "sltu \{dst}, \{src1}, \{src2}"
+    Addw(dst, src1, src2) => "addw \{dst}, \{src1}, \{src2}"
+    Subw(dst, src1, src2) => "subw \{dst}, \{src1}, \{src2}"
+    Sllw(dst, src1, src2) => "sllw \{dst}, \{src1}, \{src2}"
+    Srlw(dst, src1, src2) => "srlw \{dst}, \{src1}, \{src2}"
+    Sraw(dst, src1, src2) => "sraw \{dst}, \{src1}, \{src2}"
     Addi(dst, src, imm) => "addi \{dst}, \{src}, \{imm}"
     Xori(dst, src, imm) => "xori \{dst}, \{src}, \{imm}"
     Ori(dst, src, imm) => "ori \{dst}, \{src}, \{imm}"

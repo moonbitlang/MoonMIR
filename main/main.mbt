@@ -1,15 +1,21 @@
-///|
-fn main_err() -> Unit raise {
+fn llvm_add() -> @IR.Module raise {
   let ctx = @IR.Context::new()
   let mod = ctx.addModule("demo")
   let i32ty = ctx.getInt32Ty()
-  let fty = ctx.getFunctionType(i32ty, [])
-  let func = mod.addFunction(fty, "ret42")
+  let fty = ctx.getFunctionType(i32ty, [i32ty, i32ty])
+  let func = mod.addFunction(fty, "add")
   let bb = func.addBasicBlock(name="entry")
   let builder = ctx.createBuilder()
   builder.setInsertPoint(bb)
-  let forty_two = ctx.getConstInt32(42)
-  let _ = builder.createRet(forty_two)
+  let a = func.getArg(0).unwrap()
+  let b = func.getArg(1).unwrap()
+  let res = builder.createAdd(a, b)
+  let _ = builder.createRet(res)
+  return mod
+}
+
+fn rv_cvt(llvm_module: () -> @IR.Module raise?) -> Unit raise {
+  let mod = llvm_module()
   println("==================== LLVM IR ================")
   mod.dump()
   println("==================== GMIR ================")
@@ -17,6 +23,9 @@ fn main_err() -> Unit raise {
   println(gmir)
   println("==================== GMIR Legalized ================")
   let gmir = gmir.legalize()
+  println(gmir)
+  println("==================== GMIR RegAlloc ================")
+  let gmir = gmir.reg_alloc()
   println(gmir)
   println("==================== RISCV ================")
   let riscv_asm = @riscv.from_gmir_module(gmir)
@@ -32,7 +41,7 @@ fn main_err() -> Unit raise {
 
 ///|
 fn main {
-  main_err() catch {
+  rv_cvt(llvm_add) catch {
     e => println(e)
   }
 }

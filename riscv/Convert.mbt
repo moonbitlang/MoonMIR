@@ -72,23 +72,34 @@ pub fn FReg::from_vfreg(v : Int) -> FReg raise {
 ///|
 pub fn from_gmir_inst(inst : @GMIR.Instruction) -> RvAsm raise {
   match inst {
-    { opcode: @GMIR.Addq, defs: [VReg(dst)], uses: [VReg(src1), VReg(src2)] } => {
+    { opcode: Addq, defs: [Reg(dst)], uses: [Reg(src1), Reg(src2)] } => {
       let dst = Reg::from_vreg(dst)
       let src1 = Reg::from_vreg(src1)
       let src2 = Reg::from_vreg(src2)
       Add(dst, src1, src2)
     }
-    { opcode: @GMIR.Subq, defs: [VReg(dst)], uses: [VReg(src1), VReg(src2)] } => {
+    { opcode: Subq, defs: [Reg(dst)], uses: [Reg(src1), Reg(src2)] } => {
       let dst = Reg::from_vreg(dst)
       let src1 = Reg::from_vreg(src1)
       let src2 = Reg::from_vreg(src2)
       Sub(dst, src1, src2)
     }
-    { opcode: @GMIR.Movq, defs: [VReg(dst)], uses: [Imm(i)] } => {
+    { opcode: Movq, defs: [Reg(dst)], uses: [Imm(i)] } => {
       let dst = Reg::from_vreg(dst)
       Li(dst, i.to_string())
     }
-    { opcode: @GMIR.Ret, defs: [], uses: [] } => Ret
+    { opcode: Movq, defs: [Reg(dst)], uses: [Reg(src)] } => {
+      let dst = Reg::from_vreg(dst)
+      let src = Reg::from_vreg(src)
+      Mv(dst, src)
+    }
+    { opcode: Ret, defs: [], uses: [] } => Ret
+    { opcode: Addl, defs: [Reg(dst)], uses: [Reg(src1), Reg(src2)] } => {
+      let dst = Reg::from_vreg(dst)
+      let src1 = Reg::from_vreg(src1)
+      let src2 = Reg::from_vreg(src2)
+      Addw(dst, src1, src2)
+    }
     _ => raise GMIRToRvAsmError("UnImplemented GMIR instruction: \{inst}")
   }
 }

@@ -257,7 +257,41 @@ fn Instruction::from_llvm_inst(
       }
       [minst]
     }
-    FCmpInst({ predicate, lhs, rhs, .. }) => ...
+    FCmpInst({ predicate, lhs, rhs, .. }) => {
+      let data_ty = lhs.getType()
+      let data_size = data_layout.getTypeAllocSize(data_ty)
+      let opcode = match (predicate, data_size) {
+        (OEQ, 4) => FeqS
+        (OEQ, 8) => FeqD
+        (ONE, 4) => FneS
+        (ONE, 8) => FneD
+        (OGT, 4) => FgtS
+        (OGT, 8) => FgtD
+        (OGE, 4) => FgeS
+        (OGE, 8) => FgeD
+        (OLT, 4) => FltS
+        (OLT, 8) => FltD
+        (OLE, 4) => FleS
+        (OLE, 8) => FleD
+        _ =>
+          raise IRTranslateError(
+            "Unsupported FCmpInst predicate {\{predicate}} and data size {\{data_size}}",
+          )
+      }
+      let def_op = value_map.add_vreg(inst)
+      guard value_map.get(lhs) is Some(lhs_op) else {
+        raise IRTranslateError("FCmpInst: lhs operand not found in value map")
+      }
+      guard value_map.get(rhs) is Some(rhs_op) else {
+        raise IRTranslateError("FCmpInst: rhs operand not found in value map")
+      }
+      let minst = Instruction::{
+        opcode,
+        defs: [def_op],
+        uses: [lhs_op, rhs_op],
+      }
+      [minst]
+    }
     BranchInst(_) => ...
     SwitchInst(_) => ...
     PHINode(_) => ...
