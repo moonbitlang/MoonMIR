@@ -1,7 +1,8 @@
-
+///|
 pub suberror LegalizeError String derive(Show)
 
-pub fn Module::legalize(self: Self) -> Module raise {
+///|
+pub fn Module::legalize(self : Self) -> Module raise {
   let new_module = Module::new()
   self.functions.each(func => {
     let legalized_func = legalize_func(func)
@@ -10,7 +11,8 @@ pub fn Module::legalize(self: Self) -> Module raise {
   new_module
 }
 
-pub fn legalize_func(func: Function) -> Function raise {
+///|
+pub fn legalize_func(func : Function) -> Function raise {
   let new_func = Function::new(func.name)
   func.params.each(param => new_func.params.push(param))
   for bb in func.body {
@@ -20,7 +22,8 @@ pub fn legalize_func(func: Function) -> Function raise {
   new_func
 }
 
-pub fn legalize_basic_block(bb: BasicBlock) -> BasicBlock raise {
+///|
+pub fn legalize_basic_block(bb : BasicBlock) -> BasicBlock raise {
   let new_bb = BasicBlock::new(bb.label)
   new_bb.parent = bb.parent
   for inst in bb.insts {
@@ -32,8 +35,9 @@ pub fn legalize_basic_block(bb: BasicBlock) -> BasicBlock raise {
   new_bb
 }
 
-pub fn legalize_instruction(inst: Instruction) -> Array[Instruction] raise {
-  let new_insts: Array[Instruction] = Array::new()
+///|
+pub fn legalize_instruction(inst : Instruction) -> Array[Instruction] raise {
+  let new_insts : Array[Instruction] = Array::new()
   match inst {
     { opcode: Ret, defs: [], uses: [v] } => {
       match v {
@@ -48,11 +52,19 @@ pub fn legalize_instruction(inst: Instruction) -> Array[Instruction] raise {
           new_insts.push(inst)
         }
         Imm(i) => {
-          let inst = Instruction::{ opcode: Movq, defs: [VReg(0)], uses: [Imm(i)] }
+          let inst = Instruction::{
+            opcode: Movq,
+            defs: [VReg(0)],
+            uses: [Imm(i)],
+          }
           new_insts.push(inst)
         }
         Mem(base, offset) => {
-          let inst = Instruction::{ opcode: Movq, defs: [VReg(0)], uses: [Mem(base, offset)] }
+          let inst = Instruction::{
+            opcode: Movq,
+            defs: [VReg(0)],
+            uses: [Mem(base, offset)],
+          }
           new_insts.push(inst)
         }
         _ => raise LegalizeError("Unsupported operand for return")
@@ -60,9 +72,7 @@ pub fn legalize_instruction(inst: Instruction) -> Array[Instruction] raise {
       let ret_inst = Instruction::{ opcode: Ret, defs: [], uses: [] }
       new_insts.push(ret_inst)
     }
-    inst => {
-      new_insts.push(inst)
-    }
+    inst => new_insts.push(inst)
   }
   new_insts
 }

@@ -1,7 +1,8 @@
-
+///|
 pub suberror GMIRToRvAsmError String derive(Show)
 
-pub fn Reg::from_vreg(v: Int) -> Reg raise {
+///|
+pub fn Reg::from_vreg(v : Int) -> Reg raise {
   match v {
     0 => A0
     1 => A1
@@ -33,7 +34,8 @@ pub fn Reg::from_vreg(v: Int) -> Reg raise {
   }
 }
 
-pub fn FReg::from_vfreg(v: Int) -> FReg raise {
+///|
+pub fn FReg::from_vfreg(v : Int) -> FReg raise {
   match v {
     0 => Fa0
     1 => Fa1
@@ -67,63 +69,63 @@ pub fn FReg::from_vfreg(v: Int) -> FReg raise {
   }
 }
 
-pub fn from_gmir_inst(inst: @GMIR.Instruction) -> RvAsm raise {
+///|
+pub fn from_gmir_inst(inst : @GMIR.Instruction) -> RvAsm raise {
   match inst {
-    {opcode: @GMIR.Addq, defs: [VReg(dst)], uses: [VReg(src1), VReg(src2)] } => {
-      let dst = Reg::from_vreg(dst);
-      let src1 = Reg::from_vreg(src1);
-      let src2 = Reg::from_vreg(src2);
+    { opcode: @GMIR.Addq, defs: [VReg(dst)], uses: [VReg(src1), VReg(src2)] } => {
+      let dst = Reg::from_vreg(dst)
+      let src1 = Reg::from_vreg(src1)
+      let src2 = Reg::from_vreg(src2)
       Add(dst, src1, src2)
     }
-    {opcode: @GMIR.Subq, defs: [VReg(dst)], uses: [VReg(src1), VReg(src2)] } => {
-      let dst = Reg::from_vreg(dst);
-      let src1 = Reg::from_vreg(src1);
-      let src2 = Reg::from_vreg(src2);
+    { opcode: @GMIR.Subq, defs: [VReg(dst)], uses: [VReg(src1), VReg(src2)] } => {
+      let dst = Reg::from_vreg(dst)
+      let src1 = Reg::from_vreg(src1)
+      let src2 = Reg::from_vreg(src2)
       Sub(dst, src1, src2)
     }
-    { opcode: @GMIR.Movq, defs: [VReg(dst)], uses: [Imm(i)]} => {
-      let dst = Reg::from_vreg(dst);
+    { opcode: @GMIR.Movq, defs: [VReg(dst)], uses: [Imm(i)] } => {
+      let dst = Reg::from_vreg(dst)
       Li(dst, i.to_string())
     }
-    {opcode: @GMIR.Ret, defs: [], uses: [] } => {
-      Ret
-    }
+    { opcode: @GMIR.Ret, defs: [], uses: [] } => Ret
     _ => raise GMIRToRvAsmError("UnImplemented GMIR instruction: \{inst}")
   }
 }
 
-pub fn from_gmir_bb(bb: @GMIR.BasicBlock, i: Int) -> Array[RvAsm] raise {
-  let insts : Array[RvAsm] = Array::new();
-  let label = bb.label;
+///|
+pub fn from_gmir_bb(bb : @GMIR.BasicBlock, i : Int) -> Array[RvAsm] raise {
+  let insts : Array[RvAsm] = Array::new()
+  let label = bb.label
   if i != 0 { // For Entry block, no need to add label
-    insts.push(Label(label));
+    insts.push(Label(label))
   }
-  bb.insts.each(inst => {
-    insts.push(from_gmir_inst(inst)) 
-  });
+  bb.insts.each(inst => insts.push(from_gmir_inst(inst)))
   insts
 }
 
-pub fn from_gmir_func(func: @GMIR.Function) -> Array[RvAsm] raise {
-  let insts : Array[RvAsm] = Array::new();
-  let fname = func.name;
-  insts.push(Label(fname));
+///|
+pub fn from_gmir_func(func : @GMIR.Function) -> Array[RvAsm] raise {
+  let insts : Array[RvAsm] = Array::new()
+  let fname = func.name
+  insts.push(Label(fname))
   //func.body.each(bb => {
   //  let bb_insts = from_gmir_bb(bb);
   //  insts.append(bb_insts);
   //});
   for i, bb in func.body {
-    let bb_insts = from_gmir_bb(bb, i);
-    insts.append(bb_insts);
+    let bb_insts = from_gmir_bb(bb, i)
+    insts.append(bb_insts)
   }
   insts
 }
 
-pub fn from_gmir_module(mod: @GMIR.Module) -> Array[RvAsm] raise {
-  let insts : Array[RvAsm] = Array::new();
+///|
+pub fn from_gmir_module(mod : @GMIR.Module) -> Array[RvAsm] raise {
+  let insts : Array[RvAsm] = Array::new()
   mod.functions.each(func => {
-    let func_insts = from_gmir_func(func);
-    insts.append(func_insts);
-  });
+    let func_insts = from_gmir_func(func)
+    insts.append(func_insts)
+  })
   insts
 }

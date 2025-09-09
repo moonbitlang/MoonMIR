@@ -1,5 +1,4 @@
-
-
+///|
 pub(all) enum Operand {
   VReg(Int) // Virtual Register
   VFReg(Int) // Virtual Floating Point Register
@@ -12,6 +11,7 @@ pub(all) enum Operand {
   StackTop // Stack Top (for stack pointer)
 }
 
+///|
 pub impl Show for Operand with output(self, logger) {
   let s = match self {
     VReg(i) => "%v\{i}"
@@ -27,13 +27,14 @@ pub impl Show for Operand with output(self, logger) {
   logger.write_string(s)
 }
 
-
+///|
 pub(all) struct Instruction {
-  opcode: OpCode
-  defs: Array[Operand]
-  uses: Array[Operand]
+  opcode : OpCode
+  defs : Array[Operand]
+  uses : Array[Operand]
 }
 
+///|
 pub impl Show for Instruction with output(self, logger) {
   logger.write_string(self.opcode.to_string())
   logger.write_string(" ")
@@ -48,20 +49,19 @@ pub impl Show for Instruction with output(self, logger) {
   }
 }
 
+///|
 pub(all) struct BasicBlock {
-  label: String
-  insts: Array[Instruction]
-  mut parent: Function?
+  label : String
+  insts : Array[Instruction]
+  mut parent : Function?
 }
 
-pub fn BasicBlock::new(label: String) -> BasicBlock {
-  BasicBlock:: {
-    label,
-    insts: Array::new(),
-    parent: None
-  }
+///|
+pub fn BasicBlock::new(label : String) -> BasicBlock {
+  BasicBlock::{ label, insts: Array::new(), parent: None }
 }
 
+///|
 pub impl Show for BasicBlock with output(self, logger) {
   logger.write_string(self.label)
   logger.write_string(":\n")
@@ -72,22 +72,20 @@ pub impl Show for BasicBlock with output(self, logger) {
   }
 }
 
+///|
 pub(all) struct Function {
-  name: String
-  params: Array[Operand]
-  body: Array[BasicBlock]
-  mut stack_size: Int
+  name : String
+  params : Array[Operand]
+  body : Array[BasicBlock]
+  mut stack_size : Int
 }
 
-pub fn Function::new(name: String) -> Function {
-  Function:: {
-    name,
-    params: Array::new(),
-    body: Array::new(),
-    stack_size: 0
-  }
+///|
+pub fn Function::new(name : String) -> Function {
+  Function::{ name, params: Array::new(), body: Array::new(), stack_size: 0 }
 }
 
+///|
 pub impl Show for Function with output(self, logger) {
   logger.write_string("func \{self.name}(")
   let pstr = self.params.map(p => p.to_string()).join(", ")
@@ -99,17 +97,18 @@ pub impl Show for Function with output(self, logger) {
   logger.write_string("}\n")
 }
 
+///|
 pub(all) struct Module {
-  functions: Array[Function]
+  functions : Array[Function]
   // globals: Array[GlobalVariable] (not implemented yet)
 }
 
+///|
 pub fn Module::new() -> Module {
-  Module:: {
-    functions: Array::new()
-  }
+  Module::{ functions: Array::new() }
 }
 
+///|
 pub impl Show for Module with output(self, logger) {
   for func in self.functions {
     logger.write_string(func.to_string())

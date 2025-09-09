@@ -1,13 +1,16 @@
+///|
 pub(all) struct Mem {
-  base: Reg
-  offset: Int
+  base : Reg
+  offset : Int
 } derive(Eq, Compare, Hash)
 
+///|
 pub impl Show for Mem with output(self, logger) {
   let { base, offset } = self
   logger.write_string("\{offset}(\{base})")
 }
 
+///|
 pub(all) enum Reg {
   Zero
   Ra
@@ -43,6 +46,7 @@ pub(all) enum Reg {
   T6
 } derive(Eq, Compare, Hash)
 
+///|
 pub impl Show for Reg with output(self, logger) {
   let s = match self {
     Zero => "zero"
@@ -81,7 +85,8 @@ pub impl Show for Reg with output(self, logger) {
   logger.write_string(s)
 }
 
-///| RISC-V floating point register
+///|
+/// RISC-V floating point register
 pub(all) enum FReg {
   Ft0
   Ft1
@@ -117,6 +122,7 @@ pub(all) enum FReg {
   Ft11
 } derive(Eq, Compare, Hash)
 
+///|
 pub impl Show for FReg with output(self, logger) {
   let s = match self {
     Ft0 => "ft0"
@@ -243,6 +249,7 @@ pub(all) enum RvAsm {
   Comment(String)
 }
 
+///|
 pub impl Show for RvAsm with output(self, logger) {
   let s = match self {
     Add(dst, src1, src2) => "add \{dst}, \{src1}, \{src2}"
@@ -266,7 +273,6 @@ pub impl Show for RvAsm with output(self, logger) {
     Sltiu(dst, src, imm) => "sltiu \{dst}, \{src}, \{imm}"
     Lb(dst, mem) => "lb \{dst}, \{mem}"
     Lh(dst, mem) => "lh \{dst}, \{mem}"
-      
     Lw(dst, mem) => "lw \{dst}, \{mem}"
     Ld(dst, mem) => "ld \{dst}, \{mem}"
     Lbu(dst, mem) => "lbu \{dst}, \{mem}"
@@ -291,7 +297,6 @@ pub impl Show for RvAsm with output(self, logger) {
     Mulhsu(dst, src1, src2) => "mulhsu \{dst}, \{src1}, \{src2}"
     Mulhu(dst, src1, src2) => "mulhu \{dst}, \{src1}, \{src2}"
     Div(dst, src1, src2) => "div \{dst}, \{src1}, \{src2}"
-      
     Divw(dst, src1, src2) => "divw \{dst}, \{src1}, \{src2}"
     Divu(dst, src1, src2) => "divu \{dst}, \{src1}, \{src2}"
     Rem(dst, src1, src2) => "rem \{dst}, \{src1}, \{src2}"
