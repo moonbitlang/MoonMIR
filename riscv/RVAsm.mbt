@@ -252,6 +252,66 @@ pub(all) enum RvAsm {
   Call(String)
   Tail(String)
   Ret
+  Not(Reg, Reg)
+  Negw(Reg, Reg)
+  SextW(Reg, Reg)
+  Seqz(Reg, Reg)
+  Snez(Reg, Reg)
+  Sltz(Reg, Reg)
+  Sgtz(Reg, Reg)
+  Beqz(Reg, String)
+  Bnez(Reg, String)
+  Blez(Reg, String)
+  Bgez(Reg, String)
+  Bltz(Reg, String)
+  Bgtz(Reg, String)
+  FabsS(FReg, FReg)
+  FmvS(FReg, FReg)
+  FnegS(FReg, FReg)
+  FabsD(FReg, FReg)
+  // base
+  Lui(Reg, Int)
+  Auipc(Reg, Int)
+  Jal(Reg, String)
+  Ebreak
+  Fence
+  // atomic
+  LrW(Reg, Reg)
+  ScW(Reg, Reg, Reg)
+  AmoswapW(Reg, Reg, Reg)
+  AmoaddW(Reg, Reg, Reg)
+  AmoandW(Reg, Reg, Reg)
+  AmoorW(Reg, Reg, Reg)
+  AmoxorW(Reg, Reg, Reg)
+  AmomaxW(Reg, Reg, Reg)
+  AmominW(Reg, Reg, Reg)
+  AmomaxuW(Reg, Reg, Reg)
+  AmominuW(Reg, Reg, Reg)
+  // rvf
+  Flw(FReg, Mem)
+  Fsw(FReg, Mem)
+  FaddS(FReg, FReg, FReg)
+  FsubS(FReg, FReg, FReg)
+  FmulS(FReg, FReg, FReg)
+  FdivS(FReg, FReg, FReg)
+  FsqrtS(FReg, FReg)
+  FsqrtD(FReg, FReg)
+  FmvWX(Reg, FReg)
+  FmvXW(FReg, Reg)
+  FeqS(Reg, FReg, FReg)
+  FleS(Reg, FReg, FReg)
+  FltS(Reg, FReg, FReg)
+  FltD(Reg, FReg, FReg)
+  FminS(FReg, FReg, FReg)
+  FmaxS(FReg, FReg, FReg)
+  FminD(FReg, FReg, FReg)
+  FmaxD(FReg, FReg, FReg)
+  FcvtSW(FReg, Reg)
+  FcvtSWu(FReg, Reg)
+  FcvtWS(Reg, FReg)
+  FcvtWuS(Reg, FReg)
+  FcvtSD(FReg, FReg)
+  FcvtDS(FReg, FReg)
   // Comments
   Label(String)
   Comment(String)
@@ -337,6 +397,63 @@ pub impl Show for RvAsm with output(self, logger) {
     Call(label) => "call \{label}"
     Tail(label) => "tail \{label}"
     Ret => "ret"
+    Not(rd, rs) => "not \{rd}, \{rs}"
+    Negw(rd, rs) => "negw \{rd}, \{rs}"
+    SextW(rd, rs) => "sext.w \{rd}, \{rs}"
+    Seqz(rd, rs) => "seqz \{rd}, \{rs}"
+    Snez(rd, rs) => "snez \{rd}, \{rs}"
+    Sltz(rd, rs) => "sltz \{rd}, \{rs}"
+    Sgtz(rd, rs) => "sgtz \{rd}, \{rs}"
+    Beqz(rs, label) => "beqz \{rs}, \{label}"
+    Bnez(rs, label) => "bnez \{rs}, \{label}"
+    Blez(rs, label) => "blez \{rs}, \{label}"
+    Bgez(rs, label) => "bgez \{rs}, \{label}"
+    Bltz(rs, label) => "bltz \{rs}, \{label}"
+    Bgtz(rs, label) => "bgtz \{rs}, \{label}"
+    FabsS(fd, fs) => "fabs.s \{fd}, \{fs}"
+    FmvS(fd, fs) => "fmv.s \{fd}, \{fs}"
+    FnegS(fd, fs) => "fneg.s \{fd}, \{fs}"
+    FabsD(fd, fs) => "fabs.d \{fd}, \{fs}"
+    Lui(rd, imm) => "lui \{rd}, \{imm}"
+    Auipc(rd, imm) => "auipc \{rd}, \{imm}"
+    Jal(rd, label) => "jal \{rd}, \{label}"
+    Ebreak => "ebreak"
+    Fence => "fence"
+    LrW(rd, rs1) => "lr.w \{rd}, (\{rs1})"
+    ScW(rd, rs2, rs1) => "sc.w \{rd}, \{rs2}, (\{rs1})"
+    AmoswapW(rd, rs2, rs1) => "amoswap.w \{rd}, \{rs2}, (\{rs1})"
+    AmoaddW(rd, rs2, rs1) => "amoadd.w \{rd}, \{rs2}, (\{rs1})"
+    AmoandW(rd, rs2, rs1) => "amoand.w \{rd}, \{rs2}, (\{rs1})"
+    AmoorW(rd, rs2, rs1) => "amoor.w \{rd}, \{rs2}, (\{rs1})"
+    AmoxorW(rd, rs2, rs1) => "amoxor.w \{rd}, \{rs2}, (\{rs1})"
+    AmomaxW(rd, rs2, rs1) => "amomax.w \{rd}, \{rs2}, (\{rs1})"
+    AmominW(rd, rs2, rs1) => "amomin.w \{rd}, \{rs2}, (\{rs1})"
+    AmomaxuW(rd, rs2, rs1) => "amomaxu.w \{rd}, \{rs2}, (\{rs1})"
+    AmominuW(rd, rs2, rs1) => "amominu.w \{rd}, \{rs2}, (\{rs1})"
+    Flw(fd, mem) => "flw \{fd}, \{mem}"
+    Fsw(fs, mem) => "fsw \{fs}, \{mem}"
+    FaddS(fd, fs1, fs2) => "fadd.s \{fd}, \{fs1}, \{fs2}"
+    FsubS(fd, fs1, fs2) => "fsub.s \{fd}, \{fs1}, \{fs2}"
+    FmulS(fd, fs1, fs2) => "fmul.s \{fd}, \{fs1}, \{fs2}"
+    FdivS(fd, fs1, fs2) => "fdiv.s \{fd}, \{fs1}, \{fs2}"
+    FsqrtS(fd, fs) => "fsqrt.s \{fd}, \{fs}"
+    FsqrtD(fd, fs) => "fsqrt.d \{fd}, \{fs}"
+    FmvWX(rd, fs) => "fmv.x.w \{rd}, \{fs}"
+    FmvXW(fd, rs) => "fmv.w.x \{fd}, \{rs}"
+    FeqS(rd, fs1, fs2) => "feq.s \{rd}, \{fs1}, \{fs2}"
+    FleS(rd, fs1, fs2) => "fle.s \{rd}, \{fs1}, \{fs2}"
+    FltS(rd, fs1, fs2) => "flt.s \{rd}, \{fs1}, \{fs2}"
+    FltD(rd, fs1, fs2) => "flt.d \{rd}, \{fs1}, \{fs2}"
+    FminS(fd, fs1, fs2) => "fmin.s \{fd}, \{fs1}, \{fs2}"
+    FmaxS(fd, fs1, fs2) => "fmax.s \{fd}, \{fs1}, \{fs2}"
+    FminD(fd, fs1, fs2) => "fmin.d \{fd}, \{fs1}, \{fs2}"
+    FmaxD(fd, fs1, fs2) => "fmax.d \{fd}, \{fs1}, \{fs2}"
+    FcvtSW(fd, rs) => "fcvt.s.w \{fd}, \{rs}"
+    FcvtSWu(fd, rs) => "fcvt.s.wu \{fd}, \{rs}"
+    FcvtWS(rd, fs) => "fcvt.w.s \{rd}, \{fs}"
+    FcvtWuS(rd, fs) => "fcvt.wu.s \{rd}, \{fs}"
+    FcvtSD(fd, fs) => "fcvt.s.d \{fd}, \{fs}"
+    FcvtDS(fd, fs) => "fcvt.d.s \{fd}, \{fs}"
     Label(name) => "\{name}:"
     Comment(text) => "# \{text}"
   }
