@@ -37,40 +37,8 @@ pub fn legalize_basic_block(bb : BasicBlock) -> BasicBlock raise {
 
 ///|
 pub fn legalize_instruction(inst : Instruction) -> Array[Instruction] raise {
-  let new_insts : Array[Instruction] = Array::new()
-  match inst {
-    { opcode: Ret, defs: [], uses: [v] } => {
-      match v {
-        VReg(_) => {
-          let inst = Instruction::{ opcode: Movq, defs: [Reg(0)], uses: [v] }
-          new_insts.push(inst)
-        }
-        VFReg(_) => {
-          let inst = Instruction::{ opcode: FMovD, defs: [FReg(0)], uses: [v] }
-          new_insts.push(inst)
-        }
-        Imm(i) => {
-          let inst = Instruction::{
-            opcode: Movq,
-            defs: [Reg(0)],
-            uses: [Imm(i)],
-          }
-          new_insts.push(inst)
-        }
-        Mem(base, offset) => {
-          let inst = Instruction::{
-            opcode: Loadq,
-            defs: [Reg(0)],
-            uses: [Mem(base, offset)],
-          }
-          new_insts.push(inst)
-        }
-        _ => raise LegalizeError("Unsupported operand for return")
-      }
-      let ret_inst = Instruction::{ opcode: Ret, defs: [], uses: [] }
-      new_insts.push(ret_inst)
-    }
-    inst => new_insts.push(inst)
+  if false {
+    raise LegalizeError("No legalization rules defined yet")
   }
-  new_insts
+  [inst]
 }
