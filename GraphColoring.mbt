@@ -4,7 +4,7 @@
 pub struct Graph[T] { // T Must Be Hashable and Equatable
   nodes: Set[T]
   edges: Map[T, Set[T]]
-}
+} derive(Show)
 
 pub fn[T] Graph::new() -> Graph[T] {
   Graph::{
@@ -34,9 +34,10 @@ pub fn[T: Hash+Eq] Graph::add_edge(self: Graph[T], node1: T, node2: T) -> Unit {
   self.edges[node2].add(node1);
 }
 
-pub fn[T: Hash + Eq] Graph::coloring(self: Graph[T]) -> Map[T, Int] {
+pub fn[T: Hash + Eq] Graph::coloring(self: Graph[T]) -> (Map[T, Int], Int) {
   let colors: Map[T, Int] = Map::new();
   let nodes: Set[T] = self.nodes.copy();
+  let mut max_color = 0;
 
   for node in nodes {
     let neighbor_colors: Set[Int] = Set::new();
@@ -50,8 +51,11 @@ pub fn[T: Hash + Eq] Graph::coloring(self: Graph[T]) -> Map[T, Int] {
     while neighbor_colors.contains(color) {
       color += 1;
     }
+    if color > max_color {
+      max_color = color;
+    }
     colors[node] = color;
   }
 
-  colors
+  (colors, max_color)
 }

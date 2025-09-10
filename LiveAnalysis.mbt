@@ -39,11 +39,13 @@ fn live_analysis_for_fvreg_instruction(inst: Instruction, live_fvreg_set: Set[In
 }
 
 fn update_graph(graph: Graph[Int], live_set: Set[Int]) -> Unit {
+  for e in live_set {
+    graph.add_node(e);
+  }
+
   for e1 in live_set {
     for e2 in live_set {
-      if e1 != e2 {
-        graph.add_edge(e1, e2);
-      }
+      graph.add_edge(e1, e2);
     }
   }
 }
