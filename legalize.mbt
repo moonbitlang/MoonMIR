@@ -41,28 +41,26 @@ pub fn legalize_instruction(inst : Instruction) -> Array[Instruction] raise {
   match inst {
     { opcode: Ret, defs: [], uses: [v] } => {
       match v {
-        VReg(0) => () // do nothing
-        VFReg(0) => ()
         VReg(_) => {
-          let inst = Instruction::{ opcode: Movq, defs: [VReg(0)], uses: [v] }
+          let inst = Instruction::{ opcode: Movq, defs: [Reg(0)], uses: [v] }
           new_insts.push(inst)
         }
         VFReg(_) => {
-          let inst = Instruction::{ opcode: FMovD, defs: [VFReg(0)], uses: [v] }
+          let inst = Instruction::{ opcode: FMovD, defs: [FReg(0)], uses: [v] }
           new_insts.push(inst)
         }
         Imm(i) => {
           let inst = Instruction::{
             opcode: Movq,
-            defs: [VReg(0)],
+            defs: [Reg(0)],
             uses: [Imm(i)],
           }
           new_insts.push(inst)
         }
         Mem(base, offset) => {
           let inst = Instruction::{
-            opcode: Movq,
-            defs: [VReg(0)],
+            opcode: Loadq,
+            defs: [Reg(0)],
             uses: [Mem(base, offset)],
           }
           new_insts.push(inst)

@@ -1,12 +1,13 @@
 
-pub fn Module::reg_alloc(self: Module) -> Module {
+pub fn Module::reg_alloc(self: Module, max_num_reg~: Int, max_num_freg~: Int) -> Module {
   for func in self.functions {
-    reg_alloc_for_function(func);
+    reg_alloc_for_function(func, max_num_reg~, max_num_freg~);
   }
   self
 }
 
-pub fn reg_alloc_for_function(f: Function) -> Unit {
+// TODO: Unimplemented
+pub fn reg_alloc_for_function(f: Function, max_num_reg~: Int, max_num_freg~: Int) -> Unit {
   // Live Analysis
 
   // Build Interference Graph
@@ -16,25 +17,25 @@ pub fn reg_alloc_for_function(f: Function) -> Unit {
   // Rewrite Instructions
   for bb in f.body {
     for inst in bb.insts {
-      rewrite_instruction(inst);
+      rewrite_instruction(inst, max_num_reg~, max_num_freg~);
     }
   }
 }
 
-pub fn rewrite_instruction(inst: Instruction) -> Unit {
+pub fn rewrite_instruction(inst: Instruction, max_num_reg~: Int, max_num_freg~: Int) -> Unit {
   let {defs, uses, ..} = inst;
   for i, op in defs {
     match op {
-      VReg(0..<17 as v) => defs[i] = Reg(v)
-      FReg(0..<11 as v) => defs[i] = FReg(v)
+      VReg(v) if v < max_num_reg => defs[i] = Reg(v)
+      FReg(v) if v < max_num_freg => defs[i] = FReg(v)
       _ => ()
     }
   }
 
   for i, op in uses {
     match op {
-      VReg(0..<17 as v) => uses[i] = Reg(v)
-      FReg(0..<11 as v) => uses[i] = FReg(v)
+      VReg(v) if v < max_num_reg  => uses[i] = Reg(v)
+      FReg(v) if v < max_num_freg  => uses[i] = FReg(v)
       _ => ()
     }
   }

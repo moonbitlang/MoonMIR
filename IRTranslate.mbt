@@ -13,13 +13,14 @@ pub suberror IRTranslateError String derive(Show)
 ///|
 priv struct ValueMap {
   map : Map[&@IR.Value, Operand]
+  bbmap: Map[String, BasicBlock] // Map from label to BasicBlock
   mut vreg_cnt : Int
   mut vfreg_cnt : Int
 }
 
 ///|
 fn ValueMap::new() -> ValueMap {
-  ValueMap::{ map: Map::new(), vreg_cnt: 0, vfreg_cnt: 0 }
+  ValueMap::{ map: Map::new(), bbmap: Map::new(), vreg_cnt: 0, vfreg_cnt: 0 }
 }
 
 ///|
@@ -80,13 +81,22 @@ pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
   // Get BasicBlocks labels
   let name = func.getName().unwrap_or("unnamed")
   for i, llvm_bb in func.basicBlocks {
-    let label = "label.\{i}"
+    let label = if llvm_bb.getName() is Some(n) {
+      n
+    } else {
+      "L\{i}"
+    }
     value_map.map[llvm_bb] = Label(label)
   }
   let body : Array[BasicBlock] = Array::new()
   for i, llvm_bb in func.basicBlocks {
-    let label = "label.\{i}"
+    let label = if llvm_bb.getName() is Some(n) {
+      n
+    } else {
+      "L\{i}"
+    }
     let bb = BasicBlock::from_llvm_bb(llvm_bb, value_map, stack_size, label)
+    value_map.bbmap[label] = bb
     body.push(bb)
   }
   let stack_size = stack_size.val
@@ -101,12 +111,15 @@ fn BasicBlock::from_llvm_bb(
   stack_size : Ref[Int],
   label : String,
 ) -> BasicBlock raise {
-  let insts : Array[Instruction] = Array::new()
+  let bb = BasicBlock::new(label)
   for inst in llvm_bb.instIter() {
     let minsts = Instruction::from_llvm_inst(inst, value_map, stack_size)
-    minsts.each(m => insts.push(m))
+    minsts.each(m => bb.insts.push(m))
   }
-  let bb = BasicBlock::{ label, insts, parent: None }
+  for pred in llvm_bb.preds {
+    guard value_map.get(pred) is Some(Label(bb_label))
+    bb.preds.push(value_map.bbmap[bb_label])
+  }
   bb
 }
 
@@ -116,7 +129,7 @@ fn Instruction::from_llvm_inst(
   value_map : ValueMap,
   stack_size : Ref[Int],
 ) -> Array[Instruction] raise {
-  let ctx = inst.getContext()
+  //let ctx = inst.getContext()
   let mod = inst.getModule()
   let data_layout = mod.getDataLayout()
   match inst.asInstEnum() {

@@ -54,11 +54,12 @@ pub(all) struct BasicBlock {
   label : String
   insts : Array[Instruction]
   mut parent : Function?
+  preds: Array[BasicBlock]
 }
 
 ///|
 pub fn BasicBlock::new(label : String) -> BasicBlock {
-  BasicBlock::{ label, insts: Array::new(), parent: None }
+  BasicBlock::{ label, insts: Array::new(), parent: None, preds: Array::new() }
 }
 
 ///|
