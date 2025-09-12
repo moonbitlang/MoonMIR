@@ -137,5 +137,10 @@ pub fn from_gmir_module(mod : @GMIR.Module) -> Array[RvAsm] raise {
     let func_insts = from_gmir_func(func)
     insts.append(func_insts)
   })
+
+  // Modify main function's return to ecall
+  // because some emulators can't handle normal ret in main
+  modify_main_ret_to_ecall(insts)
+
   insts
 }
