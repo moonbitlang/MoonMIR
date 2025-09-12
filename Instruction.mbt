@@ -9,7 +9,7 @@ pub(all) enum Operand {
   Mem(Operand, Int) // Memory Addressing (Base, Offset)
   Label(String) // Label
   StackTop // Stack Top (for stack pointer)
-}
+} derive(Eq)
 
 ///|
 pub impl Show for Operand with output(self, logger) {
@@ -52,7 +52,7 @@ pub impl Show for Instruction with output(self, logger) {
 ///|
 pub(all) struct BasicBlock {
   label : String
-  insts : Array[Instruction]
+  mut insts : Array[Instruction]
   mut parent : Function?
   preds: Array[BasicBlock]
 }

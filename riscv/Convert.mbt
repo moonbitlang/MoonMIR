@@ -120,10 +120,9 @@ pub fn from_gmir_func(func : @GMIR.Function) -> Array[RvAsm] raise {
   let insts : Array[RvAsm] = Array::new()
   let fname = func.name
   insts.push(Label(fname))
-  //func.body.each(bb => {
-  //  let bb_insts = from_gmir_bb(bb);
-  //  insts.append(bb_insts);
-  //});
+  if func.stack_size > 0 {
+    insts.push(Addi(Sp, Sp, -func.stack_size))
+  }
   for i, bb in func.body {
     let bb_insts = from_gmir_bb(bb, i)
     insts.append(bb_insts)

@@ -35,6 +35,8 @@ pub fn legalize_basic_block(bb : BasicBlock) -> BasicBlock raise {
   new_bb
 }
 
+// Phi Elimination
+
 ///|
 pub fn legalize_instruction(inst : Instruction) -> Array[Instruction] raise {
   if false {

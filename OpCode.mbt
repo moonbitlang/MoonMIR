@@ -1,5 +1,6 @@
 ///|
 pub(all) enum OpCode {
+  PHI
   Addb
   Addw
   Addl

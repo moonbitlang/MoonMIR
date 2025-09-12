@@ -1,37 +1,38 @@
 
 pub suberror PostRAError String derive(Show)
 
-pub fn Module::post_ra(self: Self) -> Module raise PostRAError {
-  //// This module performs post-register allocation optimizations and cleanups.
-  //// It includes tasks such as instruction scheduling, peephole optimizations,
-  //// and final adjustments to ensure the generated code is efficient and correct.
-  //
-  //// Step 1: Instruction Scheduling
-  //fn instruction_scheduling() {
-  //    // Reorder instructions to minimize stalls and improve pipeline efficiency.
-  //    // This may involve moving independent instructions closer together.
-  //}
-  //
-  //// Step 2: Peephole Optimizations
-  //fn peephole_optimizations() {
-  //    // Look for small patterns of instructions that can be replaced with more efficient sequences.
-  //    // Examples include eliminating redundant moves or combining multiple operations into one.
-  //}
-  //
-  //// Step 3: Final Adjustments
-  //fn final_adjustments() {
-  //    // Ensure that all instructions conform to the target architecture's constraints.
-  //    // This may involve adjusting immediate values, fixing up branch targets, etc.
-  //}
-  //
-  //// Execute the steps in order
-  //instruction_scheduling();
-  //peephole_optimizations();
-  //final_adjustments();
-  final_adjustments(self)
-}
+//pub fn Module::post_ra(self: Self) -> Module raise PostRAError {
+//  //// This module performs post-register allocation optimizations and cleanups.
+//  //// It includes tasks such as instruction scheduling, peephole optimizations,
+//  //// and final adjustments to ensure the generated code is efficient and correct.
+//  //
+//  //// Step 1: Instruction Scheduling
+//  //fn instruction_scheduling() {
+//  //    // Reorder instructions to minimize stalls and improve pipeline efficiency.
+//  //    // This may involve moving independent instructions closer together.
+//  //}
+//  //
+//  //// Step 2: Peephole Optimizations
+//  //fn peephole_optimizations() {
+//  //    // Look for small patterns of instructions that can be replaced with more efficient sequences.
+//  //    // Examples include eliminating redundant moves or combining multiple operations into one.
+//  //}
+//  //
+//  //// Step 3: Final Adjustments
+//  //fn final_adjustments() {
+//  //    // Ensure that all instructions conform to the target architecture's constraints.
+//  //    // This may involve adjusting immediate values, fixing up branch targets, etc.
+//  //}
+//  //
+//  //// Execute the steps in order
+//  //instruction_scheduling();
+//  let mod = pre_adjustments(self)
+//  let mod = peephole_optimizations(mod);
+//  //final_adjustments();
+//  mod
+//}
 
-fn final_adjustments(mod: Module) -> Module raise PostRAError {
+pub fn Module::post_ra_adjustments(mod: Self) -> Module raise PostRAError {
   let new_module = Module::new()
   mod.functions.each(func => {
     let legalized_func = adjust_function(func)
