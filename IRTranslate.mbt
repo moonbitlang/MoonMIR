@@ -1,8 +1,8 @@
 ///|
 traitalias @IR.Value as LLVMValue
 
-///|
-traitalias @IR.Instruction as LLVMInstruction
+//
+//traitalias @IR.Instruction as LLVMInstruction
 
 ///|
 typealias @IR.Function as LLVMFunction
@@ -23,8 +23,15 @@ fn ValueMap::new() -> ValueMap {
   ValueMap::{ map: Map::new(), bbmap: Map::new(), vreg_cnt: 0, vfreg_cnt: 0 }
 }
 
+fn ValueMap::add_vreg(self: Self) -> Operand {
+  let i = self.vreg_cnt
+  let op = VReg(i)
+  self.vreg_cnt += 1
+  op
+}
+
 ///|
-fn ValueMap::add_vreg(self : Self, val : &LLVMValue) -> Operand {
+fn ValueMap::bind_llvmvalue_to_vreg(self : Self, val : &LLVMValue) -> Operand {
   let i = self.vreg_cnt
   let op = VReg(i)
   self.map[val] = op
@@ -33,7 +40,7 @@ fn ValueMap::add_vreg(self : Self, val : &LLVMValue) -> Operand {
 }
 
 ///|
-fn ValueMap::add_vfreg(self : Self, val : &LLVMValue) -> Operand {
+fn ValueMap::bind_llvmvalue_to_vfreg(self : Self, val : &LLVMValue) -> Operand {
   let i = self.vfreg_cnt
   let op = VFReg(i)
   self.map[val] = op
@@ -42,7 +49,7 @@ fn ValueMap::add_vfreg(self : Self, val : &LLVMValue) -> Operand {
 }
 
 ///|
-fn ValueMap::add_mem(self : Self, val : &LLVMValue, offset : Int) -> Operand {
+fn ValueMap::bind_llvmvalue_to_mem(self : Self, val : &LLVMValue, offset : Int) -> Operand {
   let op = Mem(StackTop, offset)
   self.map[val] = op
   op
@@ -70,10 +77,10 @@ pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
   let params : Array[Operand] = Array::new()
   for arg in func.arguments {
     if arg.getType().isIEEELikeFPTy() {
-      let op = value_map.add_vfreg(arg)
+      let op = value_map.bind_llvmvalue_to_vfreg(arg)
       params.push(op)
     } else {
-      let op = value_map.add_vreg(arg)
+      let op = value_map.bind_llvmvalue_to_vreg(arg)
       params.push(op)
     }
   }
@@ -137,7 +144,7 @@ fn Instruction::from_llvm_inst(
       let data_size = data_layout.getTypeAllocSize(data_ty)
       let offset = stack_size.val
       stack_size.val += data_size
-      let _ = value_map.add_mem(inst, offset)
+      let _ = value_map.bind_llvmvalue_to_mem(inst, offset)
       []
     }
     LoadInst({ vty, ptr, .. }) => {
@@ -147,9 +154,9 @@ fn Instruction::from_llvm_inst(
         )
       }
       let op = if vty.isIEEELikeFPTy() {
-        value_map.add_vfreg(inst)
+        value_map.bind_llvmvalue_to_vfreg(inst)
       } else {
-        value_map.add_vreg(inst)
+        value_map.bind_llvmvalue_to_vreg(inst)
       }
       let data_size = data_layout.getTypeAllocSize(vty)
       let opcode = match data_size {
@@ -229,9 +236,9 @@ fn Instruction::from_llvm_inst(
           )
       }
       let def_op = if lhs.getType().isIEEELikeFPTy() {
-        value_map.add_vfreg(inst)
+        value_map.bind_llvmvalue_to_vfreg(inst)
       } else {
-        value_map.add_vreg(inst)
+        value_map.bind_llvmvalue_to_vreg(inst)
       }
       guard value_map.get(lhs) is Some(lhs_op) else {
         raise IRTranslateError("BinaryInst: lhs operand not found in value map")
@@ -262,7 +269,7 @@ fn Instruction::from_llvm_inst(
         ULT | SLT => Lt
         ULE | SLE => Le
       }
-      let def_op = value_map.add_vreg(inst)
+      let def_op = value_map.bind_llvmvalue_to_vreg(inst)
       guard value_map.get(lhs) is Some(lhs_op) else {
         raise IRTranslateError("ICmpInst: lhs operand not found in value map")
       }
@@ -297,7 +304,7 @@ fn Instruction::from_llvm_inst(
             "Unsupported FCmpInst predicate {\{predicate}} and data size {\{data_size}}",
           )
       }
-      let def_op = value_map.add_vreg(inst)
+      let def_op = value_map.bind_llvmvalue_to_vreg(inst)
       guard value_map.get(lhs) is Some(lhs_op) else {
         raise IRTranslateError("FCmpInst: lhs operand not found in value map")
       }
@@ -379,15 +386,192 @@ fn Instruction::from_llvm_inst(
         uses.push(op)
       }
       let def_op = if inst.getType().isIEEELikeFPTy() {
-        value_map.add_vfreg(inst)
+        value_map.bind_llvmvalue_to_vfreg(inst)
       } else {
-        value_map.add_vreg(inst)
+        value_map.bind_llvmvalue_to_vreg(inst)
       }
       let minst = Instruction::{ opcode: PHI, defs: [def_op], uses }
       [minst]
     }
-    CastInst({ to_ty, from_val, opcode: cast_op, .. }) => ...
-    GetElementPtrInst(_) => ...
+    CastInst({ to_ty, from_val, opcode: cast_op, .. }) => {
+      let from_ty = from_val.getType()
+      guard value_map.get(from_val) is Some(from_op) else {
+        raise IRTranslateError(
+          "CastInst: from_val operand not found in value map",
+        )
+      }
+      //let to_ty = to_ty.asTypeEnum()
+      let opcode = match cast_op {
+        ZExt => ZExt
+        SExt => SExt
+        Trunc => Trunc
+        FPExt => FPExt
+        FPTrunc => FPTrunc
+        IntToPtr | PtrToInt | BitCast => BitCast
+        FPToUI => {
+          match (from_ty.tryAsFPTypeEnum(), to_ty.tryAsIntTypeEnum()) {
+            (Some(FloatType(_)), Some(Int1Type(_))) => FPToUI(32, 1)
+            (Some(FloatType(_)), Some(Int8Type(_))) => FPToUI(32, 8)
+            (Some(FloatType(_)), Some(Int16Type(_))) => FPToUI(32, 16)
+            (Some(FloatType(_)), Some(Int32Type(_))) => FPToUI(32, 32)
+            (Some(FloatType(_)), Some(Int64Type(_))) => FPToUI(32, 64)
+            (Some(DoubleType(_)), Some(Int1Type(_))) => FPToUI(64, 1)
+            (Some(DoubleType(_)), Some(Int8Type(_))) => FPToUI(64, 8)
+            (Some(DoubleType(_)), Some(Int16Type(_))) => FPToUI(64, 16)
+            (Some(DoubleType(_)), Some(Int32Type(_))) => FPToUI(64, 32)
+            (Some(DoubleType(_)), Some(Int64Type(_))) => FPToUI(64, 64)
+            _ =>
+              raise IRTranslateError(
+                "Unsupported CastInst FPToUI from {\{from_ty}} to {\{to_ty}}",
+              )
+          }
+        }
+        UIToFP => {
+          match (from_ty.tryAsIntTypeEnum(), to_ty.tryAsFPTypeEnum()) {
+            (Some(Int1Type(_)), Some(FloatType(_))) => UIToFP(1, 32)
+            (Some(Int8Type(_)), Some(FloatType(_))) => UIToFP(8, 32)
+            (Some(Int16Type(_)), Some(FloatType(_))) => UIToFP(16, 32)
+            (Some(Int32Type(_)), Some(FloatType(_))) => UIToFP(32, 32)
+            (Some(Int64Type(_)), Some(FloatType(_))) => UIToFP(64, 32)
+            (Some(Int1Type(_)), Some(DoubleType(_))) => UIToFP(1, 64)
+            (Some(Int8Type(_)), Some(DoubleType(_))) => UIToFP(8, 64)
+            (Some(Int16Type(_)), Some(DoubleType(_))) => UIToFP(16, 64)
+            (Some(Int32Type(_)), Some(DoubleType(_))) => UIToFP(32, 64)
+            (Some(Int64Type(_)), Some(DoubleType(_))) => UIToFP(64, 64)
+            _ =>
+              raise IRTranslateError(
+                "Unsupported CastInst UIToFP from {\{from_ty}} to {\{to_ty}}",
+              )
+          }
+        }
+        FPToSI => {
+          match (from_ty.tryAsFPTypeEnum(), to_ty.tryAsIntTypeEnum()) {
+            (Some(FloatType(_)), Some(Int1Type(_))) => FPToSI(32, 1)
+            (Some(FloatType(_)), Some(Int8Type(_))) => FPToSI(32, 8)
+            (Some(FloatType(_)), Some(Int16Type(_))) => FPToSI(32, 16)
+            (Some(FloatType(_)), Some(Int32Type(_))) => FPToSI(32, 32)
+            (Some(FloatType(_)), Some(Int64Type(_))) => FPToSI(32, 64)
+            (Some(DoubleType(_)), Some(Int1Type(_))) => FPToSI(64, 1)
+            (Some(DoubleType(_)), Some(Int8Type(_))) => FPToSI(64, 8)
+            (Some(DoubleType(_)), Some(Int16Type(_))) => FPToSI(64, 16)
+            (Some(DoubleType(_)), Some(Int32Type(_))) => FPToSI(64, 32)
+            (Some(DoubleType(_)), Some(Int64Type(_))) => FPToSI(64, 64)
+            _ =>
+              raise IRTranslateError(
+                "Unsupported CastInst FPToSI from {\{from_ty}} to {\{to_ty}}",
+              )
+          }
+        }
+        SIToFP => {
+          match (from_ty.tryAsIntTypeEnum(), to_ty.tryAsFPTypeEnum()) {
+            (Some(Int1Type(_)), Some(FloatType(_))) => SIToFP(1, 32)
+            (Some(Int8Type(_)), Some(FloatType(_))) => SIToFP(8, 32)
+            (Some(Int16Type(_)), Some(FloatType(_))) => SIToFP(16, 32)
+            (Some(Int32Type(_)), Some(FloatType(_))) => SIToFP(32, 32)
+            (Some(Int64Type(_)), Some(FloatType(_))) => SIToFP(64, 32)
+            (Some(Int1Type(_)), Some(DoubleType(_))) => SIToFP(1, 64)
+            (Some(Int8Type(_)), Some(DoubleType(_))) => SIToFP(8, 64)
+            (Some(Int16Type(_)), Some(DoubleType(_))) => SIToFP(16, 64)
+            (Some(Int32Type(_)), Some(DoubleType(_))) => SIToFP(32, 64)
+            (Some(Int64Type(_)), Some(DoubleType(_))) => SIToFP(64, 64)
+            _ =>
+              raise IRTranslateError(
+                "Unsupported CastInst SIToFP from {\{from_ty}} to {\{to_ty}}",
+              )
+          }
+        }
+      }
+      let def_op = if to_ty.isIEEELikeFPTy() {
+        value_map.bind_llvmvalue_to_vfreg(inst)
+      } else {
+        value_map.bind_llvmvalue_to_vreg(inst)
+      }
+      let minst = Instruction::{ opcode, defs: [def_op], uses: [from_op] }
+      [minst]
+    }
+    GetElementPtrInst({ ptr, indices, pointeeType, ..}) => {
+      guard value_map.get(ptr) is Some(ptr_op) else {
+        raise IRTranslateError(
+          "GetElementPtrInst: pointer operand not found in value map",
+        )
+      }
+      let insts: Array[Instruction] = Array::new()
+      let indices = indices.map(i => i.asValueEnum())
+      if indices[0] is ConstantInt(c) {
+        let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() * c.getValueAsInt64()
+        if offset != 0 {
+          let offset_op = Imm(offset)
+          let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+          let minst = Instruction::{
+            opcode: Addq,
+            defs: [def_op],
+            uses: [ptr_op, offset_op],
+          }
+          insts.push(minst)
+        }
+      }
+      loop (pointeeType.asTypeEnum(), indices[:]) {
+        (ArrayType(arrTy), [ConstantInt(c), ..rest]) => {
+          let elem_ty = arrTy.getElementType()
+          let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
+          let offset = elem_size * c.getValueAsInt64()
+          if offset != 0 {
+            let offset_op = Imm(offset)
+            let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+            let minst = Instruction::{
+              opcode: Addq,
+              defs: [def_op],
+              uses: [ptr_op, offset_op],
+            }
+            insts.push(minst)
+          }
+          continue (elem_ty.asTypeEnum(), rest)
+        } 
+        (ArrayType(arrTy), [idx, ..rest]) => {
+          let elem_ty = arrTy.getElementType()
+          let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
+          let offset_op = value_map.add_vreg()
+          let scale_inst = Instruction::{
+            opcode: Mulq,
+            defs: [offset_op],
+            uses: [value_map.get(idx.asValueClass()).unwrap(), Imm(elem_size)],
+          }
+          insts.push(scale_inst)
+          let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+          let add_inst = Instruction::{
+            opcode: Addq,
+            defs: [def_op],
+            uses: [ptr_op, offset_op],
+          }
+          insts.push(add_inst)
+          continue (elem_ty.asTypeEnum(), rest)
+        }
+        (StructType(structTy), [ConstantInt(c), ..rest]) => {
+          let i = c.getValueAsInt64().to_int()
+          let offset = data_layout.getStructTypeOffset(structTy, i).to_int64()
+          if offset != 0 {
+            let offset_op = Imm(offset)
+            let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+            let minst = Instruction::{
+              opcode: Addq,
+              defs: [def_op],
+              uses: [ptr_op, offset_op],
+            }
+            insts.push(minst)
+          }
+          let elem_ty = structTy.elements[i]
+          continue (elem_ty.asTypeEnum(), rest)
+        }
+        (StructType(_), [_, ..]) => {
+          println("Warning: GetElementPtrInst with non-constant struct index is impossible.")
+          panic()
+        }
+        _ => {
+          println("Warning: GetElementPtrInst with non-array/struct type is not fully supported yet.")
+          panic()
+        }
+      }
+    }
     SelectInst({ condition, trueValue, falseValue, ..}) => {
       guard value_map.get(condition) is Some(cond_op) else {
         raise IRTranslateError(
@@ -405,9 +589,9 @@ fn Instruction::from_llvm_inst(
         )
       }
       let def_op = if trueValue.getType().isIEEELikeFPTy() {
-        value_map.add_vfreg(inst)
+        value_map.bind_llvmvalue_to_vfreg(inst)
       } else {
-        value_map.add_vreg(inst)
+        value_map.bind_llvmvalue_to_vreg(inst)
       }
       let minst = Instruction::{
         opcode: Select,
@@ -459,9 +643,9 @@ fn Instruction::from_llvm_inst(
       let defs: Array[Operand] = Array::new()
       if !(inst.getType().asTypeEnum() is VoidType(_)) {
         let ret_op = if inst.getType().isIEEELikeFPTy() {
-          value_map.add_vfreg(inst)
+          value_map.bind_llvmvalue_to_vfreg(inst)
         } else {
-          value_map.add_vreg(inst)
+          value_map.bind_llvmvalue_to_vreg(inst)
         }
         defs.push(ret_op)
       }
