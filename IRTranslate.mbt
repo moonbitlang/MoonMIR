@@ -167,10 +167,19 @@ fn Instruction::from_llvm_inst(
       [minst]
     }
     StoreInst({ value, ptr, .. }) => {
-      guard value_map.get(value) is Some(value_op) else {
-        raise IRTranslateError(
-          "StoreInst: value operand not found in value map",
-        )
+      let value_op = match value.tryAsConstantEnum() {
+        Some(ConstantInt(c)) => Imm(c.value)
+        Some(ConstantFP(f)) => FImm(f.value)
+        None => {
+          guard value_map.get(value) is Some(op) else {
+            raise IRTranslateError(
+              "StoreInst: value operand not found in value map",
+            )
+          }
+          op
+        }
+        _ =>
+          raise IRTranslateError("StoreInst: unsupported value type")
       }
       guard value_map.get(ptr) is Some(ptr_op) else {
         raise IRTranslateError(
@@ -227,6 +236,14 @@ fn Instruction::from_llvm_inst(
         (FMul, 8) => FMulD
         (FDiv, 4) => FDivS
         (FDiv, 8) => FDivD
+        // Bitwise operations (size-independent for integers)
+        (And, _) => And
+        (Or, _) => Or
+        (Xor, _) => Xor
+        // Shift operations (size-independent for integers)
+        (Shl, _) => Shl
+        (LShr, _) => LShr
+        (AShr, _) => AShr
         _ =>
           raise IRTranslateError(
             "Unsupported BinaryInst opcode {\{opcode}} and data size {\{data_size}}",
@@ -237,11 +254,27 @@ fn Instruction::from_llvm_inst(
       } else {
         value_map.bind_llvmvalue_to_vreg(inst)
       }
-      guard value_map.get(lhs) is Some(lhs_op) else {
-        raise IRTranslateError("BinaryInst: lhs operand not found in value map")
+      let lhs_op = match lhs.tryAsConstantEnum() {
+        Some(ConstantInt(c)) => Imm(c.value)
+        Some(ConstantFP(f)) => FImm(f.value)
+        None => {
+          guard value_map.get(lhs) is Some(op) else {
+            raise IRTranslateError("BinaryInst: lhs operand not found in value map")
+          }
+          op
+        }
+        _ => raise IRTranslateError("BinaryInst: unsupported lhs type")
       }
-      guard value_map.get(rhs) is Some(rhs_op) else {
-        raise IRTranslateError("BinaryInst: rhs operand not found in value map")
+      let rhs_op = match rhs.tryAsConstantEnum() {
+        Some(ConstantInt(c)) => Imm(c.value)
+        Some(ConstantFP(f)) => FImm(f.value)
+        None => {
+          guard value_map.get(rhs) is Some(op) else {
+            raise IRTranslateError("BinaryInst: rhs operand not found in value map")
+          }
+          op
+        }
+        _ => raise IRTranslateError("BinaryInst: unsupported rhs type")
       }
       let minst = Instruction::{
         opcode,
@@ -268,11 +301,25 @@ fn Instruction::from_llvm_inst(
         ULE | SLE => Le
       }
       let def_op = value_map.bind_llvmvalue_to_vreg(inst)
-      guard value_map.get(lhs) is Some(lhs_op) else {
-        raise IRTranslateError("ICmpInst: lhs operand not found in value map")
+      let lhs_op = match lhs.tryAsConstantEnum() {
+        Some(ConstantInt(c)) => Imm(c.value)
+        None => {
+          guard value_map.get(lhs) is Some(op) else {
+            raise IRTranslateError("ICmpInst: lhs operand not found in value map")
+          }
+          op
+        }
+        _ => raise IRTranslateError("ICmpInst: unsupported lhs type")
       }
-      guard value_map.get(rhs) is Some(rhs_op) else {
-        raise IRTranslateError("ICmpInst: rhs operand not found in value map")
+      let rhs_op = match rhs.tryAsConstantEnum() {
+        Some(ConstantInt(c)) => Imm(c.value)
+        None => {
+          guard value_map.get(rhs) is Some(op) else {
+            raise IRTranslateError("ICmpInst: rhs operand not found in value map")
+          }
+          op
+        }
+        _ => raise IRTranslateError("ICmpInst: unsupported rhs type")
       }
       let minst = Instruction::{
         opcode,
@@ -303,11 +350,25 @@ fn Instruction::from_llvm_inst(
           )
       }
       let def_op = value_map.bind_llvmvalue_to_vreg(inst)
-      guard value_map.get(lhs) is Some(lhs_op) else {
-        raise IRTranslateError("FCmpInst: lhs operand not found in value map")
+      let lhs_op = match lhs.tryAsConstantEnum() {
+        Some(ConstantFP(f)) => FImm(f.value)
+        None => {
+          guard value_map.get(lhs) is Some(op) else {
+            raise IRTranslateError("FCmpInst: lhs operand not found in value map")
+          }
+          op
+        }
+        _ => raise IRTranslateError("FCmpInst: unsupported lhs type")
       }
-      guard value_map.get(rhs) is Some(rhs_op) else {
-        raise IRTranslateError("FCmpInst: rhs operand not found in value map")
+      let rhs_op = match rhs.tryAsConstantEnum() {
+        Some(ConstantFP(f)) => FImm(f.value)
+        None => {
+          guard value_map.get(rhs) is Some(op) else {
+            raise IRTranslateError("FCmpInst: rhs operand not found in value map")
+          }
+          op
+        }
+        _ => raise IRTranslateError("FCmpInst: unsupported rhs type")
       }
       let minst = Instruction::{
         opcode,
@@ -392,10 +453,19 @@ fn Instruction::from_llvm_inst(
       let uses : Array[Operand] = Array::new()
       for incoming in incomings {
         let (value, _) = incoming
-        guard value_map.get(value) is Some(op) else {
-          raise IRTranslateError(
-            "PHINode: incoming value operand not found in value map",
-          )
+        let op = match value.tryAsConstantEnum() {
+          Some(ConstantInt(c)) => Imm(c.value)
+          Some(ConstantFP(f)) => FImm(f.value)
+          None => {
+            guard value_map.get(value) is Some(op) else {
+              raise IRTranslateError(
+                "PHINode: incoming value operand not found in value map",
+              )
+            }
+            op
+          }
+          _ =>
+            raise IRTranslateError("PHINode: unsupported incoming value type")
         }
         uses.push(op)
       }
@@ -507,19 +577,59 @@ fn Instruction::from_llvm_inst(
       }
       let insts : Array[Instruction] = Array::new()
       let indices = indices.map(i => i.asValueEnum())
-      if indices[0] is ConstantInt(c) {
-        let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() *
-          c.getValueAsInt64()
-        if offset != 0 {
-          let offset_op = Imm(offset)
-          let def_op = value_map.bind_llvmvalue_to_vreg(inst)
-          let minst = Instruction::{
-            opcode: Addq,
-            defs: [def_op],
-            uses: [ptr_op, offset_op],
+      
+      // For simple pointer arithmetic (T* ptr, i32 index)
+      if indices.length() == 1 {
+        match indices[0] {
+          ConstantInt(c) => {
+            let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() *
+              c.getValueAsInt64()
+            if offset != 0 {
+              let offset_op = Imm(offset)
+              let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+              let minst = Instruction::{
+                opcode: Addq,
+                defs: [def_op],
+                uses: [ptr_op, offset_op],
+              }
+              insts.push(minst)
+            } else {
+              // offset is 0, just bind the pointer to the result
+              value_map.map[inst] = ptr_op
+            }
           }
-          insts.push(minst)
+          _ => {
+            let idx_op = value_map.get(indices[0].asValueClass()).unwrap()
+            let elem_size = data_layout.getTypeAllocSize(pointeeType).to_int64()
+            if elem_size == 1 {
+              // For byte arrays, no need to scale
+              let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+              let minst = Instruction::{
+                opcode: Addq,
+                defs: [def_op],
+                uses: [ptr_op, idx_op],
+              }
+              insts.push(minst)
+            } else {
+              // Scale the index
+              let offset_op = value_map.add_vreg()
+              let scale_inst = Instruction::{
+                opcode: Mulq,
+                defs: [offset_op],
+                uses: [idx_op, Imm(elem_size)],
+              }
+              insts.push(scale_inst)
+              let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+              let add_inst = Instruction::{
+                opcode: Addq,
+                defs: [def_op],
+                uses: [ptr_op, offset_op],
+              }
+              insts.push(add_inst)
+            }
+          }
         }
+        return insts
       }
       loop (pointeeType.asTypeEnum(), indices[:]) {
         (ArrayType(arrTy), [ConstantInt(c), .. rest]) => {
@@ -588,20 +698,43 @@ fn Instruction::from_llvm_inst(
       }
     }
     SelectInst({ condition, trueValue, falseValue, .. }) => {
-      guard value_map.get(condition) is Some(cond_op) else {
-        raise IRTranslateError(
-          "SelectInst: condition operand not found in value map",
-        )
+      let cond_op = match condition.tryAsConstantEnum() {
+        Some(ConstantInt(c)) => Imm(c.value)
+        None => {
+          guard value_map.get(condition) is Some(op) else {
+            raise IRTranslateError(
+              "SelectInst: condition operand not found in value map",
+            )
+          }
+          op
+        }
+        _ => raise IRTranslateError("SelectInst: unsupported condition type")
       }
-      guard value_map.get(trueValue) is Some(true_op) else {
-        raise IRTranslateError(
-          "SelectInst: trueValue operand not found in value map",
-        )
+      let true_op = match trueValue.tryAsConstantEnum() {
+        Some(ConstantInt(c)) => Imm(c.value)
+        Some(ConstantFP(f)) => FImm(f.value)
+        None => {
+          guard value_map.get(trueValue) is Some(op) else {
+            raise IRTranslateError(
+              "SelectInst: trueValue operand not found in value map",
+            )
+          }
+          op
+        }
+        _ => raise IRTranslateError("SelectInst: unsupported trueValue type")
       }
-      guard value_map.get(falseValue) is Some(false_op) else {
-        raise IRTranslateError(
-          "SelectInst: falseValue operand not found in value map",
-        )
+      let false_op = match falseValue.tryAsConstantEnum() {
+        Some(ConstantInt(c)) => Imm(c.value)
+        Some(ConstantFP(f)) => FImm(f.value)
+        None => {
+          guard value_map.get(falseValue) is Some(op) else {
+            raise IRTranslateError(
+              "SelectInst: falseValue operand not found in value map",
+            )
+          }
+          op
+        }
+        _ => raise IRTranslateError("SelectInst: unsupported falseValue type")
       }
       let def_op = if trueValue.getType().isIEEELikeFPTy() {
         value_map.bind_llvmvalue_to_vfreg(inst)
