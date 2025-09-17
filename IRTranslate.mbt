@@ -333,8 +333,43 @@ fn Instruction::from_llvm_inst(
         let minst = Instruction::{ opcode: Ret, defs: [], uses: [] }
         [minst]
       }
-    CallInst(_) => ...
-    ExtractValueInst(_) => ...
-    InsertValueInst(_) => ...
+    CallInst({ callee, args, ..}) => {
+      let callee_name = callee.getName().unwrap()
+      let uses : Array[Operand] = Array::new()
+      uses.push(Label(callee_name))
+      for arg in args {
+        match arg.asValueEnum() {
+          ConstantInt(c) => uses.push(Imm(c.getValueAsInt64()))
+          ConstantFP(f) => uses.push(FImm(f.value))
+          _ => {
+            guard value_map.get(arg) is Some(op) else {
+              raise IRTranslateError(
+                "CallInst: argument operand not found in value map",
+              )
+            }
+            uses.push(op)
+          }
+        }
+      }
+      let defs: Array[Operand] = Array::new()
+      if !(inst.getType().asTypeEnum() is VoidType(_)) {
+        let ret_op = if inst.getType().isIEEELikeFPTy() {
+          value_map.add_vfreg(inst)
+        } else {
+          value_map.add_vreg(inst)
+        }
+        defs.push(ret_op)
+      }
+      let call_inst = Instruction::{ opcode: Call, defs, uses }
+      [call_inst]
+    }
+    ExtractValueInst(_) => {
+      println("Warning: ExtractValueInst is not supported yet.")
+      panic()
+    }
+    InsertValueInst(_) => {
+      println("Warning: InsertValueInst is not supported yet.")
+      panic()
+    }
   }
 }
