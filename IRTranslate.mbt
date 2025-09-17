@@ -373,7 +373,10 @@ fn Instruction::from_llvm_inst(
       println("Illegal BranchInst: {\{b}}")
       panic()
     }
-    SwitchInst(_) => ...
+    SwitchInst(_) => {
+      println("Warning: SwitchInst is not supported yet.")
+      panic()
+    }
     PHINode({incomings, ..}) => {
       let uses : Array[Operand] = Array::new()
       for incoming in incomings {
