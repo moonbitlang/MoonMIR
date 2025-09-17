@@ -28,43 +28,47 @@ fn llvm_ret42() -> @IR.Module raise {
   return mod
 }
 
-fn rv_cvt(llvm_module: () -> @IR.Module raise?) -> Unit raise {
-  let mod = llvm_module()
-  println("==================== LLVM IR ================")
-  mod.dump()
-  println("==================== GMIR ================")
-  let gmir = @GMIR.Module::from_llvm_module(mod)
-  println(gmir)
-  println("==================== GMIR Legalized ================")
-  let gmir = gmir.legalize()
-  println(gmir)
-  println("==================== GMIR RegAlloc ================")
-  let gmir = gmir.reg_alloc(max_num_reg = 17, max_num_freg = 17)
-  println(gmir)
-  println("==================== GMIR PostRA Adjustment ================")
-  let gmir = gmir.post_ra_adjustments()
-  println(gmir)
-  println("==================== GMIR PostRA Peephole Optimazation ================")
-  let gmir = gmir.peephole_optimizations()
-  println(gmir)
-  println("==================== RISCV ================")
-  let riscv_asm = @riscv.from_gmir_module(gmir)
-  fn print_asm(inst : @riscv.RvAsm) {
-    match inst {
-      Label(_) as l => println(l)
-      inst => println("  \{inst}")
-    }
-  }
+// int sum(int a, int b, int c, int d, int e) { return a + b + c + d + e; }
+// int main() { return sum(1, 2, 3, 4, 5); }
 
-  riscv_asm.each(line => print_asm(line))
+fn llvm_simple_call() -> @IR.Module raise {
+  let ctx = @IR.Context::new()
+  let mod = ctx.addModule("demo")
+  let i32ty = ctx.getInt32Ty()
+  let fty_sum = ctx.getFunctionType(i32ty, [i32ty, i32ty, i32ty, i32ty, i32ty])
+  let func_sum = mod.addFunction(fty_sum, "sum")
+  let bb_sum = func_sum.addBasicBlock(name="entry")
+  let builder_sum = ctx.createBuilder()
+  builder_sum.setInsertPoint(bb_sum)
+  let a = func_sum.getArg(0).unwrap()
+  let b = func_sum.getArg(1).unwrap()
+  let c = func_sum.getArg(2).unwrap()
+  let d = func_sum.getArg(3).unwrap()
+  let e = func_sum.getArg(4).unwrap()
+  let res1 = builder_sum.createAdd(a, b)
+  let res2 = builder_sum.createAdd(res1, c)
+  let res3 = builder_sum.createAdd(res2, d)
+  let res4 = builder_sum.createAdd(res3, e)
+  let _ = builder_sum.createRet(res4)
+
+  let fty_main = ctx.getFunctionType(i32ty, [])
+  let func_main = mod.addFunction(fty_main, "main")
+  let bb_main = func_main.addBasicBlock(name="entry")
+  let builder_main = ctx.createBuilder()
+  builder_main.setInsertPoint(bb_main)
+  let arg1 = ctx.getConstInt32(1)
+  let arg2 = ctx.getConstInt32(2)
+  let arg3 = ctx.getConstInt32(3)
+  let arg4 = ctx.getConstInt32(4)
+  let arg5 = ctx.getConstInt32(5)
+  let call_inst = builder_main.createCall(func_sum, [arg1, arg2, arg3, arg4, arg5])
+  let _ = builder_main.createRet(call_inst)
+
+  return mod
 }
 
 ///|
 fn main {
-  //rv_cvt(llvm_ret42) catch {
-  //  e => println(e)
-  //}
-  //let help_info = "usage: mbtasmbler "
   let help_info = 
     #|Usage: mbtasmbler [options] <input>
     #|
@@ -76,13 +80,12 @@ fn main {
     #|  --stop-after=RegAlloc           Stop after GMIR register allocation
     #|  --stop-after=PostRAAdjustments  Stop after GMIR post-RA adjustments
     #|  --stop-after=PeepholeOpt        Stop after GMIR peephole optimizations
-    #|  --stop-after=RISCV              Stop after RISCV assembly generation
     #|  --print-all                     Print all intermediate representations
     #|
     #|Input:
     #|  input=demo_add                  Use Builtin demo_add (default)
     #|  input=demo_ret42                Use Builtin demo_ret42
-    #|  input=demo_fib                  Use Builtin demo_fib
+    #|  input=demo_simple_call          Use Builtin demo_simple_call
 
   let args = @env.args()
 
@@ -96,8 +99,10 @@ fn main {
     (try? llvm_add()).unwrap()
   } else if args.contains("input=demo_ret42") {
     (try? llvm_ret42()).unwrap()
+  } else if args.contains("input=demo_simple_call") {
+    (try? llvm_simple_call()).unwrap()
   } else {
-    println("Error: Unknown input")
+    println("Error: Must give input")
     println(help_info)
     return
   }
