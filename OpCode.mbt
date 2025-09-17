@@ -1,6 +1,5 @@
 ///|
 pub(all) enum OpCode {
-  PHI
   Addb
   Addw
   Addl
@@ -103,6 +102,8 @@ pub(all) enum OpCode {
   LShr
   AShr
   Call
+  PHI
+  Select
   Ret
   Nop
   Intrinsic(String)

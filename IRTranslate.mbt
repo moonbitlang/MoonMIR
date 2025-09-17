@@ -247,7 +247,13 @@ fn Instruction::from_llvm_inst(
       [minst]
     }
     // TODO: Should be Branch Inst sometimes
-    ICmpInst({ predicate, lhs, rhs, .. }) => {
+    ICmpInst({ predicate, lhs, rhs, .. } as inst) => {
+      // If the ICmpInst is only used by a BranchInst,
+      // we do not generate a separate instruction for it.
+      let inst_users = inst.getUsers().unwrap()
+      if inst_users.length() == 1 && inst_users[0].asValueEnum() is BranchInst(_) {
+        return []
+      }
       let opcode = match predicate {
         EQ => Eq
         NE => Ne
@@ -305,12 +311,111 @@ fn Instruction::from_llvm_inst(
       }
       [minst]
     }
-    BranchInst(_) => ...
+    BranchInst({ condition: Some(cond),
+                 trueBlock: Some(trueBB),
+                 falseBlock: Some(falseBB), ..}) => {
+      guard value_map.get(trueBB) is Some(true_label) else {
+        raise IRTranslateError(
+          "BranchInst: true block operand not found in value map",
+        )
+      }
+      guard value_map.get(falseBB) is Some(false_label) else {
+        raise IRTranslateError(
+          "BranchInst: false block operand not found in value map",
+        )
+      }
+      let minst = if value_map.get(cond) is Some(cond_op) {
+        Instruction::{ opcode: Bne, defs: [], uses: [cond_op, Imm(0), true_label, false_label] }
+      } else {
+        // Must Be ICmp
+        guard cond.asValueEnum() is ICmpInst({predicate, lhs, rhs, ..}) else {
+          raise IRTranslateError("BranchInst: condition is not ICmpInst")
+        }
+        let opcode = match predicate {
+          EQ => Eq
+          NE => Ne
+          UGT | SGT => Gt
+          UGE | SGE => Ge
+          ULT | SLT => Lt
+          ULE | SLE => Le
+        }
+        guard value_map.get(lhs) is Some(lhs_op) else {
+          raise IRTranslateError(
+            "BranchInst: condition lhs operand not found in value map",
+          )
+        }
+        guard value_map.get(rhs) is Some(rhs_op) else {
+          raise IRTranslateError(
+            "BranchInst: condition rhs operand not found in value map",
+          )
+        }
+        Instruction::{ opcode, defs: [], uses: [lhs_op, rhs_op, true_label, false_label], }
+      }
+      [minst]
+    }
+    BranchInst({ condition: None, trueBlock: Some(trueBB), ..}) => {
+      guard value_map.get(trueBB) is Some(true_label) else {
+        raise IRTranslateError(
+          "BranchInst: true block operand not found in value map",
+        )
+      }
+      let minst = Instruction::{ opcode: Jmp, defs: [], uses: [true_label] }
+      [minst]
+    }
+    BranchInst(b) => {
+      println("Illegal BranchInst: {\{b}}")
+      panic()
+    }
     SwitchInst(_) => ...
-    PHINode(_) => ...
+    PHINode({incomings, ..}) => {
+      let uses : Array[Operand] = Array::new()
+      for incoming in incomings {
+        let (value, _) = incoming
+        guard value_map.get(value) is Some(op) else {
+          raise IRTranslateError(
+            "PHINode: incoming value operand not found in value map",
+          )
+        }
+        uses.push(op)
+      }
+      let def_op = if inst.getType().isIEEELikeFPTy() {
+        value_map.add_vfreg(inst)
+      } else {
+        value_map.add_vreg(inst)
+      }
+      let minst = Instruction::{ opcode: PHI, defs: [def_op], uses }
+      [minst]
+    }
     CastInst({ to_ty, from_val, opcode: cast_op, .. }) => ...
     GetElementPtrInst(_) => ...
-    SelectInst(_) => ...
+    SelectInst({ condition, trueValue, falseValue, ..}) => {
+      guard value_map.get(condition) is Some(cond_op) else {
+        raise IRTranslateError(
+          "SelectInst: condition operand not found in value map",
+        )
+      }
+      guard value_map.get(trueValue) is Some(true_op) else {
+        raise IRTranslateError(
+          "SelectInst: trueValue operand not found in value map",
+        )
+      }
+      guard value_map.get(falseValue) is Some(false_op) else {
+        raise IRTranslateError(
+          "SelectInst: falseValue operand not found in value map",
+        )
+      }
+      let def_op = if trueValue.getType().isIEEELikeFPTy() {
+        value_map.add_vfreg(inst)
+      } else {
+        value_map.add_vreg(inst)
+      }
+      let minst = Instruction::{
+        opcode: Select,
+        defs: [def_op],
+        uses: [cond_op, true_op, false_op],
+      }
+      [minst]
+    }
     ReturnInst({ retVal, .. }) =>
       if retVal is Some(retVal) {
         let ret_op = match retVal.tryAsConstantEnum() {
