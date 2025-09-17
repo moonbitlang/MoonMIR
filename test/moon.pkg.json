@@ -1,3 +1,7 @@
 {
-  "import" : ["Kaida-Amethyst/MoonLLVM/IR"]
+  "import" : [
+    "Kaida-Amethyst/MoonLLVM/IR",
+    "Kaida-Amethyst/GMIR",
+    "Kaida-Amethyst/GMIR/riscv"
+  ]
 }

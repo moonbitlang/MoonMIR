@@ -339,12 +339,12 @@ fn Instruction::from_llvm_inst(
           raise IRTranslateError("BranchInst: condition is not ICmpInst")
         }
         let opcode = match predicate {
-          EQ => Eq
-          NE => Ne
-          UGT | SGT => Gt
-          UGE | SGE => Ge
-          ULT | SLT => Lt
-          ULE | SLE => Le
+          EQ => Beq
+          NE => Bne
+          UGT | SGT => Bgt
+          UGE | SGE => Bge
+          ULT | SLT => Blt
+          ULE | SLE => Ble
         }
         guard value_map.get(lhs) is Some(lhs_op) else {
           raise IRTranslateError(
