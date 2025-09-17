@@ -4,3 +4,4 @@ target/
 .moonagent/
 *.s
 *.ll
+IR.mbti
