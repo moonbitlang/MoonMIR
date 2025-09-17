@@ -578,124 +578,154 @@ fn Instruction::from_llvm_inst(
       let insts : Array[Instruction] = Array::new()
       let indices = indices.map(i => i.asValueEnum())
       
-      // For simple pointer arithmetic (T* ptr, i32 index)
-      if indices.length() == 1 {
-        match indices[0] {
-          ConstantInt(c) => {
-            let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() *
-              c.getValueAsInt64()
-            if offset != 0 {
-              let offset_op = Imm(offset)
-              let def_op = value_map.bind_llvmvalue_to_vreg(inst)
-              let minst = Instruction::{
-                opcode: Addq,
-                defs: [def_op],
-                uses: [ptr_op, offset_op],
-              }
-              insts.push(minst)
-            } else {
-              // offset is 0, just bind the pointer to the result
-              value_map.map[inst] = ptr_op
-            }
-          }
-          _ => {
-            let idx_op = value_map.get(indices[0].asValueClass()).unwrap()
-            let elem_size = data_layout.getTypeAllocSize(pointeeType).to_int64()
-            if elem_size == 1 {
-              // For byte arrays, no need to scale
-              let def_op = value_map.bind_llvmvalue_to_vreg(inst)
-              let minst = Instruction::{
-                opcode: Addq,
-                defs: [def_op],
-                uses: [ptr_op, idx_op],
-              }
-              insts.push(minst)
-            } else {
-              // Scale the index
-              let offset_op = value_map.add_vreg()
-              let scale_inst = Instruction::{
-                opcode: Mulq,
-                defs: [offset_op],
-                uses: [idx_op, Imm(elem_size)],
-              }
-              insts.push(scale_inst)
-              let def_op = value_map.bind_llvmvalue_to_vreg(inst)
-              let add_inst = Instruction::{
-                opcode: Addq,
-                defs: [def_op],
-                uses: [ptr_op, offset_op],
-              }
-              insts.push(add_inst)
-            }
-          }
-        }
-        return insts
-      }
-      loop (pointeeType.asTypeEnum(), indices[:]) {
-        (ArrayType(arrTy), [ConstantInt(c), .. rest]) => {
+      // Current pointer operand, may be updated as we process indices
+      let current_ptr = ptr_op
+      loop (pointeeType.asTypeEnum(), indices[:], current_ptr) {
+        // Handle cases based on the current type and remaining indices
+        (ArrayType(arrTy), [ConstantInt(c), .. rest], ptr) => {
           let elem_ty = arrTy.getElementType()
           let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
           let offset = elem_size * c.getValueAsInt64()
           if offset != 0 {
             let offset_op = Imm(offset)
-            let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+            let new_ptr = value_map.add_vreg()
             let minst = Instruction::{
               opcode: Addq,
-              defs: [def_op],
-              uses: [ptr_op, offset_op],
+              defs: [new_ptr],
+              uses: [ptr, offset_op],
             }
             insts.push(minst)
+            continue (elem_ty.asTypeEnum(), rest, new_ptr)
+          } else {
+            // offset is 0, just continue with same pointer
+            continue (elem_ty.asTypeEnum(), rest, ptr)
           }
-          continue (elem_ty.asTypeEnum(), rest)
         }
-        (ArrayType(arrTy), [idx, .. rest]) => {
+        (ArrayType(arrTy), [idx, .. rest], ptr) => {
           let elem_ty = arrTy.getElementType()
           let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
-          let offset_op = value_map.add_vreg()
-          let scale_inst = Instruction::{
-            opcode: Mulq,
-            defs: [offset_op],
-            uses: [value_map.get(idx.asValueClass()).unwrap(), Imm(elem_size)],
+          let idx_op = value_map.get(idx.asValueClass()).unwrap()
+          if elem_size == 1 {
+            // For byte arrays, no need to scale
+            let new_ptr = value_map.add_vreg()
+            let minst = Instruction::{
+              opcode: Addq,
+              defs: [new_ptr],
+              uses: [ptr, idx_op],
+            }
+            insts.push(minst)
+            continue (elem_ty.asTypeEnum(), rest, new_ptr)
+          } else {
+            // Scale the index
+            let offset_op = value_map.add_vreg()
+            let scale_inst = Instruction::{
+              opcode: Mulq,
+              defs: [offset_op],
+              uses: [idx_op, Imm(elem_size)],
+            }
+            insts.push(scale_inst)
+            let new_ptr = value_map.add_vreg()
+            let add_inst = Instruction::{
+              opcode: Addq,
+              defs: [new_ptr],
+              uses: [ptr, offset_op],
+            }
+            insts.push(add_inst)
+            continue (elem_ty.asTypeEnum(), rest, new_ptr)
           }
-          insts.push(scale_inst)
-          let def_op = value_map.bind_llvmvalue_to_vreg(inst)
-          let add_inst = Instruction::{
-            opcode: Addq,
-            defs: [def_op],
-            uses: [ptr_op, offset_op],
-          }
-          insts.push(add_inst)
-          continue (elem_ty.asTypeEnum(), rest)
         }
-        (StructType(structTy), [ConstantInt(c), .. rest]) => {
+        (StructType(structTy), [ConstantInt(c), .. rest], ptr) => {
           let i = c.getValueAsInt64().to_int()
           let offset = data_layout.getStructTypeOffset(structTy, i).to_int64()
           if offset != 0 {
             let offset_op = Imm(offset)
-            let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+            let new_ptr = value_map.add_vreg()
             let minst = Instruction::{
               opcode: Addq,
-              defs: [def_op],
-              uses: [ptr_op, offset_op],
+              defs: [new_ptr],
+              uses: [ptr, offset_op],
             }
             insts.push(minst)
+            let elem_ty = structTy.elements[i]
+            continue (elem_ty.asTypeEnum(), rest, new_ptr)
+          } else {
+            // offset is 0, just continue with same pointer
+            let elem_ty = structTy.elements[i]
+            continue (elem_ty.asTypeEnum(), rest, ptr)
           }
-          let elem_ty = structTy.elements[i]
-          continue (elem_ty.asTypeEnum(), rest)
         }
-        (StructType(_), [_, ..]) => {
+        (StructType(_), [_, ..], _) => {
           println(
             "Warning: GetElementPtrInst with non-constant struct index is impossible.",
           )
           panic()
         }
+        // Handle simple pointer arithmetic for primitive types
+        (_, [ConstantInt(c)], ptr) => {
+          let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() *
+            c.getValueAsInt64()
+          if offset != 0 {
+            let offset_op = Imm(offset)
+            let final_ptr = value_map.bind_llvmvalue_to_vreg(inst)
+            let minst = Instruction::{
+              opcode: Addq,
+              defs: [final_ptr],
+              uses: [ptr, offset_op],
+            }
+            insts.push(minst)
+          } else {
+            // offset is 0, just bind the pointer to the result
+            value_map.map[inst] = ptr
+          }
+          // We're done
+          break
+        }
+        (_, [idx], ptr) => {
+          let idx_op = value_map.get(idx.asValueClass()).unwrap()
+          let elem_size = data_layout.getTypeAllocSize(pointeeType).to_int64()
+          if elem_size == 1 {
+            // For byte pointers, no need to scale
+            let final_ptr = value_map.bind_llvmvalue_to_vreg(inst)
+            let minst = Instruction::{
+              opcode: Addq,
+              defs: [final_ptr],
+              uses: [ptr, idx_op],
+            }
+            insts.push(minst)
+          } else {
+            // Scale the index
+            let offset_op = value_map.add_vreg()
+            let scale_inst = Instruction::{
+              opcode: Mulq,
+              defs: [offset_op],
+              uses: [idx_op, Imm(elem_size)],
+            }
+            insts.push(scale_inst)
+            let final_ptr = value_map.bind_llvmvalue_to_vreg(inst)
+            let add_inst = Instruction::{
+              opcode: Addq,
+              defs: [final_ptr],
+              uses: [ptr, offset_op],
+            }
+            insts.push(add_inst)
+          }
+          // We're done
+          break
+        }
+        // Base case: no more indices
+        (_, [], ptr) => {
+          // Just bind the final pointer
+          value_map.map[inst] = ptr
+          break
+        }
         _ => {
           println(
-            "Warning: GetElementPtrInst with non-array/struct type is not fully supported yet.",
+            "Warning: GetElementPtrInst with unsupported type/index combination.",
           )
           panic()
         }
       }
+      insts
     }
     SelectInst({ condition, trueValue, falseValue, .. }) => {
       let cond_op = match condition.tryAsConstantEnum() {

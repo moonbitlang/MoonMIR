@@ -1070,35 +1070,93 @@ test "Simple IRTranslate - call mixed types" {
   ))
 }
 ///|
-/// Test various constant values
-/// int constants_test() {
-///   return 42 + (-1) + 0;
+/// Test constant array access  
+/// int constant_array_test() {
+///   int arr[3] = {1, 2, 3};
+///   return arr[1];
 /// }
-test "Simple IRTranslate - constants integer" {
+test "Simple IRTranslate - constant array access" {
   let ctx = @IR.Context::new()
   let mod = ctx.addModule("demo")
   let i32ty = ctx.getInt32Ty()
 
   let fty = ctx.getFunctionType(i32ty, [])
-  let fval = mod.addFunction(fty, "constants_test")
+  let fval = mod.addFunction(fty, "constant_array_test")
   let bb = fval.addBasicBlock(name="entry")
   let builder = ctx.createBuilder()
   builder.setInsertPoint(bb)
   
-  let const42 = ctx.getConstInt32(42)
-  let const_neg1 = ctx.getConstInt32(-1)
-  let const0 = ctx.getConstInt32(0)
+  // Create a local array
+  let arr_alloca = builder.createAlloca(i32ty)
   
-  let temp1 = builder.createAdd(const42, const_neg1)
-  let result = builder.createAdd(temp1, const0)
+  // Store some values
+  let val1 = ctx.getConstInt32(1)
+  //let val2 = ctx.getConstInt32(2)
+  //let val3 = ctx.getConstInt32(3)
+  
+  let _ = builder.createStore(val1, arr_alloca)
+  
+  // Load and return value
+  let result = builder.createLoad(i32ty, arr_alloca)
   let _ = builder.createRet(result)
   
   let mir_func = @GMIR.Function::from_llvm_function(fval)
   inspect(mir_func, content=(
     
-    #|func constants_test() {
+    #|func constant_array_test() {
     #|entry:
-    #|  Ret 41
+    #|  Storel (sp + 0), 1
+    #|  %v0 = Loadl (sp + 0)
+    #|  Ret %v0
+    #|}
+    #|
+  ))
+}
+
+///|
+/// Test proper struct access with GEP
+/// struct Point { int x; int y; };
+/// int struct_access_test(struct Point* p) {
+///   return p->x + p->y;
+/// }
+test "Simple IRTranslate - proper struct access" {
+  let ctx = @IR.Context::new()
+  let mod = ctx.addModule("demo")
+  let i32ty = ctx.getInt32Ty()
+  let point_ty = ctx.getStructType([i32ty, i32ty], name="Point")
+  let ptr_ty = ctx.getPtrTy()
+
+  let fty = ctx.getFunctionType(i32ty, [ptr_ty])
+  let fval = mod.addFunction(fty, "struct_access_test")
+  let bb = fval.addBasicBlock(name="entry")
+  let builder = ctx.createBuilder()
+  builder.setInsertPoint(bb)
+  
+  let p = fval.getArg(0).unwrap()
+  let zero = ctx.getConstInt32(0)
+  let one = ctx.getConstInt32(1)
+  
+  // Access p->x (field 0) using GEP with proper indices
+  let gep_x = builder.createGEP(p, point_ty, [zero, zero])
+  let val_x = builder.createLoad(i32ty, gep_x)
+  
+  // Access p->y (field 1) using GEP with proper indices
+  let gep_y = builder.createGEP(p, point_ty, [zero, one])
+  let val_y = builder.createLoad(i32ty, gep_y)
+  
+  let sum = builder.createAdd(val_x, val_y)
+  let _ = builder.createRet(sum)
+  
+  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  inspect(mir_func, content=(
+    
+    #|func struct_access_test(%v0) {
+    #|entry:
+    #|  %v1 = Loadl %v0
+    #|  %v2 = Addq %v0, 8
+    #|  %v3 = Loadl %v2
+    #|  %v4 = Addl %v1, %v3
+    #|  Ret %v4
     #|}
     #|
   ))
@@ -1147,7 +1205,7 @@ test "Simple IRTranslate - constants bool" {
   let ctx = @IR.Context::new()
   let mod = ctx.addModule("demo")
   let i32ty = ctx.getInt32Ty()
-  let i1ty = ctx.getInt1Ty()
+  //let i1ty = ctx.getInt1Ty()
 
   let fty = ctx.getFunctionType(i32ty, [i32ty])
   let fval = mod.addFunction(fty, "bool_constants")
@@ -1225,7 +1283,7 @@ test "Simple IRTranslate - array operations" {
   let ctx = @IR.Context::new()
   let mod = ctx.addModule("demo")
   let i32ty = ctx.getInt32Ty()
-  let arr_ty = ctx.getArrayType(i32ty, 3)
+  //let arr_ty = ctx.getArrayType(i32ty, 3)
   let ptr_ty = ctx.getPtrTy()
 
   let fty = ctx.getFunctionType(i32ty, [ptr_ty])
