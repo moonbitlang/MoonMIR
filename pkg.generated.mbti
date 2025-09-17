@@ -1,0 +1,221 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Kaida-Amethyst/GMIR"
+
+import(
+  "Kaida-Amethyst/MoonLLVM/IR"
+  "moonbitlang/core/set"
+)
+
+// Values
+fn legalize_basic_block(BasicBlock) -> BasicBlock raise
+
+fn legalize_func(Function) -> Function raise
+
+fn legalize_instruction(Instruction) -> Array[Instruction] raise
+
+fn live_analysis(Function) -> (Graph[Int], Graph[Int])
+
+fn reg_alloc_for_function(Function, max_num_reg~ : Int, max_num_freg~ : Int) -> Unit raise RegAllocError
+
+fn rewrite_instruction(Instruction, vreg_operand_map~ : Map[Int, Operand], vfreg_operand_map~ : Map[Int, Operand]) -> Unit raise RegAllocError
+
+// Errors
+pub suberror IRTranslateError String
+impl Show for IRTranslateError
+
+pub suberror LegalizeError String
+impl Show for LegalizeError
+
+pub suberror PostRAError String
+impl Show for PostRAError
+
+pub suberror RegAllocError String
+impl Show for RegAllocError
+
+// Types and methods
+pub(all) struct BasicBlock {
+  label : String
+  mut insts : Array[Instruction]
+  mut parent : Function?
+  preds : Array[BasicBlock]
+}
+fn BasicBlock::new(String) -> Self
+impl Show for BasicBlock
+
+pub(all) struct Function {
+  name : String
+  params : Array[Operand]
+  body : Array[BasicBlock]
+  mut stack_size : Int
+}
+fn Function::from_llvm_function(@IR.Function) -> Self raise
+fn Function::new(String) -> Self
+impl Show for Function
+
+pub struct Graph[T] {
+  nodes : @set.Set[T]
+  edges : Map[T, @set.Set[T]]
+}
+fn[T : Hash + Eq] Graph::add_edge(Self[T], T, T) -> Unit
+fn[T : Hash + Eq] Graph::add_node(Self[T], T) -> Unit
+fn[T : Hash + Eq] Graph::coloring(Self[T]) -> (Map[T, Int], Int)
+fn[T] Graph::new() -> Self[T]
+impl[T : Show] Show for Graph[T]
+
+pub(all) struct Instruction {
+  opcode : OpCode
+  defs : Array[Operand]
+  uses : Array[Operand]
+}
+impl Show for Instruction
+
+pub(all) struct Module {
+  functions : Array[Function]
+}
+fn Module::from_llvm_module(@IR.Module) -> Self raise
+fn Module::legalize(Self) -> Self raise
+fn Module::new() -> Self
+fn Module::peephole_optimizations(Self) -> Self
+fn Module::post_ra_adjustments(Self) -> Self raise PostRAError
+fn Module::reg_alloc(Self, max_num_reg~ : Int, max_num_freg~ : Int) -> Self raise RegAllocError
+impl Show for Module
+
+pub(all) enum OpCode {
+  Addb
+  Addw
+  Addl
+  Addq
+  Add(Int)
+  Subb
+  Subw
+  Subl
+  Subq
+  Sub(Int)
+  Mulb
+  Mulw
+  Mull
+  Mulq
+  Mul(Int)
+  Divb
+  Divw
+  Divl
+  Divq
+  Div(Int)
+  Remb
+  Remw
+  Reml
+  Remq
+  Rem(Int)
+  FAddS
+  FAddD
+  FSubS
+  FSubD
+  FMulS
+  FMulD
+  FDivS
+  FDivD
+  FRemS
+  FRemD
+  FNegS
+  FNegD
+  Loadb
+  Loadw
+  Loadl
+  Loadq
+  Load(Int)
+  FLoadS
+  FLoadD
+  Storeb
+  Storew
+  Storel
+  Storeq
+  Store(Int)
+  FStoreS
+  FStoreD
+  Movb
+  Movw
+  Movl
+  Movq
+  Mov(Int)
+  FMovS
+  FMovD
+  Beq
+  Bne
+  Bgt
+  Bge
+  Blt
+  Ble
+  Bequ
+  Bneu
+  Bgtu
+  Bgeu
+  Bltu
+  Bleu
+  Jmp
+  Eq
+  Ne
+  Gt
+  Ge
+  Lt
+  Le
+  Equ
+  Neu
+  Gtu
+  Geu
+  Ltu
+  Leu
+  FeqS
+  FneS
+  FgtS
+  FgeS
+  FltS
+  FleS
+  FeqD
+  FneD
+  FgtD
+  FgeD
+  FltD
+  FleD
+  And
+  Or
+  Xor
+  Shl
+  LShr
+  AShr
+  Trunc
+  ZExt
+  SExt
+  FPTrunc
+  FPExt
+  FPToSI(Int, Int)
+  FPToUI(Int, Int)
+  SIToFP(Int, Int)
+  UIToFP(Int, Int)
+  BitCast
+  Call
+  PHI
+  Select
+  Ret
+  Nop
+  Intrinsic(String)
+}
+impl Show for OpCode
+
+pub(all) enum Operand {
+  VReg(Int)
+  VFReg(Int)
+  Reg(Int)
+  FReg(Int)
+  Imm(Int64)
+  FImm(Double)
+  Mem(Operand, Int)
+  Label(String)
+  StackTop
+}
+impl Eq for Operand
+impl Show for Operand
+
+// Type aliases
+
+// Traits
+

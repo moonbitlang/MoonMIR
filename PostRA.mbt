@@ -1,4 +1,4 @@
-
+///|
 pub suberror PostRAError String derive(Show)
 
 //pub fn Module::post_ra(self: Self) -> Module raise PostRAError {
@@ -32,7 +32,8 @@ pub suberror PostRAError String derive(Show)
 //  mod
 //}
 
-pub fn Module::post_ra_adjustments(mod: Self) -> Module raise PostRAError {
+///|
+pub fn Module::post_ra_adjustments(mod : Self) -> Module raise PostRAError {
   let new_module = Module::new()
   mod.functions.each(func => {
     let legalized_func = adjust_function(func)
@@ -41,7 +42,8 @@ pub fn Module::post_ra_adjustments(mod: Self) -> Module raise PostRAError {
   new_module
 }
 
-fn adjust_function(func: Function) -> Function raise PostRAError {
+///|
+fn adjust_function(func : Function) -> Function raise PostRAError {
   let new_func = Function::new(func.name)
   func.params.each(param => new_func.params.push(param))
   for bb in func.body {
@@ -51,7 +53,8 @@ fn adjust_function(func: Function) -> Function raise PostRAError {
   new_func
 }
 
-fn adjust_basic_block(bb: BasicBlock) -> BasicBlock raise PostRAError {
+///|
+fn adjust_basic_block(bb : BasicBlock) -> BasicBlock raise PostRAError {
   let new_bb = BasicBlock::new(bb.label)
   new_bb.parent = bb.parent
   for inst in bb.insts {
@@ -63,7 +66,10 @@ fn adjust_basic_block(bb: BasicBlock) -> BasicBlock raise PostRAError {
   new_bb
 }
 
-fn adjust_instruction(inst: Instruction) -> Array[Instruction] raise PostRAError {
+///|
+fn adjust_instruction(
+  inst : Instruction,
+) -> Array[Instruction] raise PostRAError {
   let new_insts : Array[Instruction] = Array::new()
   match inst {
     { opcode: Ret, defs: [], uses: [v] } => {

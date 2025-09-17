@@ -101,11 +101,11 @@ pub(all) enum OpCode {
   Shl
   LShr
   AShr
-  Trunc    // i64 -> i32
-  ZExt     // i32 -> i64 (Zero Extend)
-  SExt     // i32 -> i64 (Sign Extend)
-  FPTrunc  // f64 -> f32
-  FPExt    // f32 -> f64
+  Trunc // i64 -> i32
+  ZExt // i32 -> i64 (Zero Extend)
+  SExt // i32 -> i64 (Sign Extend)
+  FPTrunc // f64 -> f32
+  FPExt // f32 -> f64
   FPToSI(Int, Int)
   FPToUI(Int, Int)
   SIToFP(Int, Int)

@@ -54,7 +54,7 @@ pub(all) struct BasicBlock {
   label : String
   mut insts : Array[Instruction]
   mut parent : Function?
-  preds: Array[BasicBlock]
+  preds : Array[BasicBlock]
 }
 
 ///|

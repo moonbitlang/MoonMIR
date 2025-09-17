@@ -13,7 +13,7 @@ pub suberror IRTranslateError String derive(Show)
 ///|
 priv struct ValueMap {
   map : Map[&@IR.Value, Operand]
-  bbmap: Map[String, BasicBlock] // Map from label to BasicBlock
+  bbmap : Map[String, BasicBlock] // Map from label to BasicBlock
   mut vreg_cnt : Int
   mut vfreg_cnt : Int
 }
@@ -23,7 +23,8 @@ fn ValueMap::new() -> ValueMap {
   ValueMap::{ map: Map::new(), bbmap: Map::new(), vreg_cnt: 0, vfreg_cnt: 0 }
 }
 
-fn ValueMap::add_vreg(self: Self) -> Operand {
+///|
+fn ValueMap::add_vreg(self : Self) -> Operand {
   let i = self.vreg_cnt
   let op = VReg(i)
   self.vreg_cnt += 1
@@ -49,7 +50,11 @@ fn ValueMap::bind_llvmvalue_to_vfreg(self : Self, val : &LLVMValue) -> Operand {
 }
 
 ///|
-fn ValueMap::bind_llvmvalue_to_mem(self : Self, val : &LLVMValue, offset : Int) -> Operand {
+fn ValueMap::bind_llvmvalue_to_mem(
+  self : Self,
+  val : &LLVMValue,
+  offset : Int,
+) -> Operand {
   let op = Mem(StackTop, offset)
   self.map[val] = op
   op
@@ -88,20 +93,12 @@ pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
   // Get BasicBlocks labels
   let name = func.getName().unwrap_or("unnamed")
   for i, llvm_bb in func.basicBlocks {
-    let label = if llvm_bb.getName() is Some(n) {
-      n
-    } else {
-      "L\{i}"
-    }
+    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
     value_map.map[llvm_bb] = Label(label)
   }
   let body : Array[BasicBlock] = Array::new()
   for i, llvm_bb in func.basicBlocks {
-    let label = if llvm_bb.getName() is Some(n) {
-      n
-    } else {
-      "L\{i}"
-    }
+    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
     let bb = BasicBlock::from_llvm_bb(llvm_bb, value_map, stack_size, label)
     value_map.bbmap[label] = bb
     body.push(bb)
@@ -258,7 +255,8 @@ fn Instruction::from_llvm_inst(
       // If the ICmpInst is only used by a BranchInst,
       // we do not generate a separate instruction for it.
       let inst_users = inst.getUsers().unwrap()
-      if inst_users.length() == 1 && inst_users[0].asValueEnum() is BranchInst(_) {
+      if inst_users.length() == 1 &&
+        inst_users[0].asValueEnum() is BranchInst(_) {
         return []
       }
       let opcode = match predicate {
@@ -318,9 +316,14 @@ fn Instruction::from_llvm_inst(
       }
       [minst]
     }
-    BranchInst({ condition: Some(cond),
-                 trueBlock: Some(trueBB),
-                 falseBlock: Some(falseBB), ..}) => {
+    BranchInst(
+      {
+        condition: Some(cond),
+        trueBlock: Some(trueBB),
+        falseBlock: Some(falseBB),
+        ..,
+      }
+    ) => {
       guard value_map.get(trueBB) is Some(true_label) else {
         raise IRTranslateError(
           "BranchInst: true block operand not found in value map",
@@ -332,10 +335,14 @@ fn Instruction::from_llvm_inst(
         )
       }
       let minst = if value_map.get(cond) is Some(cond_op) {
-        Instruction::{ opcode: Bne, defs: [], uses: [cond_op, Imm(0), true_label, false_label] }
+        Instruction::{
+          opcode: Bne,
+          defs: [],
+          uses: [cond_op, Imm(0), true_label, false_label],
+        }
       } else {
         // Must Be ICmp
-        guard cond.asValueEnum() is ICmpInst({predicate, lhs, rhs, ..}) else {
+        guard cond.asValueEnum() is ICmpInst({ predicate, lhs, rhs, .. }) else {
           raise IRTranslateError("BranchInst: condition is not ICmpInst")
         }
         let opcode = match predicate {
@@ -356,11 +363,15 @@ fn Instruction::from_llvm_inst(
             "BranchInst: condition rhs operand not found in value map",
           )
         }
-        Instruction::{ opcode, defs: [], uses: [lhs_op, rhs_op, true_label, false_label], }
+        Instruction::{
+          opcode,
+          defs: [],
+          uses: [lhs_op, rhs_op, true_label, false_label],
+        }
       }
       [minst]
     }
-    BranchInst({ condition: None, trueBlock: Some(trueBB), ..}) => {
+    BranchInst({ condition: None, trueBlock: Some(trueBB), .. }) => {
       guard value_map.get(trueBB) is Some(true_label) else {
         raise IRTranslateError(
           "BranchInst: true block operand not found in value map",
@@ -377,7 +388,7 @@ fn Instruction::from_llvm_inst(
       println("Warning: SwitchInst is not supported yet.")
       panic()
     }
-    PHINode({incomings, ..}) => {
+    PHINode({ incomings, .. }) => {
       let uses : Array[Operand] = Array::new()
       for incoming in incomings {
         let (value, _) = incoming
@@ -411,7 +422,7 @@ fn Instruction::from_llvm_inst(
         FPExt => FPExt
         FPTrunc => FPTrunc
         IntToPtr | PtrToInt | BitCast => BitCast
-        FPToUI => {
+        FPToUI =>
           match (from_ty.tryAsFPTypeEnum(), to_ty.tryAsIntTypeEnum()) {
             (Some(FloatType(_)), Some(Int1Type(_))) => FPToUI(32, 1)
             (Some(FloatType(_)), Some(Int8Type(_))) => FPToUI(32, 8)
@@ -428,8 +439,7 @@ fn Instruction::from_llvm_inst(
                 "Unsupported CastInst FPToUI from {\{from_ty}} to {\{to_ty}}",
               )
           }
-        }
-        UIToFP => {
+        UIToFP =>
           match (from_ty.tryAsIntTypeEnum(), to_ty.tryAsFPTypeEnum()) {
             (Some(Int1Type(_)), Some(FloatType(_))) => UIToFP(1, 32)
             (Some(Int8Type(_)), Some(FloatType(_))) => UIToFP(8, 32)
@@ -446,8 +456,7 @@ fn Instruction::from_llvm_inst(
                 "Unsupported CastInst UIToFP from {\{from_ty}} to {\{to_ty}}",
               )
           }
-        }
-        FPToSI => {
+        FPToSI =>
           match (from_ty.tryAsFPTypeEnum(), to_ty.tryAsIntTypeEnum()) {
             (Some(FloatType(_)), Some(Int1Type(_))) => FPToSI(32, 1)
             (Some(FloatType(_)), Some(Int8Type(_))) => FPToSI(32, 8)
@@ -464,8 +473,7 @@ fn Instruction::from_llvm_inst(
                 "Unsupported CastInst FPToSI from {\{from_ty}} to {\{to_ty}}",
               )
           }
-        }
-        SIToFP => {
+        SIToFP =>
           match (from_ty.tryAsIntTypeEnum(), to_ty.tryAsFPTypeEnum()) {
             (Some(Int1Type(_)), Some(FloatType(_))) => SIToFP(1, 32)
             (Some(Int8Type(_)), Some(FloatType(_))) => SIToFP(8, 32)
@@ -482,7 +490,6 @@ fn Instruction::from_llvm_inst(
                 "Unsupported CastInst SIToFP from {\{from_ty}} to {\{to_ty}}",
               )
           }
-        }
       }
       let def_op = if to_ty.isIEEELikeFPTy() {
         value_map.bind_llvmvalue_to_vfreg(inst)
@@ -492,16 +499,17 @@ fn Instruction::from_llvm_inst(
       let minst = Instruction::{ opcode, defs: [def_op], uses: [from_op] }
       [minst]
     }
-    GetElementPtrInst({ ptr, indices, pointeeType, ..}) => {
+    GetElementPtrInst({ ptr, indices, pointeeType, .. }) => {
       guard value_map.get(ptr) is Some(ptr_op) else {
         raise IRTranslateError(
           "GetElementPtrInst: pointer operand not found in value map",
         )
       }
-      let insts: Array[Instruction] = Array::new()
+      let insts : Array[Instruction] = Array::new()
       let indices = indices.map(i => i.asValueEnum())
       if indices[0] is ConstantInt(c) {
-        let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() * c.getValueAsInt64()
+        let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() *
+          c.getValueAsInt64()
         if offset != 0 {
           let offset_op = Imm(offset)
           let def_op = value_map.bind_llvmvalue_to_vreg(inst)
@@ -514,7 +522,7 @@ fn Instruction::from_llvm_inst(
         }
       }
       loop (pointeeType.asTypeEnum(), indices[:]) {
-        (ArrayType(arrTy), [ConstantInt(c), ..rest]) => {
+        (ArrayType(arrTy), [ConstantInt(c), .. rest]) => {
           let elem_ty = arrTy.getElementType()
           let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
           let offset = elem_size * c.getValueAsInt64()
@@ -529,8 +537,8 @@ fn Instruction::from_llvm_inst(
             insts.push(minst)
           }
           continue (elem_ty.asTypeEnum(), rest)
-        } 
-        (ArrayType(arrTy), [idx, ..rest]) => {
+        }
+        (ArrayType(arrTy), [idx, .. rest]) => {
           let elem_ty = arrTy.getElementType()
           let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
           let offset_op = value_map.add_vreg()
@@ -549,7 +557,7 @@ fn Instruction::from_llvm_inst(
           insts.push(add_inst)
           continue (elem_ty.asTypeEnum(), rest)
         }
-        (StructType(structTy), [ConstantInt(c), ..rest]) => {
+        (StructType(structTy), [ConstantInt(c), .. rest]) => {
           let i = c.getValueAsInt64().to_int()
           let offset = data_layout.getStructTypeOffset(structTy, i).to_int64()
           if offset != 0 {
@@ -566,16 +574,20 @@ fn Instruction::from_llvm_inst(
           continue (elem_ty.asTypeEnum(), rest)
         }
         (StructType(_), [_, ..]) => {
-          println("Warning: GetElementPtrInst with non-constant struct index is impossible.")
+          println(
+            "Warning: GetElementPtrInst with non-constant struct index is impossible.",
+          )
           panic()
         }
         _ => {
-          println("Warning: GetElementPtrInst with non-array/struct type is not fully supported yet.")
+          println(
+            "Warning: GetElementPtrInst with non-array/struct type is not fully supported yet.",
+          )
           panic()
         }
       }
     }
-    SelectInst({ condition, trueValue, falseValue, ..}) => {
+    SelectInst({ condition, trueValue, falseValue, .. }) => {
       guard value_map.get(condition) is Some(cond_op) else {
         raise IRTranslateError(
           "SelectInst: condition operand not found in value map",
@@ -625,7 +637,7 @@ fn Instruction::from_llvm_inst(
         let minst = Instruction::{ opcode: Ret, defs: [], uses: [] }
         [minst]
       }
-    CallInst({ callee, args, ..}) => {
+    CallInst({ callee, args, .. }) => {
       let callee_name = callee.getName().unwrap()
       let uses : Array[Operand] = Array::new()
       uses.push(Label(callee_name))
@@ -643,7 +655,7 @@ fn Instruction::from_llvm_inst(
           }
         }
       }
-      let defs: Array[Operand] = Array::new()
+      let defs : Array[Operand] = Array::new()
       if !(inst.getType().asTypeEnum() is VoidType(_)) {
         let ret_op = if inst.getType().isIEEELikeFPTy() {
           value_map.bind_llvmvalue_to_vfreg(inst)

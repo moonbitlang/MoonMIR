@@ -141,6 +141,5 @@ pub fn from_gmir_module(mod : @GMIR.Module) -> Array[RvAsm] raise {
   // Modify main function's return to ecall
   // because some emulators can't handle normal ret in main
   modify_main_ret_to_ecall(insts)
-
   insts
 }
