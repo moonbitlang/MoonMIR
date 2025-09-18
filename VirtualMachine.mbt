@@ -56,12 +56,13 @@ fn ExecutionContext::new(
     current_bb: 0,
     current_inst: 0,
     stack: Array::new(),
-    stack_ptr: 0,
+    stack_ptr: 50, // Start stack pointer in the middle to allow negative offsets
     function: func,
   }
 
-  // Initialize stack with sufficient space
-  for i = 0; i < 100; i = i + 1 {
+  // Initialize stack with sufficient space (200 slots total)
+  // This provides space both before and after the initial stack pointer
+  for i = 0; i < 200; i = i + 1 {
     ctx.stack.push(VMValue::Int(0L))
   }
 
@@ -112,10 +113,14 @@ fn ExecutionContext::get_operand_value(
             "Invalid base address for memory operation",
           )
       }
-      // For now, simulate memory as stack access
+      // Simulate memory as stack access
+      // The address is an absolute index into the stack array
       let stack_idx = addr.to_int()
+      // Check bounds - allow any valid index into the stack array
       if stack_idx < 0 || stack_idx >= self.stack.length() {
-        raise VMError::RuntimeError("Memory access out of bounds")
+        raise VMError::RuntimeError(
+          "Memory access out of bounds: index \{stack_idx} for stack size \{self.stack.length()}",
+        )
       }
       self.stack[stack_idx]
     }
@@ -147,8 +152,11 @@ fn ExecutionContext::set_operand_value(
           )
       }
       let stack_idx = addr.to_int()
+      // Check bounds - allow any valid index into the stack array
       if stack_idx < 0 || stack_idx >= self.stack.length() {
-        raise VMError::RuntimeError("Memory access out of bounds")
+        raise VMError::RuntimeError(
+          "Memory access out of bounds: index \{stack_idx} for stack size \{self.stack.length()}",
+        )
       }
       self.stack[stack_idx] = val
     }
