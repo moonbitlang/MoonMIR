@@ -149,4 +149,6 @@ pub impl Show for Operand with output(self, logger) {
   logger.write_string(s)
 }
 
-
+fn OpCode::is_terminator(self: Self) -> Bool {
+  self is (Ret | Jmp | Beq | Bne | Bgt | Bge | Blt | Ble | Bequ | Bneu | Bgtu | Bgeu | Bltu | Bleu)
+}

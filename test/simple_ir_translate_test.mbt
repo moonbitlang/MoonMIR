@@ -285,11 +285,12 @@ test "Simple IRTranslate - cond branch" {
     #|entry:
     #|  Bgt %v0, %v1, then, else
     #|then:
+    #|  %v4 = Movq %v2
     #|  Jmp merge
     #|else:
+    #|  %v4 = Movq %v3
     #|  Jmp merge
     #|merge:
-    #|  %v4 = PHI %v2, then, %v3, else
     #|  Ret %v4
     #|}
     #|
@@ -929,11 +930,12 @@ test "Simple IRTranslate - simple phi" {
     #|entry:
     #|  Bne %v0, 0, then, else
     #|then:
+    #|  %v3 = Movq %v1
     #|  Jmp merge
     #|else:
+    #|  %v3 = Movq %v2
     #|  Jmp merge
     #|merge:
-    #|  %v3 = PHI %v1, then, %v2, else
     #|  Ret %v3
     #|}
     #|

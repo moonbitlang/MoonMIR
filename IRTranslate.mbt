@@ -105,6 +105,7 @@ pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
   }
   let stack_size = stack_size.val
   let f = Function::{ name, params, body, stack_size }
+  f.phi_elimination()
   f
 }
 
