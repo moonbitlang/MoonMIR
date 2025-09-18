@@ -119,10 +119,34 @@ pub(all) enum OpCode {
   Intrinsic(String)
 } derive(Show)
 
-//pub impl Show for OpCode with output(self, logger) {
-//  let s = match self {
-//    Intrinsic(name) => name
-//  }
-//  logger.write_string(s)
-//}
-//
+
+///|
+pub(all) enum Operand {
+  VReg(Int) // Virtual Register
+  VFReg(Int) // Virtual Floating Point Register
+  Reg(Int) // Physical Register
+  FReg(Int) // Physical Floating Point Register
+  Imm(Int64) // Immediate Value
+  FImm(Double) // Floating Point Immediate Value
+  Mem(Operand, Int) // Memory Addressing (Base, Offset)
+  Label(String) // Label
+  StackTop // Stack Top (for stack pointer)
+} derive(Eq)
+
+///|
+pub impl Show for Operand with output(self, logger) {
+  let s = match self {
+    VReg(i) => "%v\{i}"
+    VFReg(i) => "%vf\{i}"
+    Reg(i) => "%r\{i}"
+    FReg(i) => "%f\{i}"
+    Imm(i) => "\{i}"
+    FImm(f) => "\{f}"
+    Mem(base, offset) => "(\{base} + \{offset})"
+    Label(name) => "\{name}"
+    StackTop => "sp"
+  }
+  logger.write_string(s)
+}
+
+
