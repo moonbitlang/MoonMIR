@@ -1,77 +1,49 @@
 ///|
-fn main_err() -> Unit raise {
-  let ctx = @IR.Context::new()
-  let mod = ctx.addModule("demo")
-  let i32ty = ctx.getInt32Ty()
-  let fty = ctx.getFunctionType(i32ty, [i32ty])
-  let fval = mod.addFunction(fty, "fib_iter")
-  let entry_bb = fval.addBasicBlock(name="entry")
-  let base_case_bb = fval.addBasicBlock(name="base_case")
-  let iter_setup_bb = fval.addBasicBlock(name="iter_setup")
-  let loop_bb = fval.addBasicBlock(name="loop")
-  let loop_body_bb = fval.addBasicBlock(name="loop_body")
-  let loop_end_bb = fval.addBasicBlock(name="loop_end")
-  let return_bb = fval.addBasicBlock(name="return")
-  let builder = ctx.createBuilder()
-
-  // Entry: check if n <= 1
-  builder.setInsertPoint(entry_bb)
-  let n = fval.getArg(0).unwrap()
-  let one = ctx.getConstInt32(1)
-  let cond = builder.createICmpSLE(n, one)
-  let _ = builder.createCondBr(cond, base_case_bb, iter_setup_bb)
-
-  // Base case: return n
-  builder.setInsertPoint(base_case_bb)
-  let _ = builder.createRet(n)
-
-  // Setup iteration: a = 0, b = 1, i = 2
-  builder.setInsertPoint(iter_setup_bb)
-  let _ = builder.createBr(loop_bb)
-
-  // Loop header: check i <= n
-  builder.setInsertPoint(loop_bb)
-  let i_phi = builder.createPHI(i32ty)
-  let a_phi = builder.createPHI(i32ty)
-  let b_phi = builder.createPHI(i32ty)
-  let two = ctx.getConstInt32(2)
-  let zero = ctx.getConstInt32(0)
-  i_phi.addIncoming(two, iter_setup_bb)
-  a_phi.addIncoming(zero, iter_setup_bb)
-  b_phi.addIncoming(one, iter_setup_bb)
-  let loop_cond = builder.createICmpSLE(i_phi, n)
-  let _ = builder.createCondBr(loop_cond, loop_body_bb, return_bb)
-
-  // Loop body: temp = a + b; a = b; b = temp; i++
-  builder.setInsertPoint(loop_body_bb)
-  let temp = builder.createAdd(a_phi, b_phi)
-  let new_i = builder.createAdd(i_phi, one)
-  let _ = builder.createBr(loop_end_bb)
-
-  // Loop end: update phi values
-  builder.setInsertPoint(loop_end_bb)
-  let _ = builder.createBr(loop_bb)
-  i_phi.addIncoming(new_i, loop_end_bb)
-  a_phi.addIncoming(b_phi, loop_end_bb)
-  b_phi.addIncoming(temp, loop_end_bb)
-
-  // Return b
-  builder.setInsertPoint(return_bb)
-  let _ = builder.createRet(b_phi)
-
-  // Convert to MIR and execute
-  println("Converting LLVM function to MIR...")
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
-  println("MIR function created successfully:")
-  println(mir_func)
-}
-
-///|
 fn main {
-  main_err() catch {
-    e => {
-      println("Error: \{e}")
-      return
-    }
+  try {
+    // Debug the mixed types test
+    let ctx = @IR.Context::new()
+    let mod = ctx.addModule("demo")
+    let i32ty = ctx.getInt32Ty()
+    let f64ty = ctx.getDoubleTy()
+    let fty = ctx.getFunctionType(f64ty, [i32ty, f64ty, i32ty])
+    let func = mod.addFunction(fty, "mixed")
+    let bb = func.addBasicBlock(name="entry")
+    let builder = ctx.createBuilder()
+    builder.setInsertPoint(bb)
+    let a = func.getArg(0).unwrap()
+    let b = func.getArg(1).unwrap()
+    let c = func.getArg(2).unwrap()
+    let a_double = builder.createSIToFP(a, f64ty)
+    let c_double = builder.createSIToFP(c, f64ty)
+    let sum1 = builder.createFAdd(a_double, b)
+    let sum2 = builder.createFAdd(sum1, c_double)
+    let _ = builder.createRet(sum2)
+    let mir_func = @GMIR.Function::from_llvm_function(func)
+    println("=== Before RegAlloc ===")
+    println(mir_func)
+    let vm = @GMIR.VirtualMachine::new()
+    let result_before = vm.eval_function(mir_func, [
+      @GMIR.VMValue::Int(10L),
+      @GMIR.VMValue::Double(5.5),
+      @GMIR.VMValue::Int(15L),
+    ])
+    println("Result before regalloc: \{result_before}")
+    println("Expected: 10.0 + 5.5 + 15.0 = 30.5")
+    let regalloced = @GMIR.reg_alloc_for_function(
+      mir_func,
+      max_num_reg=17,
+      max_num_freg=17,
+    )
+    println("\n=== After RegAlloc ===")
+    println(regalloced)
+    let result_after = vm.eval_function(regalloced, [
+      @GMIR.VMValue::Int(10L),
+      @GMIR.VMValue::Double(5.5),
+      @GMIR.VMValue::Int(15L),
+    ])
+    println("Result after regalloc: \{result_after}")
+  } catch {
+    e => println("Error: \{e}")
   }
 }

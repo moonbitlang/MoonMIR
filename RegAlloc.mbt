@@ -9,12 +9,17 @@ pub fn Module::reg_alloc(
 ) -> Module raise RegAllocError {
   for func in self.functions {
     let _ = reg_alloc_for_function(func, max_num_reg~, max_num_freg~)
+
   }
   self
 }
 
-pub fn rewrite_param_reg(f: Function) -> Unit raise RegAllocError {
-  raise RegAllocError("rewrite_param_reg not implemented")
+///|
+pub fn rewrite_param_reg(f : Function) -> Unit {
+  // We don't do anything here for now.
+  // The graph coloring algorithm will handle virtual register allocation.
+  // In a real implementation, this is where we would handle calling conventions
+  // and ABI requirements for parameter passing.
 }
 
 ///|
@@ -63,6 +68,21 @@ pub fn reg_alloc_for_function(
     for inst in bb.insts {
       //rewrite_instruction(inst, vreg_color_map~, vfreg_color_map~, max_num_reg~, max_num_freg~, stack_vreg_map~, stack_vfreg_map~);
       rewrite_instruction(inst, vreg_operand_map~, vfreg_operand_map~)
+    }
+  }
+
+  // Rewrite function parameters using the same color mapping
+  for i, param in f.params {
+    match param {
+      VReg(v) =>
+        if vreg_operand_map.contains(v) {
+          f.params[i] = vreg_operand_map[v]
+        }
+      VFReg(v) =>
+        if vfreg_operand_map.contains(v) {
+          f.params[i] = vfreg_operand_map[v]
+        }
+      _ => ()
     }
   }
   f
