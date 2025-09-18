@@ -8,6 +8,27 @@ pub enum VMValue {
 } derive(Show, Eq)
 
 ///|
+/// Helper functions to create VMValue instances for external packages
+pub fn VMValue::from_int(value : Int64) -> VMValue {
+  VMValue::Int(value)
+}
+
+///|
+pub fn VMValue::from_double(value : Double) -> VMValue {
+  VMValue::Double(value)
+}
+
+///|
+pub fn VMValue::from_address(value : Int64) -> VMValue {
+  VMValue::Address(value)
+}
+
+///|
+pub fn VMValue::void_value() -> VMValue {
+  VMValue::Void
+}
+
+///|
 /// VM error types
 pub suberror VMError {
   // Errors related to unreasonable operations,
@@ -230,6 +251,16 @@ fn VirtualMachine::execute_instruction(
       ctx.set_operand_value(inst.defs[0], result)
       false
     }
+    Addl => {
+      let val1 = ctx.get_operand_value(inst.uses[0])
+      let val2 = ctx.get_operand_value(inst.uses[1])
+      let result = match (val1, val2) {
+        (VMValue::Int(a), VMValue::Int(b)) => VMValue::Int(a + b)
+        _ => raise VMError::RuntimeError("Invalid operands for Addl")
+      }
+      ctx.set_operand_value(inst.defs[0], result)
+      false
+    }
     Add(bits) => {
       let val1 = ctx.get_operand_value(inst.uses[0])
       let val2 = ctx.get_operand_value(inst.uses[1])
@@ -256,6 +287,16 @@ fn VirtualMachine::execute_instruction(
       ctx.set_operand_value(inst.defs[0], result)
       false
     }
+    Subl => {
+      let val1 = ctx.get_operand_value(inst.uses[0])
+      let val2 = ctx.get_operand_value(inst.uses[1])
+      let result = match (val1, val2) {
+        (VMValue::Int(a), VMValue::Int(b)) => VMValue::Int(a - b)
+        _ => raise VMError::RuntimeError("Invalid operands for Subl")
+      }
+      ctx.set_operand_value(inst.defs[0], result)
+      false
+    }
     Sub(bits) => {
       let val1 = ctx.get_operand_value(inst.uses[0])
       let val2 = ctx.get_operand_value(inst.uses[1])
@@ -277,6 +318,16 @@ fn VirtualMachine::execute_instruction(
       let result = match (val1, val2) {
         (VMValue::Int(a), VMValue::Int(b)) => VMValue::Int(a * b)
         _ => raise VMError::RuntimeError("Invalid operands for Mulq")
+      }
+      ctx.set_operand_value(inst.defs[0], result)
+      false
+    }
+    Mull => {
+      let val1 = ctx.get_operand_value(inst.uses[0])
+      let val2 = ctx.get_operand_value(inst.uses[1])
+      let result = match (val1, val2) {
+        (VMValue::Int(a), VMValue::Int(b)) => VMValue::Int(a * b)
+        _ => raise VMError::RuntimeError("Invalid operands for Mull")
       }
       ctx.set_operand_value(inst.defs[0], result)
       false
@@ -307,6 +358,21 @@ fn VirtualMachine::execute_instruction(
           VMValue::Int(a / b)
         }
         _ => raise VMError::RuntimeError("Invalid operands for Divq")
+      }
+      ctx.set_operand_value(inst.defs[0], result)
+      false
+    }
+    Divl => {
+      let val1 = ctx.get_operand_value(inst.uses[0])
+      let val2 = ctx.get_operand_value(inst.uses[1])
+      let result = match (val1, val2) {
+        (VMValue::Int(a), VMValue::Int(b)) => {
+          if b == 0L {
+            raise VMError::RuntimeError("Division by zero")
+          }
+          VMValue::Int(a / b)
+        }
+        _ => raise VMError::RuntimeError("Invalid operands for Divl")
       }
       ctx.set_operand_value(inst.defs[0], result)
       false
@@ -416,6 +482,19 @@ fn VirtualMachine::execute_instruction(
       ctx.set_operand_value(inst.defs[0], self.memory[addr])
       false
     }
+    Loadl => {
+      let addr_val = ctx.get_operand_value(inst.uses[0])
+      let addr = match addr_val {
+        VMValue::Int(a) => a.to_int()
+        VMValue::Address(a) => a.to_int()
+        _ => raise VMError::RuntimeError("Invalid address for load")
+      }
+      if addr < 0 || addr >= self.memory.length() {
+        raise VMError::RuntimeError("Memory access out of bounds")
+      }
+      ctx.set_operand_value(inst.defs[0], self.memory[addr])
+      false
+    }
     Load(bits) => {
       let addr_val = ctx.get_operand_value(inst.uses[0])
       let addr = match addr_val {
@@ -441,6 +520,20 @@ fn VirtualMachine::execute_instruction(
 
     // Store operations
     Storeq => {
+      let val = ctx.get_operand_value(inst.uses[0])
+      let addr_val = ctx.get_operand_value(inst.uses[1])
+      let addr = match addr_val {
+        VMValue::Int(a) => a.to_int()
+        VMValue::Address(a) => a.to_int()
+        _ => raise VMError::RuntimeError("Invalid address for store")
+      }
+      if addr < 0 || addr >= self.memory.length() {
+        raise VMError::RuntimeError("Memory access out of bounds")
+      }
+      self.memory[addr] = val
+      false
+    }
+    Storel => {
       let val = ctx.get_operand_value(inst.uses[0])
       let addr_val = ctx.get_operand_value(inst.uses[1])
       let addr = match addr_val {
@@ -618,6 +711,26 @@ fn VirtualMachine::execute_instruction(
         false // Branch not taken - continue to next instruction
       }
     }
+    Bgt => {
+      let val1 = ctx.get_operand_value(inst.uses[0])
+      let val2 = ctx.get_operand_value(inst.uses[1])
+      let should_branch = match (val1, val2) {
+        (VMValue::Int(a), VMValue::Int(b)) => a > b
+        (VMValue::Double(a), VMValue::Double(b)) => a > b
+        _ => raise VMError::RuntimeError("Invalid operands for Bgt")
+      }
+      if should_branch {
+        let target_label = match inst.uses[2] {
+          Label(label) => label
+          _ => raise VMError::IRError("Expected label for branch target")
+        }
+        ctx.current_bb = ctx.find_bb_by_label(target_label)
+        ctx.current_inst = 0
+        true // Branch taken - this is a terminator
+      } else {
+        false // Branch not taken - continue to next instruction
+      }
+    }
     Jmp => {
       let target_label = match inst.uses[0] {
         Label(label) => label
@@ -661,6 +774,19 @@ fn VirtualMachine::execute_instruction(
 
     // No-op
     Nop => false
+
+    // Select instruction (ternary operator)
+    Select => {
+      let cond = ctx.get_operand_value(inst.uses[0])
+      let true_val = ctx.get_operand_value(inst.uses[1])
+      let false_val = ctx.get_operand_value(inst.uses[2])
+      let result = match cond {
+        VMValue::Int(c) => if c != 0L { true_val } else { false_val }
+        _ => raise VMError::RuntimeError("Invalid condition for Select")
+      }
+      ctx.set_operand_value(inst.defs[0], result)
+      false
+    }
 
     // PHI instruction (should be eliminated before execution)
     PHI =>
