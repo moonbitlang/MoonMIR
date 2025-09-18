@@ -1,32 +1,11 @@
 ///|
 /// VMValue represents values that can be stored and manipulated in the VM
-pub enum VMValue {
+pub(all) enum VMValue {
   Int(Int64)
   Double(Double)
   Address(Int64) // Memory addresses
   Void
 } derive(Show, Eq)
-
-///|
-/// Helper functions to create VMValue instances for external packages
-pub fn VMValue::from_int(value : Int64) -> VMValue {
-  VMValue::Int(value)
-}
-
-///|
-pub fn VMValue::from_double(value : Double) -> VMValue {
-  VMValue::Double(value)
-}
-
-///|
-pub fn VMValue::from_address(value : Int64) -> VMValue {
-  VMValue::Address(value)
-}
-
-///|
-pub fn VMValue::void_value() -> VMValue {
-  VMValue::Void
-}
 
 ///|
 /// VM error types

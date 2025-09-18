@@ -49,8 +49,8 @@ test "Interpreter - add" {
   // Convert to MIR and execute
   let mir_func = @GMIR.Function::from_llvm_function(fval)
   let result = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(10L),
-    @GMIR.VMValue::from_int(20L),
+    @GMIR.VMValue::Int(10L),
+    @GMIR.VMValue::Int(20L),
   ])
   inspect(result, content="Int(30)")
 }
@@ -75,8 +75,8 @@ test "Interpreter - mul" {
   // Convert to MIR and execute
   let mir_func = @GMIR.Function::from_llvm_function(fval)
   let result = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(6L),
-    @GMIR.VMValue::from_int(7L),
+    @GMIR.VMValue::Int(6L),
+    @GMIR.VMValue::Int(7L),
   ])
   inspect(result, content="Int(42)")
 }
@@ -101,8 +101,8 @@ test "Interpreter - div" {
   // Convert to MIR and execute
   let mir_func = @GMIR.Function::from_llvm_function(fval)
   let result = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(84L),
-    @GMIR.VMValue::from_int(2L),
+    @GMIR.VMValue::Int(84L),
+    @GMIR.VMValue::Int(2L),
   ])
   inspect(result, content="Int(42)")
 }
@@ -127,8 +127,8 @@ test "Interpreter - dadd" {
   // Convert to MIR and execute
   let mir_func = @GMIR.Function::from_llvm_function(fval)
   let result = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_double(3.14),
-    @GMIR.VMValue::from_double(2.86),
+    @GMIR.VMValue::Double(3.14),
+    @GMIR.VMValue::Double(2.86),
   ])
   inspect(result, content="Double(6)") // Auto update will capture the result
 }
@@ -156,15 +156,15 @@ test "Interpreter - icmp equal" {
 
   // Test equal case
   let result1 = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(42L),
-    @GMIR.VMValue::from_int(42L),
+    @GMIR.VMValue::Int(42L),
+    @GMIR.VMValue::Int(42L),
   ])
   inspect(result1, content="Int(1)")
 
   // Test not equal case
   let result2 = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(42L),
-    @GMIR.VMValue::from_int(24L),
+    @GMIR.VMValue::Int(42L),
+    @GMIR.VMValue::Int(24L),
   ])
   inspect(result2, content="Int(0)")
 }
@@ -192,15 +192,15 @@ test "Interpreter - icmp less than" {
 
   // Test true case
   let result1 = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(24L),
-    @GMIR.VMValue::from_int(42L),
+    @GMIR.VMValue::Int(24L),
+    @GMIR.VMValue::Int(42L),
   ])
   inspect(result1, content="Int(1)")
 
   // Test false case
   let result2 = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(42L),
-    @GMIR.VMValue::from_int(24L),
+    @GMIR.VMValue::Int(42L),
+    @GMIR.VMValue::Int(24L),
   ])
   inspect(result2, content="Int(0)")
 }
@@ -252,19 +252,19 @@ test "Interpreter - conditional branch" {
 
   // Test case where a > b (should return v1 = 100)
   let result1 = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(50L),
-    @GMIR.VMValue::from_int(30L),
-    @GMIR.VMValue::from_int(100L),
-    @GMIR.VMValue::from_int(200L),
+    @GMIR.VMValue::Int(50L),
+    @GMIR.VMValue::Int(30L),
+    @GMIR.VMValue::Int(100L),
+    @GMIR.VMValue::Int(200L),
   ])
   inspect(result1, content="Int(100)")
 
   // Test case where a <= b (should return v2 = 200)
   let result2 = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(20L),
-    @GMIR.VMValue::from_int(30L),
-    @GMIR.VMValue::from_int(100L),
-    @GMIR.VMValue::from_int(200L),
+    @GMIR.VMValue::Int(20L),
+    @GMIR.VMValue::Int(30L),
+    @GMIR.VMValue::Int(100L),
+    @GMIR.VMValue::Int(200L),
   ])
   inspect(result2, content="Int(100)")
 }
@@ -330,17 +330,17 @@ test "Interpreter - select" {
 
   // Test true condition (select a)
   let result1 = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(1L),
-    @GMIR.VMValue::from_int(42L),
-    @GMIR.VMValue::from_int(24L),
+    @GMIR.VMValue::Int(1L),
+    @GMIR.VMValue::Int(42L),
+    @GMIR.VMValue::Int(24L),
   ])
   inspect(result1, content="Int(42)")
 
   // Test false condition (select b)
   let result2 = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(0L),
-    @GMIR.VMValue::from_int(42L),
-    @GMIR.VMValue::from_int(24L),
+    @GMIR.VMValue::Int(0L),
+    @GMIR.VMValue::Int(42L),
+    @GMIR.VMValue::Int(24L),
   ])
   inspect(result2, content="Int(24)")
 }
@@ -364,7 +364,7 @@ test "Interpreter - sitofp conversion" {
 
   // Convert to MIR and execute
   let mir_func = @GMIR.Function::from_llvm_function(fval)
-  let result = run_mir_function(mir_func, [@GMIR.VMValue::from_int(42L)])
+  let result = run_mir_function(mir_func, [@GMIR.VMValue::Int(42L)])
   inspect(result, content="Double(42)") // Auto update will capture the result
 }
 
@@ -387,7 +387,7 @@ test "Interpreter - fptosi conversion" {
 
   // Convert to MIR and execute
   let mir_func = @GMIR.Function::from_llvm_function(fval)
-  let result = run_mir_function(mir_func, [@GMIR.VMValue::from_double(42.7)])
+  let result = run_mir_function(mir_func, [@GMIR.VMValue::Double(42.7)])
   inspect(result, content="Int(42)")
 }
 
@@ -423,9 +423,9 @@ test "Interpreter - complex expression" {
   let mir_func = @GMIR.Function::from_llvm_function(fval)
   // Test with a=10, b=5, c=3: (10+5)*3 - (10-5) = 45 - 5 = 40
   let result = run_mir_function(mir_func, [
-    @GMIR.VMValue::from_int(10L),
-    @GMIR.VMValue::from_int(5L),
-    @GMIR.VMValue::from_int(3L),
+    @GMIR.VMValue::Int(10L),
+    @GMIR.VMValue::Int(5L),
+    @GMIR.VMValue::Int(3L),
   ])
   inspect(result, content="Int(40)")
 }
@@ -506,14 +506,14 @@ test "Interpreter - fibonacci iterative" {
   let mir_func = @GMIR.Function::from_llvm_function(fval)
 
   // Test fib(0) = 0
-  let result0 = run_mir_function(mir_func, [@GMIR.VMValue::from_int(0L)])
+  let result0 = run_mir_function(mir_func, [@GMIR.VMValue::Int(0L)])
   inspect(result0, content="Int(0)")
 
   // Test fib(1) = 1
-  let result1 = run_mir_function(mir_func, [@GMIR.VMValue::from_int(1L)])
+  let result1 = run_mir_function(mir_func, [@GMIR.VMValue::Int(1L)])
   inspect(result1, content="Int(1)")
 
   // Test fib(5) = 5
-  let result5 = run_mir_function(mir_func, [@GMIR.VMValue::from_int(5L)])
+  let result5 = run_mir_function(mir_func, [@GMIR.VMValue::Int(5L)])
   inspect(result5, content="Int(5)")
 }
