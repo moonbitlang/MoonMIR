@@ -130,6 +130,7 @@ pub(all) enum Operand {
   Mem(Operand, Int) // Memory Addressing (Base, Offset)
   Label(String) // Label
   StackTop // Stack Top (for stack pointer)
+  FramePtr // Frame Pointer
 } derive(Eq)
 
 ///|
@@ -144,6 +145,7 @@ pub impl Show for Operand with output(self, logger) {
     Mem(base, offset) => "(\{base} + \{offset})"
     Label(name) => "\{name}"
     StackTop => "sp"
+    FramePtr => "fp"
   }
   logger.write_string(s)
 }

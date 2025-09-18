@@ -153,7 +153,11 @@ test "Simple IR RegAlloc - add" {
   let r7 = builder.createMul(r5, r6)
   let _ = builder.createRet(r7)
   let mir_func = @GMIR.Function::from_llvm_function(func)
-  let legalized = @GMIR.legalize_func(mir_func)
+  let config = @GMIR.LegalizeConfig::{
+    max_num_call_regs: 8,
+    max_num_call_fregs: 8
+  }
+  let legalized = @GMIR.legalize_func(mir_func, config)
   let before_regalloc_value = run_mir_function(legalized, [
     @GMIR.VMValue::Int(10),
     @GMIR.VMValue::Int(5),
