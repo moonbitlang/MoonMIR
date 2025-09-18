@@ -1,5 +1,18 @@
+
 ///|
-fn main_err() -> Unit raise {
+///
+/// int arith(int a, int b) {
+///   int r1 = a + b;
+///   int r2 = a - b;
+///   int r3 = a * b;
+///   int r4 = a / b;
+///
+///   int r5 = r1 + r2;
+///   int r6 = r3 - r4;
+///   int r7 = r5 * r6;
+///   return r7;
+/// }
+test "Simple IR RegAlloc - add" {
   let ctx = @IR.Context::new()
   let mod = ctx.addModule("demo")
   let i32ty = ctx.getInt32Ty()
@@ -28,14 +41,4 @@ fn main_err() -> Unit raise {
   @GMIR.reg_alloc_for_function(mir_func, max_num_reg=17, max_num_freg=17)
 
   println(mir_func)
-}
-
-///|
-fn main {
-  main_err() catch {
-    e => {
-      println("Error: \{e}")
-      return;
-    }
-  }
 }

@@ -1,0 +1,8 @@
+{
+  "is-main": true,
+  "import" : [
+    "Kaida-Amethyst/MoonLLVM/IR",
+    "Kaida-Amethyst/GMIR",
+    "Kaida-Amethyst/GMIR/riscv"
+  ]
+}

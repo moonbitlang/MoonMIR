@@ -1,6 +1,15 @@
 ///|
 pub suberror LegalizeError String derive(Show)
 
+pub struct LegalizeConfig {
+  // Maximum Call Registers
+  // If Exceeded, will spill to stack
+  max_num_call_regs: Int
+  // Whether to support select instruction
+  // If false, will lower to branches
+  support_select: Bool
+}
+
 ///|
 pub fn Module::legalize(self : Self) -> Module raise {
   let new_module = Module::new()
