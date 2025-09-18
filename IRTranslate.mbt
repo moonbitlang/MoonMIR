@@ -96,12 +96,37 @@ pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
     let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
     value_map.map[llvm_bb] = Label(label)
   }
+  // First create all basic blocks and add them to bbmap
   let body : Array[BasicBlock] = Array::new()
   for i, llvm_bb in func.basicBlocks {
     let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
-    let bb = BasicBlock::from_llvm_bb(llvm_bb, value_map, stack_size, label)
+    let bb = BasicBlock::new(label)
     value_map.bbmap[label] = bb
     body.push(bb)
+  }
+  
+  // Then process instructions for each basic block
+  for i, llvm_bb in func.basicBlocks {
+    let bb = body[i]
+    for inst in llvm_bb.instIter() {
+      let minsts = Instruction::from_llvm_inst(inst, value_map, stack_size) catch {
+        e => {
+          println("Error converting instruction in BB \{bb.label}:")
+          println("  Instruction: \{inst}")
+          raise e
+        }
+      }
+      minsts.each(m => bb.insts.push(m))
+    }
+  }
+  
+  // Finally set up predecessors
+  for i, llvm_bb in func.basicBlocks {
+    let bb = body[i]
+    for pred in llvm_bb.preds {
+      guard value_map.get(pred) is Some(Label(bb_label))
+      bb.preds.push(value_map.bbmap[bb_label])
+    }
   }
   let stack_size = stack_size.val
   let f = Function::{ name, params, body, stack_size }
@@ -109,24 +134,7 @@ pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
   f
 }
 
-///|
-fn BasicBlock::from_llvm_bb(
-  llvm_bb : @IR.BasicBlock,
-  value_map : ValueMap,
-  stack_size : Ref[Int],
-  label : String,
-) -> BasicBlock raise {
-  let bb = BasicBlock::new(label)
-  for inst in llvm_bb.instIter() {
-    let minsts = Instruction::from_llvm_inst(inst, value_map, stack_size)
-    minsts.each(m => bb.insts.push(m))
-  }
-  for pred in llvm_bb.preds {
-    guard value_map.get(pred) is Some(Label(bb_label))
-    bb.preds.push(value_map.bbmap[bb_label])
-  }
-  bb
-}
+
 
 ///|
 fn Instruction::from_llvm_inst(
@@ -426,15 +434,29 @@ fn Instruction::from_llvm_inst(
           ULT | SLT => Blt
           ULE | SLE => Ble
         }
-        guard value_map.get(lhs) is Some(lhs_op) else {
-          raise IRTranslateError(
-            "BranchInst: condition lhs operand not found in value map",
-          )
+        let lhs_op = match lhs.tryAsConstantEnum() {
+          Some(ConstantInt(c)) => Imm(c.value)
+          None => {
+            guard value_map.get(lhs) is Some(op) else {
+              raise IRTranslateError(
+                "BranchInst: condition lhs operand not found in value map",
+              )
+            }
+            op
+          }
+          _ => raise IRTranslateError("BranchInst: unsupported lhs type")
         }
-        guard value_map.get(rhs) is Some(rhs_op) else {
-          raise IRTranslateError(
-            "BranchInst: condition rhs operand not found in value map",
-          )
+        let rhs_op = match rhs.tryAsConstantEnum() {
+          Some(ConstantInt(c)) => Imm(c.value)
+          None => {
+            guard value_map.get(rhs) is Some(op) else {
+              raise IRTranslateError(
+                "BranchInst: condition rhs operand not found in value map",
+              )
+            }
+            op
+          }
+          _ => raise IRTranslateError("BranchInst: unsupported rhs type")
         }
         Instruction::{
           opcode,
@@ -454,12 +476,12 @@ fn Instruction::from_llvm_inst(
       [minst]
     }
     BranchInst(b) => {
-      println("Illegal BranchInst: {\{b}}")
-      panic()
+      println("ERROR: Illegal BranchInst with no condition and no trueBlock")
+      println("  BranchInst details: \{b}")
+      raise IRTranslateError("Illegal BranchInst: missing required fields")
     }
     SwitchInst(_) => {
-      println("Warning: SwitchInst is not supported yet.")
-      panic()
+      raise IRTranslateError("SwitchInst is not supported yet")
     }
     PHINode({ incomings, .. }) => {
       let uses : Array[Operand] = Array::new()
@@ -469,12 +491,19 @@ fn Instruction::from_llvm_inst(
           Some(ConstantInt(c)) => Imm(c.value)
           Some(ConstantFP(f)) => FImm(f.value)
           None => {
-            guard value_map.get(value) is Some(op) else {
-              raise IRTranslateError(
-                "PHINode: incoming value operand not found in value map",
-              )
+            // If the value is not in the map, it might be a forward reference
+            // We need to allocate a register for it now
+            match value_map.get(value) {
+              Some(op) => op
+              None => {
+                // This is a forward reference, allocate a register for it
+                if value.getType().isIEEELikeFPTy() {
+                  value_map.bind_llvmvalue_to_vfreg(value)
+                } else {
+                  value_map.bind_llvmvalue_to_vreg(value)
+                }
+              }
             }
-            op
           }
           _ =>
             raise IRTranslateError("PHINode: unsupported incoming value type")
@@ -668,10 +697,9 @@ fn Instruction::from_llvm_inst(
           }
         }
         (StructType(_), [_, ..], _) => {
-          println(
-            "Warning: GetElementPtrInst with non-constant struct index is impossible.",
+          raise IRTranslateError(
+            "GetElementPtrInst with non-constant struct index is impossible",
           )
-          panic()
         }
         // Handle simple pointer arithmetic for primitive types
         (_, [ConstantInt(c)], ptr) => {
@@ -732,10 +760,9 @@ fn Instruction::from_llvm_inst(
           break
         }
         _ => {
-          println(
-            "Warning: GetElementPtrInst with unsupported type/index combination.",
+          raise IRTranslateError(
+            "GetElementPtrInst with unsupported type/index combination",
           )
-          panic()
         }
       }
       insts
@@ -844,12 +871,10 @@ fn Instruction::from_llvm_inst(
       [call_inst]
     }
     ExtractValueInst(_) => {
-      println("Warning: ExtractValueInst is not supported yet.")
-      panic()
+      raise IRTranslateError("ExtractValueInst is not supported yet")
     }
     InsertValueInst(_) => {
-      println("Warning: InsertValueInst is not supported yet.")
-      panic()
+      raise IRTranslateError("InsertValueInst is not supported yet")
     }
   }
 }

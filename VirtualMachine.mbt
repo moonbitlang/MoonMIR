@@ -690,6 +690,26 @@ fn VirtualMachine::execute_instruction(
         false // Branch not taken - continue to next instruction
       }
     }
+    Ble => {
+      let val1 = ctx.get_operand_value(inst.uses[0])
+      let val2 = ctx.get_operand_value(inst.uses[1])
+      let should_branch = match (val1, val2) {
+        (VMValue::Int(a), VMValue::Int(b)) => a <= b
+        (VMValue::Double(a), VMValue::Double(b)) => a <= b
+        _ => raise VMError::RuntimeError("Invalid operands for Ble")
+      }
+      if should_branch {
+        let target_label = match inst.uses[2] {
+          Label(label) => label
+          _ => raise VMError::IRError("Expected label for branch target")
+        }
+        ctx.current_bb = ctx.find_bb_by_label(target_label)
+        ctx.current_inst = 0
+        true // Branch taken - this is a terminator
+      } else {
+        false // Branch not taken - continue to next instruction
+      }
+    }
     Bgt => {
       let val1 = ctx.get_operand_value(inst.uses[0])
       let val2 = ctx.get_operand_value(inst.uses[1])
