@@ -142,7 +142,13 @@ pub impl Show for Operand with output(self, logger) {
     FReg(i) => "%f\{i}"
     Imm(i) => "\{i}"
     FImm(f) => "\{f}"
-    Mem(base, offset) => "(\{base} + \{offset})"
+    Mem(base, offset) => {
+      if offset < 0{
+        "(\{base} - \{-offset})"
+      } else {
+        "(\{base} + \{offset})"
+      }
+    }
     Label(name) => "\{name}"
     StackPtr => "sp"
     FramePtr => "fp"
