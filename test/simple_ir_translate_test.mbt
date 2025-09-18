@@ -289,7 +289,7 @@ test "Simple IRTranslate - cond branch" {
     #|else:
     #|  Jmp merge
     #|merge:
-    #|  %v4 = PHI %v2, %v3
+    #|  %v4 = PHI %v2, then, %v3, else
     #|  Ret %v4
     #|}
     #|
@@ -933,7 +933,7 @@ test "Simple IRTranslate - simple phi" {
     #|else:
     #|  Jmp merge
     #|merge:
-    #|  %v3 = PHI %v1, %v2
+    #|  %v3 = PHI %v1, then, %v2, else
     #|  Ret %v3
     #|}
     #|

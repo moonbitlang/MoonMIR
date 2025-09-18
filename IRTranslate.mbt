@@ -452,7 +452,7 @@ fn Instruction::from_llvm_inst(
     PHINode({ incomings, .. }) => {
       let uses : Array[Operand] = Array::new()
       for incoming in incomings {
-        let (value, _) = incoming
+        let (value, bb) = incoming
         let op = match value.tryAsConstantEnum() {
           Some(ConstantInt(c)) => Imm(c.value)
           Some(ConstantFP(f)) => FImm(f.value)
@@ -468,6 +468,7 @@ fn Instruction::from_llvm_inst(
             raise IRTranslateError("PHINode: unsupported incoming value type")
         }
         uses.push(op)
+        uses.push(value_map.get(bb).unwrap()) // Must be Label
       }
       let def_op = if inst.getType().isIEEELikeFPTy() {
         value_map.bind_llvmvalue_to_vfreg(inst)

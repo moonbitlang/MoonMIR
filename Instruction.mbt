@@ -83,7 +83,7 @@ pub(all) struct Function {
 
 ///|
 pub fn Function::new(name : String) -> Function {
-  Function::{ name, params: Array::new(), body: Array::new(), stack_size: 0 }
+  Function::{ name, params: [], body: [], stack_size: 0 }
 }
 
 ///|
