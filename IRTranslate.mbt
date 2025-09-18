@@ -104,7 +104,7 @@ pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
     value_map.bbmap[label] = bb
     body.push(bb)
   }
-  
+
   // Then process instructions for each basic block
   for i, llvm_bb in func.basicBlocks {
     let bb = body[i]
@@ -119,7 +119,7 @@ pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
       minsts.each(m => bb.insts.push(m))
     }
   }
-  
+
   // Finally set up predecessors
   for i, llvm_bb in func.basicBlocks {
     let bb = body[i]
@@ -133,8 +133,6 @@ pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
   f.phi_elimination()
   f
 }
-
-
 
 ///|
 fn Instruction::from_llvm_inst(
@@ -480,9 +478,7 @@ fn Instruction::from_llvm_inst(
       println("  BranchInst details: \{b}")
       raise IRTranslateError("Illegal BranchInst: missing required fields")
     }
-    SwitchInst(_) => {
-      raise IRTranslateError("SwitchInst is not supported yet")
-    }
+    SwitchInst(_) => raise IRTranslateError("SwitchInst is not supported yet")
     PHINode({ incomings, .. }) => {
       let uses : Array[Operand] = Array::new()
       for incoming in incomings {
@@ -490,21 +486,19 @@ fn Instruction::from_llvm_inst(
         let op = match value.tryAsConstantEnum() {
           Some(ConstantInt(c)) => Imm(c.value)
           Some(ConstantFP(f)) => FImm(f.value)
-          None => {
+          None =>
             // If the value is not in the map, it might be a forward reference
             // We need to allocate a register for it now
             match value_map.get(value) {
               Some(op) => op
-              None => {
+              None =>
                 // This is a forward reference, allocate a register for it
                 if value.getType().isIEEELikeFPTy() {
                   value_map.bind_llvmvalue_to_vfreg(value)
                 } else {
                   value_map.bind_llvmvalue_to_vreg(value)
                 }
-              }
             }
-          }
           _ =>
             raise IRTranslateError("PHINode: unsupported incoming value type")
         }
@@ -696,13 +690,18 @@ fn Instruction::from_llvm_inst(
             continue (elem_ty.asTypeEnum(), rest, ptr)
           }
         }
-        (StructType(_), [_, ..], _) => {
+        (StructType(_), [_, ..], _) =>
           raise IRTranslateError(
             "GetElementPtrInst with non-constant struct index is impossible",
           )
-        }
-        // Handle simple pointer arithmetic for primitive types
-        (_, [ConstantInt(c)], ptr) => {
+        (
+          _,
+          [
+            // Handle simple pointer arithmetic for primitive types
+            ConstantInt(c),
+          ],
+          ptr,
+        ) => {
           let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() *
             c.getValueAsInt64()
           if offset != 0 {
@@ -759,11 +758,10 @@ fn Instruction::from_llvm_inst(
           value_map.map[inst] = ptr
           break
         }
-        _ => {
+        _ =>
           raise IRTranslateError(
             "GetElementPtrInst with unsupported type/index combination",
           )
-        }
       }
       insts
     }
@@ -870,11 +868,9 @@ fn Instruction::from_llvm_inst(
       let call_inst = Instruction::{ opcode: Call, defs, uses }
       [call_inst]
     }
-    ExtractValueInst(_) => {
+    ExtractValueInst(_) =>
       raise IRTranslateError("ExtractValueInst is not supported yet")
-    }
-    InsertValueInst(_) => {
+    InsertValueInst(_) =>
       raise IRTranslateError("InsertValueInst is not supported yet")
-    }
   }
 }

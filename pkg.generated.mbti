@@ -15,9 +15,11 @@ fn legalize_instruction(Instruction) -> Array[Instruction] raise
 
 fn live_analysis(Function) -> (Graph[Int], Graph[Int])
 
-fn reg_alloc_for_function(Function, max_num_reg~ : Int, max_num_freg~ : Int) -> Unit raise RegAllocError
+fn reg_alloc_for_function(Function, max_num_reg~ : Int, max_num_freg~ : Int) -> Function raise RegAllocError
 
 fn rewrite_instruction(Instruction, vreg_operand_map~ : Map[Int, Operand], vfreg_operand_map~ : Map[Int, Operand]) -> Unit raise RegAllocError
+
+fn rewrite_param_reg(Function) -> Unit
 
 // Errors
 pub suberror IRTranslateError String
@@ -32,6 +34,12 @@ impl Show for PostRAError
 pub suberror RegAllocError String
 impl Show for RegAllocError
 
+pub suberror VMError {
+  IRError(String)
+  RuntimeError(String)
+}
+impl Show for VMError
+
 // Types and methods
 pub(all) struct BasicBlock {
   label : String
@@ -39,8 +47,21 @@ pub(all) struct BasicBlock {
   mut parent : Function?
   preds : Array[BasicBlock]
 }
+fn BasicBlock::add_inst_before_terminator(Self, Instruction) -> Unit
 fn BasicBlock::new(String) -> Self
 impl Show for BasicBlock
+
+pub struct ExecutionContext {
+  mut vregs : Map[Int, VMValue]
+  mut vfregs : Map[Int, VMValue]
+  mut regs : Map[Int, VMValue]
+  mut fregs : Map[Int, VMValue]
+  mut current_bb : Int
+  mut current_inst : Int
+  mut stack : Array[VMValue]
+  mut stack_ptr : Int
+  function : Function
+}
 
 pub(all) struct Function {
   name : String
@@ -68,6 +89,11 @@ pub(all) struct Instruction {
   uses : Array[Operand]
 }
 impl Show for Instruction
+
+pub struct LegalizeConfig {
+  max_num_call_regs : Int
+  max_num_call_fregs : Int
+}
 
 pub(all) struct Module {
   functions : Array[Function]
@@ -214,6 +240,23 @@ pub(all) enum Operand {
 }
 impl Eq for Operand
 impl Show for Operand
+
+pub(all) enum VMValue {
+  Int(Int64)
+  Double(Double)
+  Address(Int64)
+  Void
+}
+impl Eq for VMValue
+impl Show for VMValue
+
+pub struct VirtualMachine {
+  external_functions : Map[String, (Array[VMValue]) -> VMValue raise VMError]
+  mut memory : Array[VMValue]
+}
+fn VirtualMachine::eval_function(Self, Function, Array[VMValue]) -> VMValue raise VMError
+fn VirtualMachine::eval_module(Self, Module) -> Unit raise VMError
+fn VirtualMachine::new() -> Self
 
 // Type aliases
 

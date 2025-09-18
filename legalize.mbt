@@ -1,7 +1,7 @@
 ///|
 pub suberror LegalizeError String derive(Show)
 
-/////|
+///|
 pub struct LegalizeConfig {
   // Maximum Call Registers
   // If Exceeded, will spill to stack
