@@ -55,7 +55,7 @@ fn ValueMap::bind_llvmvalue_to_mem(
   val : &LLVMValue,
   offset : Int,
 ) -> Operand {
-  let op = Mem(StackTop, offset)
+  let op = Mem(StackPtr, offset)
   self.map[val] = op
   op
 }

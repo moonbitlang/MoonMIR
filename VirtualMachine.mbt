@@ -120,7 +120,8 @@ fn ExecutionContext::get_operand_value(
       self.stack[stack_idx]
     }
     Label(_) => raise VMError::IRError("Cannot get value of label operand")
-    StackTop => VMValue::Address(self.stack_ptr.to_int64())
+    StackPtr => VMValue::Address(self.stack_ptr.to_int64())
+    FramePtr => raise VMError::IRError("FramePtr not implemented yet")
   }
 }
 

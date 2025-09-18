@@ -22,9 +22,9 @@ pub suberror LegalizeError String derive(Show)
 // 
 // TODO: Fix VM to properly handle caller's stack frame access
 fn make_caller_stack_param(offset : Int) -> Operand {
-  // Should be: Mem(StackTop, -(8 + offset))
-  // Currently: Mem(StackTop, offset) due to VM limitation
-  Mem(StackTop, offset)
+  // Should be: Mem(StackPtr, -(8 + offset))
+  // Currently: Mem(StackPtr, offset) due to VM limitation
+  Mem(StackPtr, offset)
 }
 
 ///|
@@ -281,7 +281,7 @@ pub fn legalize_instruction(
               reg_count += 1
             } else {
               // Need to spill to stack
-              let mem_loc = Mem(StackTop, stack_offset)
+              let mem_loc = Mem(StackPtr, stack_offset)
               let store_inst = Instruction::{
                 opcode: Storeq,
                 defs: [],
@@ -305,7 +305,7 @@ pub fn legalize_instruction(
                 uses: [arg]
               }
               result.push(mov_inst)
-              let mem_loc = Mem(StackTop, stack_offset)
+              let mem_loc = Mem(StackPtr, stack_offset)
               let store_inst = Instruction::{
                 opcode: Storeq,
                 defs: [],
@@ -322,7 +322,7 @@ pub fn legalize_instruction(
               freg_count += 1
             } else {
               // Need to spill to stack
-              let mem_loc = Mem(StackTop, stack_offset)
+              let mem_loc = Mem(StackPtr, stack_offset)
               let store_inst = Instruction::{
                 opcode: FStoreD,
                 defs: [],
@@ -346,7 +346,7 @@ pub fn legalize_instruction(
                 uses: [arg]
               }
               result.push(mov_inst)
-              let mem_loc = Mem(StackTop, stack_offset)
+              let mem_loc = Mem(StackPtr, stack_offset)
               let store_inst = Instruction::{
                 opcode: FStoreD,
                 defs: [],
@@ -357,7 +357,7 @@ pub fn legalize_instruction(
               stack_offset += 8
             }
           }
-          _ => final_uses.push(arg)  // Labels, Mem, StackTop - pass through
+          _ => final_uses.push(arg)  // Labels, Mem, StackPtr - pass through
         }
       }
       

@@ -129,7 +129,7 @@ pub(all) enum Operand {
   FImm(Double) // Floating Point Immediate Value
   Mem(Operand, Int) // Memory Addressing (Base, Offset)
   Label(String) // Label
-  StackTop // Stack Top (for stack pointer)
+  StackPtr // Stack Top (for stack pointer)
   FramePtr // Frame Pointer
 } derive(Eq)
 
@@ -144,7 +144,7 @@ pub impl Show for Operand with output(self, logger) {
     FImm(f) => "\{f}"
     Mem(base, offset) => "(\{base} + \{offset})"
     Label(name) => "\{name}"
-    StackTop => "sp"
+    StackPtr => "sp"
     FramePtr => "fp"
   }
   logger.write_string(s)

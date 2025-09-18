@@ -101,7 +101,7 @@ fn assign_vreg_color_to_operand(
       operand_map.set(vreg, Reg(color))
     } else {
       let offset = ori_stack_size + (color - max_num_reg) * 8 // Assume 8 bytes per spill
-      operand_map.set(vreg, Mem(StackTop, offset))
+      operand_map.set(vreg, Mem(StackPtr, offset))
     }
   }
   operand_map
@@ -120,7 +120,7 @@ fn assign_vfreg_color_to_operand(
       operand_map.set(vfreg, FReg(color))
     } else {
       let offset = ori_stack_size + (color - max_num_freg) * 8 // Assume 8 bytes per spill
-      operand_map.set(vfreg, Mem(StackTop, offset))
+      operand_map.set(vfreg, Mem(StackPtr, offset))
     }
   }
   operand_map
@@ -227,7 +227,7 @@ pub fn rewrite_instruction(
 //          defs[i] = Reg(v);
 //        } else {
 //          let offset = stack_vreg_map.get(v).unwrap_or_else(() => raise RegAllocError("No stack slot found for spilled vreg \{v}"));
-//          defs[i] = Mem(StackTop, offset);
+//          defs[i] = Mem(StackPtr, offset);
 //        }
 //      }
 //      VFReg(v) => {
@@ -238,7 +238,7 @@ pub fn rewrite_instruction(
 //          defs[i] = FReg(v);
 //        } else {
 //          let offset = stack_vfreg_map.get(v).unwrap_or_else(() => raise RegAllocError("No stack slot found for spilled vfreg \{v}"));
-//          defs[i] = Mem(StackTop, offset);
+//          defs[i] = Mem(StackPtr, offset);
 //        }
 //      }
 //      _ => ()
@@ -255,7 +255,7 @@ pub fn rewrite_instruction(
 //          uses[i] = Reg(v);
 //        } else {
 //          let offset = stack_vreg_map.get(v).unwrap_or_else(() => raise RegAllocError("No stack slot found for spilled vreg \{v}"));
-//          uses[i] = Mem(StackTop, offset);
+//          uses[i] = Mem(StackPtr, offset);
 //        }
 //      }
 //      VFReg(v) => {
@@ -266,7 +266,7 @@ pub fn rewrite_instruction(
 //          uses[i] = FReg(v);
 //        } else {
 //          let offset = stack_vfreg_map.get(v).unwrap_or_else(() => raise RegAllocError("No stack slot found for spilled vfreg \{v}"));
-//          uses[i] = Mem(StackTop, offset);
+//          uses[i] = Mem(StackPtr, offset);
 //        }
 //      }
 //      _ => ()
