@@ -1,5 +1,6 @@
 // some emulator need to modify `ret` in main
 // to `li a7, 93; ecall` to exit properly
+
 ///|
 fn modify_main_ret_to_ecall(insts : Array[RvAsm]) -> Unit {
   let mut in_main_func = false

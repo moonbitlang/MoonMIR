@@ -1,4 +1,5 @@
 // Graph Coloring Algorithm
+
 ///|
 pub struct Graph[T] { // T Must Be Hashable and Equatable
   nodes : Set[T]

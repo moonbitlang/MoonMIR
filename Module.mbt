@@ -16,4 +16,3 @@ pub impl Show for Module with output(self, logger) {
     logger.write_string("\n")
   }
 }
-

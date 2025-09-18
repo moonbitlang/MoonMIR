@@ -179,8 +179,7 @@ fn Instruction::from_llvm_inst(
           }
           op
         }
-        _ =>
-          raise IRTranslateError("StoreInst: unsupported value type")
+        _ => raise IRTranslateError("StoreInst: unsupported value type")
       }
       guard value_map.get(ptr) is Some(ptr_op) else {
         raise IRTranslateError(
@@ -260,7 +259,9 @@ fn Instruction::from_llvm_inst(
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
           guard value_map.get(lhs) is Some(op) else {
-            raise IRTranslateError("BinaryInst: lhs operand not found in value map")
+            raise IRTranslateError(
+              "BinaryInst: lhs operand not found in value map",
+            )
           }
           op
         }
@@ -271,7 +272,9 @@ fn Instruction::from_llvm_inst(
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
           guard value_map.get(rhs) is Some(op) else {
-            raise IRTranslateError("BinaryInst: rhs operand not found in value map")
+            raise IRTranslateError(
+              "BinaryInst: rhs operand not found in value map",
+            )
           }
           op
         }
@@ -306,7 +309,9 @@ fn Instruction::from_llvm_inst(
         Some(ConstantInt(c)) => Imm(c.value)
         None => {
           guard value_map.get(lhs) is Some(op) else {
-            raise IRTranslateError("ICmpInst: lhs operand not found in value map")
+            raise IRTranslateError(
+              "ICmpInst: lhs operand not found in value map",
+            )
           }
           op
         }
@@ -316,7 +321,9 @@ fn Instruction::from_llvm_inst(
         Some(ConstantInt(c)) => Imm(c.value)
         None => {
           guard value_map.get(rhs) is Some(op) else {
-            raise IRTranslateError("ICmpInst: rhs operand not found in value map")
+            raise IRTranslateError(
+              "ICmpInst: rhs operand not found in value map",
+            )
           }
           op
         }
@@ -355,7 +362,9 @@ fn Instruction::from_llvm_inst(
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
           guard value_map.get(lhs) is Some(op) else {
-            raise IRTranslateError("FCmpInst: lhs operand not found in value map")
+            raise IRTranslateError(
+              "FCmpInst: lhs operand not found in value map",
+            )
           }
           op
         }
@@ -365,7 +374,9 @@ fn Instruction::from_llvm_inst(
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
           guard value_map.get(rhs) is Some(op) else {
-            raise IRTranslateError("FCmpInst: rhs operand not found in value map")
+            raise IRTranslateError(
+              "FCmpInst: rhs operand not found in value map",
+            )
           }
           op
         }
@@ -579,7 +590,7 @@ fn Instruction::from_llvm_inst(
       }
       let insts : Array[Instruction] = Array::new()
       let indices = indices.map(i => i.asValueEnum())
-      
+
       // Current pointer operand, may be updated as we process indices
       let current_ptr = ptr_op
       loop (pointeeType.asTypeEnum(), indices[:], current_ptr) {

@@ -20,6 +20,7 @@ pub impl Show for Instruction with output(self, logger) {
   }
 }
 
-fn Instruction::is_terminator(self: Self) -> Bool {
+///|
+fn Instruction::is_terminator(self : Self) -> Bool {
   self.opcode.is_terminator()
 }
