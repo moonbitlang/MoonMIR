@@ -36,16 +36,15 @@ test "Simple IR RegAlloc - add" {
 
   let mir_func = @GMIR.Function::from_llvm_function(func)
 
-  let mir_func = @GMIR.legalize_func(mir_func)
+  let legalized = @GMIR.legalize_func(mir_func)
 
   let before_regalloc_value = run_mir_function(
-    mir_func,
+    legalized,
     [@GMIR.VMValue::Int(10), @GMIR.VMValue::Int(5)]
   )
-  @GMIR.reg_alloc_for_function(mir_func, max_num_reg=17, max_num_freg=17)
-  println(mir_func)
+  let regalloced = @GMIR.reg_alloc_for_function(mir_func, max_num_reg=17, max_num_freg=17)
   let after_regalloc_value = run_mir_function(
-    mir_func,
+    regalloced,
     [@GMIR.VMValue::Int(10), @GMIR.VMValue::Int(5)]
   )
   assert_eq(before_regalloc_value, after_regalloc_value)

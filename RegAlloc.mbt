@@ -8,7 +8,7 @@ pub fn Module::reg_alloc(
   max_num_freg~ : Int,
 ) -> Module raise RegAllocError {
   for func in self.functions {
-    reg_alloc_for_function(func, max_num_reg~, max_num_freg~)
+    let _ = reg_alloc_for_function(func, max_num_reg~, max_num_freg~)
   }
   self
 }
@@ -22,7 +22,7 @@ pub fn reg_alloc_for_function(
   f : Function,
   max_num_reg~ : Int,
   max_num_freg~ : Int,
-) -> Unit raise RegAllocError {
+) -> Function raise RegAllocError {
   rewrite_param_reg(f)
 
   // Live Analysis
@@ -65,6 +65,7 @@ pub fn reg_alloc_for_function(
       rewrite_instruction(inst, vreg_operand_map~, vfreg_operand_map~)
     }
   }
+  f
 }
 
 ///|
