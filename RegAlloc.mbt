@@ -13,12 +13,18 @@ pub fn Module::reg_alloc(
   self
 }
 
+pub fn rewrite_param_reg(f: Function) -> Unit raise RegAllocError {
+  raise RegAllocError("rewrite_param_reg not implemented")
+}
+
 ///|
 pub fn reg_alloc_for_function(
   f : Function,
   max_num_reg~ : Int,
   max_num_freg~ : Int,
 ) -> Unit raise RegAllocError {
+  rewrite_param_reg(f)
+
   // Live Analysis
   let (vreg_graph, vfreg_graph) = live_analysis(f)
 
