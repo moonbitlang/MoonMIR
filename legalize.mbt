@@ -4,9 +4,7 @@
 pub suberror LegalizeError String derive(Show)
 
 ///|
-pub fn Module::legalize(
-  self : Self,
-) -> Unit raise LegalizeError {
+pub fn Module::legalize(self : Self) -> Unit raise LegalizeError {
   if self.legalized {
     raise LegalizeError("Module is already legalized")
   }
@@ -14,9 +12,7 @@ pub fn Module::legalize(
 }
 
 ///|
-pub fn Function::legalize(
-  func : Function,
-) -> Unit raise LegalizeError {
+pub fn Function::legalize(func : Function) -> Unit raise LegalizeError {
   if func.legalized {
     raise LegalizeError("Function is already legalized")
   }
@@ -26,15 +22,12 @@ pub fn Function::legalize(
 }
 
 ///|
-pub fn BasicBlock::legalize(
-  self : BasicBlock
-) -> Unit raise LegalizeError {
-  let new_insts: Array[Instruction] = Array::new()
+pub fn BasicBlock::legalize(self : BasicBlock) -> Unit raise LegalizeError {
+  let new_insts : Array[Instruction] = Array::new()
   for inst in self.insts {
     inst.legalize().each(new_inst => new_insts.push(new_inst))
   }
   self.insts = new_insts
-
 }
 
 ///|

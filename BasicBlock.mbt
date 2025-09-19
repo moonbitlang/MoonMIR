@@ -1,19 +1,24 @@
 ///|
 pub(all) struct BasicBlock {
-  llvm_bb: @IR.BasicBlock
+  llvm_bb : @IR.BasicBlock
   label : String
   mut insts : Array[Instruction]
   parent : Function
   preds : Array[BasicBlock]
 }
 
-fn BasicBlock::new(func: Function, llvm_bb: @IR.BasicBlock, label: String) -> BasicBlock {
+///|
+fn BasicBlock::new(
+  func : Function,
+  llvm_bb : @IR.BasicBlock,
+  label : String,
+) -> BasicBlock {
   BasicBlock::{
     llvm_bb,
     label,
     insts: Array::new(),
     parent: func,
-    preds: Array::new()
+    preds: Array::new(),
   }
 }
 
@@ -38,7 +43,10 @@ pub fn BasicBlock::add_inst_before_terminator(
   }
 }
 
-pub fn BasicBlock::run_ir_translation(self: Self) -> Unit raise IRTranslateError {
+///|
+pub fn BasicBlock::run_ir_translation(
+  self : Self,
+) -> Unit raise IRTranslateError {
   for inst in self.llvm_bb.instIter() {
     let minsts = Instruction::from_llvm_inst(inst, self.parent) catch {
       e => {

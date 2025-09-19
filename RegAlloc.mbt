@@ -100,7 +100,8 @@ fn assign_vreg_color_to_operand(
     if color < max_num_reg {
       operand_map.set(vreg, Reg(color))
     } else {
-      let offset = ori_stack_size + (color.to_int64() - max_num_reg.to_int64()) * 8 // Assume 8 bytes per spill
+      let offset = ori_stack_size +
+        (color.to_int64() - max_num_reg.to_int64()) * 8 // Assume 8 bytes per spill
       operand_map.set(vreg, Mem(StackPtr, offset))
     }
   }
@@ -119,7 +120,8 @@ fn assign_vfreg_color_to_operand(
     if color < max_num_freg {
       operand_map.set(vfreg, FReg(color))
     } else {
-      let offset = ori_stack_size + (color.to_int64() - max_num_freg.to_int64()) * 8 // Assume 8 bytes per spill
+      let offset = ori_stack_size +
+        (color.to_int64() - max_num_freg.to_int64()) * 8 // Assume 8 bytes per spill
       operand_map.set(vfreg, Mem(StackPtr, offset))
     }
   }

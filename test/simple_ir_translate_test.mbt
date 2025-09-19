@@ -1,5 +1,5 @@
+///|
 let rv64_config : @GMIR.ArchConfig = @GMIR.ArchConfig::riscv64()
-
 
 ///|
 /// int ret42() { retun 42; }
@@ -654,9 +654,14 @@ test "Simple IRTranslate - alloca load store" {
   let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func alloca_load_store_test() {
+    #|  sp = Addq sp, -12
+    #|  Storeq (sp + 4), fp
+    #|  fp = Addq sp, 12
     #|entry:
     #|  Storel (sp + 0), 42
     #|  %v0 = Loadl (sp + 0)
+    #|  fp = Loadq (sp + 4)
+    #|  sp = Addq sp, 12
     #|  Ret %v0
     #|}
     #|
@@ -1108,9 +1113,14 @@ test "Simple IRTranslate - constant array access" {
     mir_func,
     content=(
       #|func constant_array_test() {
+      #|  sp = Addq sp, -12
+      #|  Storeq (sp + 4), fp
+      #|  fp = Addq sp, 12
       #|entry:
       #|  Storel (sp + 0), 1
       #|  %v0 = Loadl (sp + 0)
+      #|  fp = Loadq (sp + 4)
+      #|  sp = Addq sp, 12
       #|  Ret %v0
       #|}
       #|
@@ -1261,9 +1271,14 @@ test "Simple IRTranslate - constants zero" {
     mir_func,
     content=(
       #|func zero_constants() {
+      #|  sp = Addq sp, -16
+      #|  Storeq (sp + 8), fp
+      #|  fp = Addq sp, 16
       #|entry:
       #|  Storel (sp + 0), 0
       #|  Storel (sp + 4), 0
+      #|  fp = Loadq (sp + 8)
+      #|  sp = Addq sp, 16
       #|  Ret 
       #|}
       #|
@@ -1362,9 +1377,14 @@ test "Simple IRTranslate - constant array access" {
     mir_func,
     content=(
       #|func constant_array_test() {
+      #|  sp = Addq sp, -12
+      #|  Storeq (sp + 4), fp
+      #|  fp = Addq sp, 12
       #|entry:
       #|  Storel (sp + 0), 1
       #|  %v0 = Loadl (sp + 0)
+      #|  fp = Loadq (sp + 4)
+      #|  sp = Addq sp, 12
       #|  Ret %v0
       #|}
       #|

@@ -72,8 +72,7 @@ fn llvm_simple_call() -> @IR.Module raise {
 
 ///|
 fn main {
-  let rv64_config  :@GMIR.ArchConfig = @GMIR.ArchConfig::riscv64()
-
+  let rv64_config : @GMIR.ArchConfig = @GMIR.ArchConfig::riscv64()
   let help_info =
     #|Usage: mbtasmbler [options] <input>
     #|
@@ -118,7 +117,6 @@ fn main {
     mod.dump()
   }
   let gmir = @GMIR.Module::new(mod, rv64_config)
-
   gmir.run_ir_translation() catch {
     e => {
       println("Error during GMIR translation: \{e}")

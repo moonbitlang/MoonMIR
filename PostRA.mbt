@@ -34,9 +34,7 @@ pub suberror PostRAError String derive(Show)
 
 ///|
 pub fn Module::post_ra(self : Self) -> Unit raise PostRAError {
-  self.functions.each(func => {
-    func.post_ra()
-  })
+  self.functions.each(func => func.post_ra())
 }
 
 ///|
@@ -50,9 +48,7 @@ fn Function::post_ra(self : Function) -> Unit raise PostRAError {
 fn BasicBlock::post_ra(bb : BasicBlock) -> Unit raise PostRAError {
   let new_insts : Array[Instruction] = Array::new()
   for inst in bb.insts {
-    inst.post_ra().each(new_inst => {
-      bb.insts.push(new_inst)
-    })
+    inst.post_ra().each(new_inst => bb.insts.push(new_inst))
   }
   bb.insts = new_insts
 }

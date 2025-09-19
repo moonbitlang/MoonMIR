@@ -263,9 +263,8 @@ fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
   if self.stack_size == 0 {
     return
   }
-
   let frame_ptr_loc = self.stack_size
-  self.stack_size += 8; // for storing olf frame pointer
+  self.stack_size += 8 // for storing olf frame pointer
 
   // Move StackPtr
   let alloc_stack = Instruction::{
@@ -290,7 +289,6 @@ fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
     uses: [StackPtr, Imm(self.stack_size)],
   }
   self.prologue.push(setup_fp)
-
   for bb in self.body {
     let mut new_insts : Array[Instruction] = Array::new()
     let restore_stack = Instruction::{

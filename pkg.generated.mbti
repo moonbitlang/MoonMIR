@@ -7,12 +7,6 @@ import(
 )
 
 // Values
-fn legalize_basic_block(BasicBlock) -> BasicBlock raise
-
-fn legalize_func(Function) -> Function raise
-
-fn legalize_instruction(Instruction) -> Array[Instruction] raise
-
 fn live_analysis(Function) -> (Graph[Int], Graph[Int])
 
 fn reg_alloc_for_function(Function, max_num_reg~ : Int, max_num_freg~ : Int) -> Function raise RegAllocError
@@ -41,14 +35,24 @@ pub suberror VMError {
 impl Show for VMError
 
 // Types and methods
+pub(all) struct ArchConfig {
+  max_num_call_regs : Int
+  max_num_call_fregs : Int
+  support_select : Bool
+}
+fn ArchConfig::debug() -> Self
+fn ArchConfig::riscv64() -> Self
+
 pub(all) struct BasicBlock {
+  llvm_bb : @IR.BasicBlock
   label : String
   mut insts : Array[Instruction]
-  mut parent : Function?
+  parent : Function
   preds : Array[BasicBlock]
 }
 fn BasicBlock::add_inst_before_terminator(Self, Instruction) -> Unit
-fn BasicBlock::new(String) -> Self
+fn BasicBlock::legalize(Self) -> Unit raise LegalizeError
+fn BasicBlock::run_ir_translation(Self) -> Unit raise IRTranslateError
 impl Show for BasicBlock
 
 pub struct ExecutionContext {
@@ -64,13 +68,27 @@ pub struct ExecutionContext {
 }
 
 pub(all) struct Function {
+  mod : Module
   name : String
   params : Array[Operand]
+  prologue : Array[Instruction]
   body : Array[BasicBlock]
-  mut stack_size : Int
+  epilogue : Array[Instruction]
+  mut stack_size : Int64
+  llvm_func : @IR.Function
+  value_map : Map[&@IR.Value, Operand]
+  bbmap : Map[String, BasicBlock]
+  mut vreg_cnt : Int
+  mut vfreg_cnt : Int
+  phi_insts : Array[Instruction]
+  mut ir_translated : Bool
+  mut legalized : Bool
+  mut reg_allocated : Bool
 }
-fn Function::from_llvm_function(@IR.Function) -> Self raise
-fn Function::new(String) -> Self
+fn Function::from_llvm_function(@IR.Function, ArchConfig) -> Self raise IRTranslateError
+fn Function::getArchConfig(Self) -> ArchConfig
+fn Function::legalize(Self) -> Unit raise LegalizeError
+fn Function::run_ir_translation(Self) -> Unit raise IRTranslateError
 impl Show for Function
 
 pub struct Graph[T] {
@@ -88,22 +106,25 @@ pub(all) struct Instruction {
   defs : Array[Operand]
   uses : Array[Operand]
 }
+fn Instruction::legalize(Self) -> Array[Self] raise LegalizeError
 impl Show for Instruction
 
-pub struct LegalizeConfig {
-  max_num_call_regs : Int
-  max_num_call_fregs : Int
-}
-
 pub(all) struct Module {
+  llvm_mod : @IR.Module
+  arch_config : ArchConfig
   functions : Array[Function]
+  all_llvm_functions : Map[String, @IR.Function]
+  external_functions : Map[String, @IR.Function]
+  mut ir_translated : Bool
+  mut legalized : Bool
+  mut reg_allocated : Bool
 }
-fn Module::from_llvm_module(@IR.Module) -> Self raise
-fn Module::legalize(Self) -> Self raise
-fn Module::new() -> Self
+fn Module::legalize(Self) -> Unit raise LegalizeError
+fn Module::new(@IR.Module, ArchConfig) -> Self
 fn Module::peephole_optimizations(Self) -> Self
-fn Module::post_ra_adjustments(Self) -> Self raise PostRAError
+fn Module::post_ra(Self) -> Unit raise PostRAError
 fn Module::reg_alloc(Self, max_num_reg~ : Int, max_num_freg~ : Int) -> Self raise RegAllocError
+fn Module::run_ir_translation(Self) -> Unit raise IRTranslateError
 impl Show for Module
 
 pub(all) enum OpCode {
@@ -234,9 +255,10 @@ pub(all) enum Operand {
   FReg(Int)
   Imm(Int64)
   FImm(Double)
-  Mem(Operand, Int)
+  Mem(Operand, Int64)
   Label(String)
-  StackTop
+  StackPtr
+  FramePtr
 }
 impl Eq for Operand
 impl Show for Operand

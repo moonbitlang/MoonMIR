@@ -82,7 +82,7 @@ pub suberror IRTranslateError String derive(Show)
 ///|
 fn Instruction::from_llvm_inst(
   inst : &@IR.Instruction,
-  func: Function
+  func : Function,
 ) -> Array[Instruction] raise IRTranslateError {
   //let ctx = inst.getContext()
   let mod = inst.getModule()
@@ -585,7 +585,9 @@ fn Instruction::from_llvm_inst(
         (ArrayType(arrTy), [idx, .. rest], ptr) => {
           let elem_ty = arrTy.getElementType()
           let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
-          let idx_op = func.get_operand_from_llvm_value(idx.asValueClass()).unwrap()
+          let idx_op = func
+            .get_operand_from_llvm_value(idx.asValueClass())
+            .unwrap()
           if elem_size == 1 {
             // For byte arrays, no need to scale
             let new_ptr = func.add_vreg()
@@ -666,7 +668,9 @@ fn Instruction::from_llvm_inst(
           break
         }
         (_, [idx], ptr) => {
-          let idx_op = func.get_operand_from_llvm_value(idx.asValueClass()).unwrap()
+          let idx_op = func
+            .get_operand_from_llvm_value(idx.asValueClass())
+            .unwrap()
           let elem_size = data_layout.getTypeAllocSize(pointeeType).to_int64()
           if elem_size == 1 {
             // For byte pointers, no need to scale
@@ -786,7 +790,7 @@ fn Instruction::from_llvm_inst(
     CallInst({ callee, args, .. }) => {
       let { max_num_call_regs, max_num_call_fregs, .. } = func.getArchConfig()
       let insts : Array[Instruction] = Array::new()
-      let mut vreg_arg_cnt = 0 
+      let mut vreg_arg_cnt = 0
       let mut vfreg_arg_cnt = 0
       let callee_name = callee.getName().unwrap()
       let uses : Array[Operand] = Array::new()
@@ -800,9 +804,16 @@ fn Instruction::from_llvm_inst(
               Some(Int16Type(_)) => Movw
               Some(Int32Type(_)) => Movl
               Some(Int64Type(_)) => Movq
-              _ => raise IRTranslateError("CallInst: unsupported ConstantInt type for argument")
+              _ =>
+                raise IRTranslateError(
+                  "CallInst: unsupported ConstantInt type for argument",
+                )
             }
-            let loadi = Instruction::{ opcode, defs: [vreg], uses: [Imm(c.getValueAsInt64())] }
+            let loadi = Instruction::{
+              opcode,
+              defs: [vreg],
+              uses: [Imm(c.getValueAsInt64())],
+            }
             insts.push(loadi)
             uses.push(vreg)
             vreg_arg_cnt += 1
@@ -824,9 +835,16 @@ fn Instruction::from_llvm_inst(
             let opcode = match f.getType().tryAsFPTypeEnum() {
               Some(FloatType(_)) => FMovS
               Some(DoubleType(_)) => FMovD
-              _ => raise IRTranslateError("CallInst: unsupported ConstantFP type for argument")
+              _ =>
+                raise IRTranslateError(
+                  "CallInst: unsupported ConstantFP type for argument",
+                )
             }
-            let loadfi = Instruction::{ opcode, defs: [vfreg], uses: [FImm(f.value)] }
+            let loadfi = Instruction::{
+              opcode,
+              defs: [vfreg],
+              uses: [FImm(f.value)],
+            }
             insts.push(loadfi)
             uses.push(vfreg)
             vfreg_arg_cnt += 1
@@ -844,7 +862,9 @@ fn Instruction::from_llvm_inst(
           }
           _ => {
             guard func.get_operand_from_llvm_value(arg) is Some(op) else {
-              raise IRTranslateError("CallInst: argument operand not found in value map")
+              raise IRTranslateError(
+                "CallInst: argument operand not found in value map",
+              )
             }
             match op {
               VReg(_) if vreg_arg_cnt < max_num_call_regs => {
@@ -877,7 +897,8 @@ fn Instruction::from_llvm_inst(
                 uses.push(Mem(StackPtr, offset))
                 func.stack_size += 8 // Align to 8 bytes
               }
-              Mem(r, offset) if !(arg.getType().isIEEELikeFPTy()) && vreg_arg_cnt < max_num_call_regs => {
+              Mem(r, offset) if !arg.getType().isIEEELikeFPTy() &&
+                vreg_arg_cnt < max_num_call_regs => {
                 let vreg = func.add_vreg()
                 let loadi = Instruction::{
                   opcode: Loadq,
@@ -888,7 +909,8 @@ fn Instruction::from_llvm_inst(
                 uses.push(vreg)
                 vreg_arg_cnt += 1
               }
-              Mem(r, offset) if arg.getType().isIEEELikeFPTy() && vfreg_arg_cnt < max_num_call_fregs => {
+              Mem(r, offset) if arg.getType().isIEEELikeFPTy() &&
+                vfreg_arg_cnt < max_num_call_fregs => {
                 let vfreg = func.add_vfreg()
                 let loadi = Instruction::{
                   opcode: FMovD,
@@ -899,7 +921,7 @@ fn Instruction::from_llvm_inst(
                 uses.push(vfreg)
                 vfreg_arg_cnt += 1
               }
-              Mem(r, offset) if !(arg.getType().isIEEELikeFPTy()) => {
+              Mem(r, offset) if !arg.getType().isIEEELikeFPTy() => {
                 let stack_offset = func.stack_size
                 let storei = Instruction::{
                   opcode: Storeq,
@@ -921,7 +943,10 @@ fn Instruction::from_llvm_inst(
                 uses.push(Mem(StackPtr, stack_offset))
                 func.stack_size += 8 // Align to 8 bytes
               }
-              _ => raise IRTranslateError("CallInst: unsupported argument operand type")
+              _ =>
+                raise IRTranslateError(
+                  "CallInst: unsupported argument operand type",
+                )
             }
           }
         }

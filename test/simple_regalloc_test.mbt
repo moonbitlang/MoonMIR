@@ -131,4 +131,3 @@ test "Simple IR RegAlloc - many parameters" {
   ])
   assert_eq(before_regalloc_value, after_regalloc_value)
 }
-
