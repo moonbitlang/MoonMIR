@@ -2,33 +2,26 @@
 pub suberror RegAllocError String derive(Show)
 
 ///|
-pub fn Module::reg_alloc(
+pub fn Module::alloc_register(
   self : Module,
-  max_num_reg~ : Int,
-  max_num_freg~ : Int,
 ) -> Module raise RegAllocError {
+  if self.reg_allocated {
+    raise RegAllocError("Register allocation has already been run on this module.")
+  }
   for func in self.functions {
-    let _ = reg_alloc_for_function(func, max_num_reg~, max_num_freg~)
-
+    func.alloc_register()
   }
   self
 }
 
 ///|
-pub fn rewrite_param_reg(f : Function) -> Unit {
-  // We don't do anything here for now.
-  // The graph coloring algorithm will handle virtual register allocation.
-  // In a real implementation, this is where we would handle calling conventions
-  // and ABI requirements for parameter passing.
-}
-
-///|
-pub fn reg_alloc_for_function(
+pub fn Function::alloc_register(
   f : Function,
-  max_num_reg~ : Int,
-  max_num_freg~ : Int,
-) -> Function raise RegAllocError {
-  rewrite_param_reg(f)
+) -> Unit raise RegAllocError {
+  if f.reg_allocated {
+    raise RegAllocError("Register allocation has already been run on this function.")
+  }
+  let { max_num_reg, max_num_freg, .. } = f.getArchConfig()
 
   // Live Analysis
   let (vreg_graph, vfreg_graph) = live_analysis(f)
@@ -85,7 +78,29 @@ pub fn reg_alloc_for_function(
       _ => ()
     }
   }
-  f
+
+  // Swap registers
+  // After Register Allocation, we need to ensure the order of arg register
+  // make sure the arg registers are in order, like r0, r1, r2, r3, ...
+  let mut arg_reg_cnt = 0
+  let mut arg_freg_cnt = 0
+  for op in f.params {
+    match op {
+      Reg(i) => {
+        if i != arg_reg_cnt {
+          f.swap_register(op, Reg(arg_reg_cnt))
+        }
+        arg_reg_cnt += 1
+      }
+      FReg(i) => {
+        if i != arg_freg_cnt {
+          f.swap_register(op, FReg(arg_freg_cnt))
+        }
+        arg_freg_cnt += 1
+      }
+      _ => ()
+    }
+  }
 }
 
 ///|
@@ -171,107 +186,30 @@ pub fn rewrite_instruction(
   }
 }
 
-//pub fn spill(
-//  f: Function,
-//  vreg_color_map~: Map[Int, Int],
-//  max_vreg_color~: Int,
-//  max_num_reg~: Int,
-//  vfreg_color_map~: Map[Int, Int],
-//  max_vfreg_color~: Int,
-//  max_num_freg~: Int
-//) -> (Map[Int, Int], Map[Int, Int]) {
-//  let num_vreg_on_stack = if max_vreg_color > max_num_reg {
-//    max_vreg_color - max_num_reg
-//  } else { 0 };
-//  let num_vfreg_on_stack = if max_vfreg_color > max_num_freg {
-//    max_vfreg_color - max_num_freg
-//  } else { 0 };
-//  let total_stack_size = (num_vreg_on_stack + num_vfreg_on_stack) * 8; // Assume 8 bytes per spill
-//  let ori_stack_size = f.stack_size;
-//  f.stack_size += total_stack_size;
-//
-//  let stack_vreg_map : Map[Int, Int] = Map::new();
-//  let stack_vfreg_map : Map[Int, Int] = Map::new();
-//  for pair in vreg_color_map {
-//    let (vreg, color) = pair
-//    if color >= max_num_reg {
-//      let offset = ori_stack_size + (color - max_num_reg) * 8;
-//      stack_vreg_map.set(vreg, offset);
-//    }
-//  }
-//  for pair in vfreg_color_map {
-//    let (vfreg, color) = pair
-//    if color >= max_num_freg {
-//      let offset = ori_stack_size + (color - max_num_freg) * 8;
-//      stack_vfreg_map.set(vfreg, offset);
-//    }
-//  }
-//  (stack_vreg_map, stack_vfreg_map)
-//}
-//
-//pub fn rewrite_instruction(
-//  inst: Instruction,
-//  max_num_reg~: Int,
-//  max_num_freg~: Int,
-//  vreg_color_map~: Map[Int, Int],
-//  vfreg_color_map~: Map[Int, Int],
-//  stack_vreg_map~: Map[Int, Int],
-//  stack_vfreg_map~: Map[Int, Int]
-//) -> Unit raise RegAllocError {
-//  let {defs, uses, ..} = inst;
-//  for i, op in defs {
-//    match op {
-//      VReg(v) => {
-//        guard vreg_color_map.get(v) is Some(v) else {
-//          raise RegAllocError("No color found for vreg \{v}"); 
-//        }
-//        if v < max_num_reg {
-//          defs[i] = Reg(v);
-//        } else {
-//          let offset = stack_vreg_map.get(v).unwrap_or_else(() => raise RegAllocError("No stack slot found for spilled vreg \{v}"));
-//          defs[i] = Mem(StackPtr, offset);
-//        }
-//      }
-//      VFReg(v) => {
-//        guard vfreg_color_map.get(v) is Some(v) else {
-//          raise RegAllocError("No color found for vfreg \{v}"); 
-//        }
-//        if v < max_num_freg {
-//          defs[i] = FReg(v);
-//        } else {
-//          let offset = stack_vfreg_map.get(v).unwrap_or_else(() => raise RegAllocError("No stack slot found for spilled vfreg \{v}"));
-//          defs[i] = Mem(StackPtr, offset);
-//        }
-//      }
-//      _ => ()
-//    }
-//  }
-//
-//  for i, op in uses {
-//    match op {
-//      VReg(v) => {
-//        guard vreg_color_map.get(v) is Some(v) else {
-//          raise RegAllocError("No color found for vreg \{v}"); 
-//        }
-//        if v < max_num_reg {
-//          uses[i] = Reg(v);
-//        } else {
-//          let offset = stack_vreg_map.get(v).unwrap_or_else(() => raise RegAllocError("No stack slot found for spilled vreg \{v}"));
-//          uses[i] = Mem(StackPtr, offset);
-//        }
-//      }
-//      VFReg(v) => {
-//        guard vfreg_color_map.get(v) is Some(v) else {
-//          raise RegAllocError("No color found for vfreg \{v}"); 
-//        }
-//        if v < max_num_freg {
-//          uses[i] = FReg(v);
-//        } else {
-//          let offset = stack_vfreg_map.get(v).unwrap_or_else(() => raise RegAllocError("No stack slot found for spilled vfreg \{v}"));
-//          uses[i] = Mem(StackPtr, offset);
-//        }
-//      }
-//      _ => ()
-//    }
-//  }
-//}
+fn Function::swap_register(self: Function, reg1: Operand, reg2: Operand) -> Unit {
+  for i, param in self.params {
+    if param == reg1 {
+      self.params[i] = reg2
+    } else if param == reg2 {
+      self.params[i] = reg1
+    }
+  }
+  for bb in self.body {
+    for inst in bb.insts {
+      for i, op in inst.defs {
+        if op == reg1 {
+          inst.defs[i] = reg2
+        } else if op == reg2 {
+          inst.defs[i] = reg1
+        }
+      }
+      for i, op in inst.uses {
+        if op == reg1 {
+          inst.uses[i] = reg2
+        } else if op == reg2 {
+          inst.uses[i] = reg1
+        }
+      }
+    }
+  }
+}

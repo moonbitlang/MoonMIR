@@ -70,7 +70,7 @@ fn main_err() -> Unit raise {
   println(machine_mod)
 
   // run register allocation with limited registers to force spilling
-  let regalloced_mod = machine_mod.reg_alloc(max_num_reg=2, max_num_freg=2) // Very limited registers
+  let regalloced_mod = machine_mod.alloc_register() // Very limited registers
   println(
     "\n=== After Register Allocation with Limited Registers (Prologue/Epilogue) ===",
   )

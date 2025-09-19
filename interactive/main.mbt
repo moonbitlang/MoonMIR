@@ -145,7 +145,7 @@ fn main {
     println("==================== GMIR Legalized ================")
     println(gmir)
   }
-  let gmir = gmir.reg_alloc(max_num_reg=17, max_num_freg=17) catch {
+  let gmir = gmir.alloc_register() catch {
     e => {
       println("Error during GMIR register allocation: \{e}")
       return

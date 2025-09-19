@@ -29,20 +29,16 @@ test "Simple IR RegAlloc - fadd" {
   let sum = builder.createFAdd(a, b)
   let _ = builder.createRet(sum)
   let mir_func = @GMIR.Function::from_llvm_function(func, rv64_config)
-  let before_regalloc_value = run_mir_function(mir_func, [
-    @GMIR.VMValue::Double(3.14),
-    @GMIR.VMValue::Double(2.86),
-  ])
-  let regalloced = @GMIR.reg_alloc_for_function(
-    mir_func,
-    max_num_reg=17,
-    max_num_freg=17,
-  )
-  let after_regalloc_value = run_mir_function(regalloced, [
-    @GMIR.VMValue::Double(3.14),
-    @GMIR.VMValue::Double(2.86),
-  ])
-  assert_eq(before_regalloc_value, after_regalloc_value)
+  mir_func.alloc_register()
+  let expected = 
+    #|func fadd(%f0, %f1) {
+    #|entry:
+    #|  %f0 = FAddD %f0, %f1
+    #|  Ret %f0
+    #|}
+    #|
+
+  inspect(mir_func, content=expected)
 }
 
 ///|
@@ -67,22 +63,18 @@ test "Simple IR RegAlloc - mixed types" {
   let sum2 = builder.createFAdd(sum1, c_double)
   let _ = builder.createRet(sum2)
   let mir_func = @GMIR.Function::from_llvm_function(func, rv64_config)
-  let before_regalloc_value = run_mir_function(mir_func, [
-    @GMIR.VMValue::Int(10L),
-    @GMIR.VMValue::Double(5.5),
-    @GMIR.VMValue::Int(15L),
-  ])
-  let regalloced = @GMIR.reg_alloc_for_function(
-    mir_func,
-    max_num_reg=17,
-    max_num_freg=17,
-  )
-  let after_regalloc_value = run_mir_function(regalloced, [
-    @GMIR.VMValue::Int(10L),
-    @GMIR.VMValue::Double(5.5),
-    @GMIR.VMValue::Int(15L),
-  ])
-  assert_eq(before_regalloc_value, after_regalloc_value)
+  mir_func.alloc_register()
+  let expected = 
+    #|func mixed(%r0, %f0, %r1) {
+    #|entry:
+    #|  %f2 = SIToFP(32, 64) %r0
+    #|  %f1 = SIToFP(32, 64) %r1
+    #|  %f2 = FAddD %f2, %f0
+    #|  %f2 = FAddD %f2, %f1
+    #|  Ret %f2
+    #|}
+    #|
+  inspect(mir_func, content=expected)
 }
 
 ///|
@@ -110,24 +102,17 @@ test "Simple IR RegAlloc - many parameters" {
   let result = builder.createSub(sum, div)
   let _ = builder.createRet(result)
   let mir_func = @GMIR.Function::from_llvm_function(func, rv64_config)
-  let before_regalloc_value = run_mir_function(mir_func, [
-    @GMIR.VMValue::Int(20L),
-    @GMIR.VMValue::Int(10L),
-    @GMIR.VMValue::Int(6L),
-    @GMIR.VMValue::Int(5L),
-    @GMIR.VMValue::Int(3L),
-  ])
-  let regalloced = @GMIR.reg_alloc_for_function(
-    mir_func,
-    max_num_reg=17,
-    max_num_freg=17,
-  )
-  let after_regalloc_value = run_mir_function(regalloced, [
-    @GMIR.VMValue::Int(20L),
-    @GMIR.VMValue::Int(10L),
-    @GMIR.VMValue::Int(6L),
-    @GMIR.VMValue::Int(5L),
-    @GMIR.VMValue::Int(3L),
-  ])
-  assert_eq(before_regalloc_value, after_regalloc_value)
+  mir_func.alloc_register()
+  let expected = 
+    #|func many_params(%r0, %r1, %r2, %r3, %r4) {
+    #|entry:
+    #|  %r0 = Addl %r0, %r1
+    #|  %r2 = Mull %r2, %r3
+    #|  %r2 = Divl %r2, %r4
+    #|  %r0 = Subl %r0, %r2
+    #|  Ret %r0
+    #|}
+    #|
+
+  inspect(mir_func, content=expected)
 }
