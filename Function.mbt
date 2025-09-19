@@ -68,3 +68,7 @@ fn Function::delete_phi_instructions(self : Self) -> Unit {
     bb.insts = bb.insts.filter(inst => !(inst.opcode is PHI))
   }
 }
+
+fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
+  
+}
