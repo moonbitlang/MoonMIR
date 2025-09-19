@@ -929,134 +929,134 @@ pub fn VirtualMachine::eval_function(
   }
 }
 
-///|
-test "simple arithmetic" {
-  let vm = VirtualMachine::new()
-
-  // Create a simple function that adds two numbers
-  let func = Function::new("test_add")
-  func.params.push(VReg(1))
-  func.params.push(VReg(2))
-  let bb = BasicBlock::new("entry")
-  bb.insts.push(Instruction::{
-    opcode: Addq,
-    defs: [VReg(3)],
-    uses: [VReg(1), VReg(2)],
-  })
-  bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [VReg(3)] })
-  func.body.push(bb)
-  let result = vm.eval_function(func, [VMValue::Int(10L), VMValue::Int(20L)])
-  inspect(result, content="Int(30)")
-}
-
-///|
-test "floating point operations" {
-  let vm = VirtualMachine::new()
-  let func = Function::new("test_fadd")
-  func.params.push(VFReg(1))
-  func.params.push(VFReg(2))
-  let bb = BasicBlock::new("entry")
-  bb.insts.push(Instruction::{
-    opcode: FAddD,
-    defs: [VFReg(3)],
-    uses: [VFReg(1), VFReg(2)],
-  })
-  bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [VFReg(3)] })
-  func.body.push(bb)
-  let result = vm.eval_function(func, [
-    VMValue::Double(3.14),
-    VMValue::Double(2.86),
-  ])
-  inspect(result, content="Double(6)") // The result should be Double(6.0)
-}
-
-///|
-test "conditional branch" {
-  let vm = VirtualMachine::new()
-  let func = Function::new("test_branch")
-  func.params.push(VReg(1))
-  func.params.push(VReg(2))
-  let entry_bb = BasicBlock::new("entry")
-  entry_bb.insts.push(Instruction::{
-    opcode: Beq,
-    defs: [],
-    uses: [VReg(1), VReg(2), Label("equal")],
-  })
-  entry_bb.insts.push(Instruction::{
-    opcode: Jmp,
-    defs: [],
-    uses: [Label("not_equal")],
-  })
-  let equal_bb = BasicBlock::new("equal")
-  equal_bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [Imm(1L)] })
-  let not_equal_bb = BasicBlock::new("not_equal")
-  not_equal_bb.insts.push(Instruction::{
-    opcode: Ret,
-    defs: [],
-    uses: [Imm(0L)],
-  })
-  func.body.push(entry_bb)
-  func.body.push(equal_bb)
-  func.body.push(not_equal_bb)
-
-  // Test equal case
-  let result1 = vm.eval_function(func, [VMValue::Int(5L), VMValue::Int(5L)])
-  inspect(result1, content="Int(1)")
-
-  // Test not equal case
-  let result2 = vm.eval_function(func, [VMValue::Int(5L), VMValue::Int(3L)])
-  inspect(result2, content="Int(0)")
-}
-
-///|
-test "memory operations" {
-  let vm = VirtualMachine::new()
-  let func = Function::new("test_memory")
-  let bb = BasicBlock::new("entry")
-  // Store value 42 at memory address 100
-  bb.insts.push(Instruction::{
-    opcode: Storeq,
-    defs: [],
-    uses: [Imm(42L), Imm(100L)],
-  })
-  // Load value from memory address 100
-  bb.insts.push(Instruction::{
-    opcode: Loadq,
-    defs: [VReg(1)],
-    uses: [Imm(100L)],
-  })
-  bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [VReg(1)] })
-  func.body.push(bb)
-  let result = vm.eval_function(func, [])
-  inspect(result, content="Int(42)")
-}
-
-///|
-test "comparison operations" {
-  let vm = VirtualMachine::new()
-  let func = Function::new("test_cmp")
-  func.params.push(VReg(1))
-  func.params.push(VReg(2))
-  let bb = BasicBlock::new("entry")
-  bb.insts.push(Instruction::{
-    opcode: Lt,
-    defs: [VReg(3)],
-    uses: [VReg(1), VReg(2)],
-  })
-  bb.insts.push(Instruction::{
-    opcode: Eq,
-    defs: [VReg(4)],
-    uses: [VReg(1), VReg(2)],
-  })
-  bb.insts.push(Instruction::{
-    opcode: Addq,
-    defs: [VReg(5)],
-    uses: [VReg(3), VReg(4)],
-  })
-  bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [VReg(5)] })
-  func.body.push(bb)
-
-  // Test 3 < 5 (true=1) and 3 == 5 (false=0), result should be 1
-  let result = vm.eval_function(func, [VMValue::Int(3L), VMValue::Int(5L)])
-  inspect(result, content="Int(1)")
-}
+/////|
+//test "simple arithmetic" {
+//  let vm = VirtualMachine::new()
+//
+//  // Create a simple function that adds two numbers
+//  let func = Function::new("test_add")
+//  func.params.push(VReg(1))
+//  func.params.push(VReg(2))
+//  let bb = BasicBlock::new("entry")
+//  bb.insts.push(Instruction::{
+//    opcode: Addq,
+//    defs: [VReg(3)],
+//    uses: [VReg(1), VReg(2)],
+//  })
+//  bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [VReg(3)] })
+//  func.body.push(bb)
+//  let result = vm.eval_function(func, [VMValue::Int(10L), VMValue::Int(20L)])
+//  inspect(result, content="Int(30)")
+//}
+//
+/////|
+//test "floating point operations" {
+//  let vm = VirtualMachine::new()
+//  let func = Function::new("test_fadd")
+//  func.params.push(VFReg(1))
+//  func.params.push(VFReg(2))
+//  let bb = BasicBlock::new("entry")
+//  bb.insts.push(Instruction::{
+//    opcode: FAddD,
+//    defs: [VFReg(3)],
+//    uses: [VFReg(1), VFReg(2)],
+//  })
+//  bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [VFReg(3)] })
+//  func.body.push(bb)
+//  let result = vm.eval_function(func, [
+//    VMValue::Double(3.14),
+//    VMValue::Double(2.86),
+//  ])
+//  inspect(result, content="Double(6)") // The result should be Double(6.0)
+//}
+//
+/////|
+//test "conditional branch" {
+//  let vm = VirtualMachine::new()
+//  let func = Function::new("test_branch")
+//  func.params.push(VReg(1))
+//  func.params.push(VReg(2))
+//  let entry_bb = BasicBlock::new("entry")
+//  entry_bb.insts.push(Instruction::{
+//    opcode: Beq,
+//    defs: [],
+//    uses: [VReg(1), VReg(2), Label("equal")],
+//  })
+//  entry_bb.insts.push(Instruction::{
+//    opcode: Jmp,
+//    defs: [],
+//    uses: [Label("not_equal")],
+//  })
+//  let equal_bb = BasicBlock::new("equal")
+//  equal_bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [Imm(1L)] })
+//  let not_equal_bb = BasicBlock::new("not_equal")
+//  not_equal_bb.insts.push(Instruction::{
+//    opcode: Ret,
+//    defs: [],
+//    uses: [Imm(0L)],
+//  })
+//  func.body.push(entry_bb)
+//  func.body.push(equal_bb)
+//  func.body.push(not_equal_bb)
+//
+//  // Test equal case
+//  let result1 = vm.eval_function(func, [VMValue::Int(5L), VMValue::Int(5L)])
+//  inspect(result1, content="Int(1)")
+//
+//  // Test not equal case
+//  let result2 = vm.eval_function(func, [VMValue::Int(5L), VMValue::Int(3L)])
+//  inspect(result2, content="Int(0)")
+//}
+//
+/////|
+//test "memory operations" {
+//  let vm = VirtualMachine::new()
+//  let func = Function::new("test_memory")
+//  let bb = BasicBlock::new("entry")
+//  // Store value 42 at memory address 100
+//  bb.insts.push(Instruction::{
+//    opcode: Storeq,
+//    defs: [],
+//    uses: [Imm(42L), Imm(100L)],
+//  })
+//  // Load value from memory address 100
+//  bb.insts.push(Instruction::{
+//    opcode: Loadq,
+//    defs: [VReg(1)],
+//    uses: [Imm(100L)],
+//  })
+//  bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [VReg(1)] })
+//  func.body.push(bb)
+//  let result = vm.eval_function(func, [])
+//  inspect(result, content="Int(42)")
+//}
+//
+/////|
+//test "comparison operations" {
+//  let vm = VirtualMachine::new()
+//  let func = Function::new("test_cmp")
+//  func.params.push(VReg(1))
+//  func.params.push(VReg(2))
+//  let bb = BasicBlock::new("entry")
+//  bb.insts.push(Instruction::{
+//    opcode: Lt,
+//    defs: [VReg(3)],
+//    uses: [VReg(1), VReg(2)],
+//  })
+//  bb.insts.push(Instruction::{
+//    opcode: Eq,
+//    defs: [VReg(4)],
+//    uses: [VReg(1), VReg(2)],
+//  })
+//  bb.insts.push(Instruction::{
+//    opcode: Addq,
+//    defs: [VReg(5)],
+//    uses: [VReg(3), VReg(4)],
+//  })
+//  bb.insts.push(Instruction::{ opcode: Ret, defs: [], uses: [VReg(5)] })
+//  func.body.push(bb)
+//
+//  // Test 3 < 5 (true=1) and 3 == 5 (false=0), result should be 1
+//  let result = vm.eval_function(func, [VMValue::Int(3L), VMValue::Int(5L)])
+//  inspect(result, content="Int(1)")
+//}

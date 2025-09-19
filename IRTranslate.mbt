@@ -5,165 +5,106 @@ traitalias @IR.Value as LLVMValue
 //traitalias @IR.Instruction as LLVMInstruction
 
 ///|
-typealias @IR.Function as LLVMFunction
-
-///|
 pub suberror IRTranslateError String derive(Show)
 
-///|
-priv struct ValueMap {
-  map : Map[&@IR.Value, Operand]
-  bbmap : Map[String, BasicBlock] // Map from label to BasicBlock
-  mut vreg_cnt : Int
-  mut vfreg_cnt : Int
-}
+/////|
+//pub fn Module::from_llvm_module(llvm_mod : @IR.Module) -> Module raise {
+//  let functions : Array[Function] = Array::new()
+//  for func in llvm_mod.functions.values() {
+//    let f = Function::from_llvm_function(func)
+//    functions.push(f)
+//  }
+//  Module::{ functions, }
+//}
 
 ///|
-fn ValueMap::new() -> ValueMap {
-  ValueMap::{ map: Map::new(), bbmap: Map::new(), vreg_cnt: 0, vfreg_cnt: 0 }
-}
-
-///|
-fn ValueMap::add_vreg(self : Self) -> Operand {
-  let i = self.vreg_cnt
-  let op = VReg(i)
-  self.vreg_cnt += 1
-  op
-}
-
-///|
-fn ValueMap::bind_llvmvalue_to_vreg(self : Self, val : &LLVMValue) -> Operand {
-  let i = self.vreg_cnt
-  let op = VReg(i)
-  self.map[val] = op
-  self.vreg_cnt += 1
-  op
-}
-
-///|
-fn ValueMap::bind_llvmvalue_to_vfreg(self : Self, val : &LLVMValue) -> Operand {
-  let i = self.vfreg_cnt
-  let op = VFReg(i)
-  self.map[val] = op
-  self.vfreg_cnt += 1
-  op
-}
-
-///|
-fn ValueMap::bind_llvmvalue_to_mem(
-  self : Self,
-  val : &LLVMValue,
-  offset : Int,
-) -> Operand {
-  let op = Mem(StackPtr, offset)
-  self.map[val] = op
-  op
-}
-
-///|
-fn ValueMap::get(self : Self, val : &LLVMValue) -> Operand? {
-  self.map.get(val)
-}
-
-///|
-pub fn Module::from_llvm_module(llvm_mod : @IR.Module) -> Module raise {
-  let functions : Array[Function] = Array::new()
-  for func in llvm_mod.functions.values() {
-    let f = Function::from_llvm_function(func)
-    functions.push(f)
-  }
-  Module::{ functions, }
-}
-
-///|
-pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
-  let value_map = ValueMap::new()
-  let stack_size : Ref[Int] = Ref::new(0)
-  let params : Array[Operand] = Array::new()
-  for arg in func.arguments {
-    if arg.getType().isIEEELikeFPTy() {
-      let op = value_map.bind_llvmvalue_to_vfreg(arg)
-      params.push(op)
-    } else {
-      let op = value_map.bind_llvmvalue_to_vreg(arg)
-      params.push(op)
-    }
-  }
-
-  // Get BasicBlocks labels
-  let name = func.getName().unwrap_or("unnamed")
-  for i, llvm_bb in func.basicBlocks {
-    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
-    value_map.map[llvm_bb] = Label(label)
-  }
-  // First create all basic blocks and add them to bbmap
-  let body : Array[BasicBlock] = Array::new()
-  for i, llvm_bb in func.basicBlocks {
-    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
-    let bb = BasicBlock::new(label)
-    value_map.bbmap[label] = bb
-    body.push(bb)
-  }
-
-  // Then process instructions for each basic block
-  for i, llvm_bb in func.basicBlocks {
-    let bb = body[i]
-    for inst in llvm_bb.instIter() {
-      let minsts = Instruction::from_llvm_inst(inst, value_map, stack_size) catch {
-        e => {
-          println("Error converting instruction in BB \{bb.label}:")
-          println("  Instruction: \{inst}")
-          raise e
-        }
-      }
-      minsts.each(m => bb.insts.push(m))
-    }
-  }
-
-  // Finally set up predecessors
-  for i, llvm_bb in func.basicBlocks {
-    let bb = body[i]
-    for pred in llvm_bb.preds {
-      guard value_map.get(pred) is Some(Label(bb_label))
-      bb.preds.push(value_map.bbmap[bb_label])
-    }
-  }
-  let stack_size = stack_size.val
-  let f = Function::{ name, params, body, stack_size }
-  f.phi_elimination()
-  if f.stack_size > 0 {
-    f.prologue_epilogue_insertion()
-  }
-  f
-}
+//pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
+//  let value_map = ValueMap::new()
+//  let stack_size : Ref[Int] = Ref::new(0)
+//  let params : Array[Operand] = Array::new()
+//  for arg in func.arguments {
+//    if arg.getType().isIEEELikeFPTy() {
+//      let op = value_map.bind_llvmvalue_to_vfreg(arg)
+//      params.push(op)
+//    } else {
+//      let op = value_map.bind_llvmvalue_to_vreg(arg)
+//      params.push(op)
+//    }
+//  }
+//
+//  // Get BasicBlocks labels
+//  let name = func.getName().unwrap_or("unnamed")
+//  for i, llvm_bb in func.basicBlocks {
+//    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
+//    value_map.map[llvm_bb] = Label(label)
+//  }
+//  // First create all basic blocks and add them to bbmap
+//  let body : Array[BasicBlock] = Array::new()
+//  for i, llvm_bb in func.basicBlocks {
+//    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
+//    let bb = BasicBlock::new(label)
+//    value_map.bbmap[label] = bb
+//    body.push(bb)
+//  }
+//
+//  // Then process instructions for each basic block
+//  for i, llvm_bb in func.basicBlocks {
+//    let bb = body[i]
+//    for inst in llvm_bb.instIter() {
+//      let minsts = Instruction::from_llvm_inst(inst, value_map, stack_size) catch {
+//        e => {
+//          println("Error converting instruction in BB \{bb.label}:")
+//          println("  Instruction: \{inst}")
+//          raise e
+//        }
+//      }
+//      minsts.each(m => bb.insts.push(m))
+//    }
+//  }
+//
+//  // Finally set up predecessors
+//  for i, llvm_bb in func.basicBlocks {
+//    let bb = body[i]
+//    for pred in llvm_bb.preds {
+//      guard value_map.get(pred) is Some(Label(bb_label))
+//      bb.preds.push(value_map.bbmap[bb_label])
+//    }
+//  }
+//  let stack_size = stack_size.val
+//  let f = Function::{ name, params, body, stack_size }
+//  f.phi_elimination()
+//  if f.stack_size > 0 {
+//    f.prologue_epilogue_insertion()
+//  }
+//  f
+//}
 
 ///|
 fn Instruction::from_llvm_inst(
   inst : &@IR.Instruction,
-  value_map : ValueMap,
-  stack_size : Ref[Int],
-) -> Array[Instruction] raise {
+  func: Function
+) -> Array[Instruction] raise IRTranslateError {
   //let ctx = inst.getContext()
   let mod = inst.getModule()
   let data_layout = mod.getDataLayout()
   match inst.asInstEnum() {
     AllocaInst({ data_ty, .. }) => {
       let data_size = data_layout.getTypeAllocSize(data_ty)
-      let offset = stack_size.val
-      stack_size.val += data_size
-      let _ = value_map.bind_llvmvalue_to_mem(inst, offset)
+      let offset = func.stack_size
+      func.stack_size += data_size
+      let _ = func.bind_llvm_value_to_mem(inst, offset)
       []
     }
     LoadInst({ vty, ptr, .. }) => {
-      guard value_map.get(ptr) is Some(ptr_op) else {
+      guard func.get_operand_from_llvm_value(ptr) is Some(ptr_op) else {
         raise IRTranslateError(
           "LoadInst: pointer operand not found in value map",
         )
       }
       let op = if vty.isIEEELikeFPTy() {
-        value_map.bind_llvmvalue_to_vfreg(inst)
+        func.bind_llvm_value_to_vfreg(inst)
       } else {
-        value_map.bind_llvmvalue_to_vreg(inst)
+        func.bind_llvm_value_to_vreg(inst)
       }
       let data_size = data_layout.getTypeAllocSize(vty)
       let opcode = match data_size {
@@ -181,7 +122,7 @@ fn Instruction::from_llvm_inst(
         Some(ConstantInt(c)) => Imm(c.value)
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
-          guard value_map.get(value) is Some(op) else {
+          guard func.get_operand_from_llvm_value(value) is Some(op) else {
             raise IRTranslateError(
               "StoreInst: value operand not found in value map",
             )
@@ -190,7 +131,7 @@ fn Instruction::from_llvm_inst(
         }
         _ => raise IRTranslateError("StoreInst: unsupported value type")
       }
-      guard value_map.get(ptr) is Some(ptr_op) else {
+      guard func.get_operand_from_llvm_value(ptr) is Some(ptr_op) else {
         raise IRTranslateError(
           "StoreInst: pointer operand not found in value map",
         )
@@ -259,15 +200,15 @@ fn Instruction::from_llvm_inst(
           )
       }
       let def_op = if lhs.getType().isIEEELikeFPTy() {
-        value_map.bind_llvmvalue_to_vfreg(inst)
+        func.bind_llvm_value_to_vfreg(inst)
       } else {
-        value_map.bind_llvmvalue_to_vreg(inst)
+        func.bind_llvm_value_to_vreg(inst)
       }
       let lhs_op = match lhs.tryAsConstantEnum() {
         Some(ConstantInt(c)) => Imm(c.value)
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
-          guard value_map.get(lhs) is Some(op) else {
+          guard func.get_operand_from_llvm_value(lhs) is Some(op) else {
             raise IRTranslateError(
               "BinaryInst: lhs operand not found in value map",
             )
@@ -280,7 +221,7 @@ fn Instruction::from_llvm_inst(
         Some(ConstantInt(c)) => Imm(c.value)
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
-          guard value_map.get(rhs) is Some(op) else {
+          guard func.get_operand_from_llvm_value(rhs) is Some(op) else {
             raise IRTranslateError(
               "BinaryInst: rhs operand not found in value map",
             )
@@ -313,11 +254,11 @@ fn Instruction::from_llvm_inst(
         ULT | SLT => Lt
         ULE | SLE => Le
       }
-      let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+      let def_op = func.bind_llvm_value_to_vreg(inst)
       let lhs_op = match lhs.tryAsConstantEnum() {
         Some(ConstantInt(c)) => Imm(c.value)
         None => {
-          guard value_map.get(lhs) is Some(op) else {
+          guard func.get_operand_from_llvm_value(lhs) is Some(op) else {
             raise IRTranslateError(
               "ICmpInst: lhs operand not found in value map",
             )
@@ -329,7 +270,7 @@ fn Instruction::from_llvm_inst(
       let rhs_op = match rhs.tryAsConstantEnum() {
         Some(ConstantInt(c)) => Imm(c.value)
         None => {
-          guard value_map.get(rhs) is Some(op) else {
+          guard func.get_operand_from_llvm_value(rhs) is Some(op) else {
             raise IRTranslateError(
               "ICmpInst: rhs operand not found in value map",
             )
@@ -366,11 +307,11 @@ fn Instruction::from_llvm_inst(
             "Unsupported FCmpInst predicate {\{predicate}} and data size {\{data_size}}",
           )
       }
-      let def_op = value_map.bind_llvmvalue_to_vreg(inst)
+      let def_op = func.bind_llvm_value_to_vreg(inst)
       let lhs_op = match lhs.tryAsConstantEnum() {
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
-          guard value_map.get(lhs) is Some(op) else {
+          guard func.get_operand_from_llvm_value(lhs) is Some(op) else {
             raise IRTranslateError(
               "FCmpInst: lhs operand not found in value map",
             )
@@ -382,7 +323,7 @@ fn Instruction::from_llvm_inst(
       let rhs_op = match rhs.tryAsConstantEnum() {
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
-          guard value_map.get(rhs) is Some(op) else {
+          guard func.get_operand_from_llvm_value(rhs) is Some(op) else {
             raise IRTranslateError(
               "FCmpInst: rhs operand not found in value map",
             )
@@ -406,17 +347,17 @@ fn Instruction::from_llvm_inst(
         ..,
       }
     ) => {
-      guard value_map.get(trueBB) is Some(true_label) else {
+      guard func.get_operand_from_llvm_value(trueBB) is Some(true_label) else {
         raise IRTranslateError(
           "BranchInst: true block operand not found in value map",
         )
       }
-      guard value_map.get(falseBB) is Some(false_label) else {
+      guard func.get_operand_from_llvm_value(falseBB) is Some(false_label) else {
         raise IRTranslateError(
           "BranchInst: false block operand not found in value map",
         )
       }
-      let minst = if value_map.get(cond) is Some(cond_op) {
+      let minst = if func.get_operand_from_llvm_value(cond) is Some(cond_op) {
         Instruction::{
           opcode: Bne,
           defs: [],
@@ -438,7 +379,7 @@ fn Instruction::from_llvm_inst(
         let lhs_op = match lhs.tryAsConstantEnum() {
           Some(ConstantInt(c)) => Imm(c.value)
           None => {
-            guard value_map.get(lhs) is Some(op) else {
+            guard func.get_operand_from_llvm_value(lhs) is Some(op) else {
               raise IRTranslateError(
                 "BranchInst: condition lhs operand not found in value map",
               )
@@ -450,7 +391,7 @@ fn Instruction::from_llvm_inst(
         let rhs_op = match rhs.tryAsConstantEnum() {
           Some(ConstantInt(c)) => Imm(c.value)
           None => {
-            guard value_map.get(rhs) is Some(op) else {
+            guard func.get_operand_from_llvm_value(rhs) is Some(op) else {
               raise IRTranslateError(
                 "BranchInst: condition rhs operand not found in value map",
               )
@@ -468,7 +409,7 @@ fn Instruction::from_llvm_inst(
       [minst]
     }
     BranchInst({ condition: None, trueBlock: Some(trueBB), .. }) => {
-      guard value_map.get(trueBB) is Some(true_label) else {
+      guard func.get_operand_from_llvm_value(trueBB) is Some(true_label) else {
         raise IRTranslateError(
           "BranchInst: true block operand not found in value map",
         )
@@ -492,33 +433,34 @@ fn Instruction::from_llvm_inst(
           None =>
             // If the value is not in the map, it might be a forward reference
             // We need to allocate a register for it now
-            match value_map.get(value) {
+            match func.get_operand_from_llvm_value(value) {
               Some(op) => op
               None =>
                 // This is a forward reference, allocate a register for it
                 if value.getType().isIEEELikeFPTy() {
-                  value_map.bind_llvmvalue_to_vfreg(value)
+                  func.bind_llvm_value_to_vfreg(value)
                 } else {
-                  value_map.bind_llvmvalue_to_vreg(value)
+                  func.bind_llvm_value_to_vreg(value)
                 }
             }
           _ =>
             raise IRTranslateError("PHINode: unsupported incoming value type")
         }
         uses.push(op)
-        uses.push(value_map.get(bb).unwrap()) // Must be Label
+        uses.push(func.get_operand_from_llvm_value(bb).unwrap()) // Must be Label
       }
       let def_op = if inst.getType().isIEEELikeFPTy() {
-        value_map.bind_llvmvalue_to_vfreg(inst)
+        func.bind_llvm_value_to_vfreg(inst)
       } else {
-        value_map.bind_llvmvalue_to_vreg(inst)
+        func.bind_llvm_value_to_vreg(inst)
       }
       let minst = Instruction::{ opcode: PHI, defs: [def_op], uses }
+      func.phi_insts.push(minst)
       [minst]
     }
     CastInst({ to_ty, from_val, opcode: cast_op, .. }) => {
       let from_ty = from_val.getType()
-      guard value_map.get(from_val) is Some(from_op) else {
+      guard func.get_operand_from_llvm_value(from_val) is Some(from_op) else {
         raise IRTranslateError(
           "CastInst: from_val operand not found in value map",
         )
@@ -601,15 +543,15 @@ fn Instruction::from_llvm_inst(
           }
       }
       let def_op = if to_ty.isIEEELikeFPTy() {
-        value_map.bind_llvmvalue_to_vfreg(inst)
+        func.bind_llvm_value_to_vfreg(inst)
       } else {
-        value_map.bind_llvmvalue_to_vreg(inst)
+        func.bind_llvm_value_to_vreg(inst)
       }
       let minst = Instruction::{ opcode, defs: [def_op], uses: [from_op] }
       [minst]
     }
     GetElementPtrInst({ ptr, indices, pointeeType, .. }) => {
-      guard value_map.get(ptr) is Some(ptr_op) else {
+      guard func.get_operand_from_llvm_value(ptr) is Some(ptr_op) else {
         raise IRTranslateError(
           "GetElementPtrInst: pointer operand not found in value map",
         )
@@ -627,7 +569,7 @@ fn Instruction::from_llvm_inst(
           let offset = elem_size * c.getValueAsInt64()
           if offset != 0 {
             let offset_op = Imm(offset)
-            let new_ptr = value_map.add_vreg()
+            let new_ptr = func.add_vreg()
             let minst = Instruction::{
               opcode: Addq,
               defs: [new_ptr],
@@ -643,10 +585,10 @@ fn Instruction::from_llvm_inst(
         (ArrayType(arrTy), [idx, .. rest], ptr) => {
           let elem_ty = arrTy.getElementType()
           let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
-          let idx_op = value_map.get(idx.asValueClass()).unwrap()
+          let idx_op = func.get_operand_from_llvm_value(idx.asValueClass()).unwrap()
           if elem_size == 1 {
             // For byte arrays, no need to scale
-            let new_ptr = value_map.add_vreg()
+            let new_ptr = func.add_vreg()
             let minst = Instruction::{
               opcode: Addq,
               defs: [new_ptr],
@@ -656,14 +598,14 @@ fn Instruction::from_llvm_inst(
             continue (elem_ty.asTypeEnum(), rest, new_ptr)
           } else {
             // Scale the index
-            let offset_op = value_map.add_vreg()
+            let offset_op = func.add_vreg()
             let scale_inst = Instruction::{
               opcode: Mulq,
               defs: [offset_op],
               uses: [idx_op, Imm(elem_size)],
             }
             insts.push(scale_inst)
-            let new_ptr = value_map.add_vreg()
+            let new_ptr = func.add_vreg()
             let add_inst = Instruction::{
               opcode: Addq,
               defs: [new_ptr],
@@ -678,7 +620,7 @@ fn Instruction::from_llvm_inst(
           let offset = data_layout.getStructTypeOffset(structTy, i).to_int64()
           if offset != 0 {
             let offset_op = Imm(offset)
-            let new_ptr = value_map.add_vreg()
+            let new_ptr = func.add_vreg()
             let minst = Instruction::{
               opcode: Addq,
               defs: [new_ptr],
@@ -709,7 +651,7 @@ fn Instruction::from_llvm_inst(
             c.getValueAsInt64()
           if offset != 0 {
             let offset_op = Imm(offset)
-            let final_ptr = value_map.bind_llvmvalue_to_vreg(inst)
+            let final_ptr = func.bind_llvm_value_to_vreg(inst)
             let minst = Instruction::{
               opcode: Addq,
               defs: [final_ptr],
@@ -718,17 +660,17 @@ fn Instruction::from_llvm_inst(
             insts.push(minst)
           } else {
             // offset is 0, just bind the pointer to the result
-            value_map.map[inst] = ptr
+            func.value_map[inst] = ptr
           }
           // We're done
           break
         }
         (_, [idx], ptr) => {
-          let idx_op = value_map.get(idx.asValueClass()).unwrap()
+          let idx_op = func.get_operand_from_llvm_value(idx.asValueClass()).unwrap()
           let elem_size = data_layout.getTypeAllocSize(pointeeType).to_int64()
           if elem_size == 1 {
             // For byte pointers, no need to scale
-            let final_ptr = value_map.bind_llvmvalue_to_vreg(inst)
+            let final_ptr = func.bind_llvm_value_to_vreg(inst)
             let minst = Instruction::{
               opcode: Addq,
               defs: [final_ptr],
@@ -737,14 +679,14 @@ fn Instruction::from_llvm_inst(
             insts.push(minst)
           } else {
             // Scale the index
-            let offset_op = value_map.add_vreg()
+            let offset_op = func.add_vreg()
             let scale_inst = Instruction::{
               opcode: Mulq,
               defs: [offset_op],
               uses: [idx_op, Imm(elem_size)],
             }
             insts.push(scale_inst)
-            let final_ptr = value_map.bind_llvmvalue_to_vreg(inst)
+            let final_ptr = func.bind_llvm_value_to_vreg(inst)
             let add_inst = Instruction::{
               opcode: Addq,
               defs: [final_ptr],
@@ -758,7 +700,7 @@ fn Instruction::from_llvm_inst(
         // Base case: no more indices
         (_, [], ptr) => {
           // Just bind the final pointer
-          value_map.map[inst] = ptr
+          func.value_map[inst] = ptr
           break
         }
         _ =>
@@ -772,7 +714,7 @@ fn Instruction::from_llvm_inst(
       let cond_op = match condition.tryAsConstantEnum() {
         Some(ConstantInt(c)) => Imm(c.value)
         None => {
-          guard value_map.get(condition) is Some(op) else {
+          guard func.get_operand_from_llvm_value(condition) is Some(op) else {
             raise IRTranslateError(
               "SelectInst: condition operand not found in value map",
             )
@@ -785,7 +727,7 @@ fn Instruction::from_llvm_inst(
         Some(ConstantInt(c)) => Imm(c.value)
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
-          guard value_map.get(trueValue) is Some(op) else {
+          guard func.get_operand_from_llvm_value(trueValue) is Some(op) else {
             raise IRTranslateError(
               "SelectInst: trueValue operand not found in value map",
             )
@@ -798,7 +740,7 @@ fn Instruction::from_llvm_inst(
         Some(ConstantInt(c)) => Imm(c.value)
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
-          guard value_map.get(falseValue) is Some(op) else {
+          guard func.get_operand_from_llvm_value(falseValue) is Some(op) else {
             raise IRTranslateError(
               "SelectInst: falseValue operand not found in value map",
             )
@@ -808,9 +750,9 @@ fn Instruction::from_llvm_inst(
         _ => raise IRTranslateError("SelectInst: unsupported falseValue type")
       }
       let def_op = if trueValue.getType().isIEEELikeFPTy() {
-        value_map.bind_llvmvalue_to_vfreg(inst)
+        func.bind_llvm_value_to_vfreg(inst)
       } else {
-        value_map.bind_llvmvalue_to_vreg(inst)
+        func.bind_llvm_value_to_vreg(inst)
       }
       let minst = Instruction::{
         opcode: Select,
@@ -825,7 +767,7 @@ fn Instruction::from_llvm_inst(
           Some(ConstantInt(c)) => Imm(c.value)
           Some(ConstantFP(f)) => FImm(f.value)
           None => {
-            guard value_map.get(retVal) is Some(op) else {
+            guard func.get_operand_from_llvm_value(retVal) is Some(op) else {
               raise IRTranslateError(
                 "ReturnInst: return value operand not found in value map",
               )
@@ -850,7 +792,7 @@ fn Instruction::from_llvm_inst(
           ConstantInt(c) => uses.push(Imm(c.getValueAsInt64()))
           ConstantFP(f) => uses.push(FImm(f.value))
           _ => {
-            guard value_map.get(arg) is Some(op) else {
+            guard func.get_operand_from_llvm_value(arg) is Some(op) else {
               raise IRTranslateError(
                 "CallInst: argument operand not found in value map",
               )
@@ -862,9 +804,9 @@ fn Instruction::from_llvm_inst(
       let defs : Array[Operand] = Array::new()
       if !(inst.getType().asTypeEnum() is VoidType(_)) {
         let ret_op = if inst.getType().isIEEELikeFPTy() {
-          value_map.bind_llvmvalue_to_vfreg(inst)
+          func.bind_llvm_value_to_vfreg(inst)
         } else {
-          value_map.bind_llvmvalue_to_vreg(inst)
+          func.bind_llvm_value_to_vreg(inst)
         }
         defs.push(ret_op)
       }

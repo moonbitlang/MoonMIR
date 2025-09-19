@@ -24,7 +24,7 @@ test "Interpreter - ret42" {
   let _ = builder.createRet(fourty_two)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let result = run_mir_function(mir_func, [])
   inspect(result, content="Int(42)")
 }
@@ -47,7 +47,7 @@ test "Interpreter - add" {
   let _ = builder.createRet(sum)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let result = run_mir_function(mir_func, [
     @GMIR.VMValue::Int(10L),
     @GMIR.VMValue::Int(20L),
@@ -73,7 +73,7 @@ test "Interpreter - mul" {
   let _ = builder.createRet(product)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let result = run_mir_function(mir_func, [
     @GMIR.VMValue::Int(6L),
     @GMIR.VMValue::Int(7L),
@@ -99,7 +99,7 @@ test "Interpreter - div" {
   let _ = builder.createRet(quotient)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let result = run_mir_function(mir_func, [
     @GMIR.VMValue::Int(84L),
     @GMIR.VMValue::Int(2L),
@@ -125,7 +125,7 @@ test "Interpreter - dadd" {
   let _ = builder.createRet(sum)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let result = run_mir_function(mir_func, [
     @GMIR.VMValue::Double(3.14),
     @GMIR.VMValue::Double(2.86),
@@ -152,7 +152,7 @@ test "Interpreter - icmp equal" {
   let _ = builder.createRet(cmp)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
 
   // Test equal case
   let result1 = run_mir_function(mir_func, [
@@ -188,7 +188,7 @@ test "Interpreter - icmp less than" {
   let _ = builder.createRet(cmp)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
 
   // Test true case
   let result1 = run_mir_function(mir_func, [
@@ -248,7 +248,7 @@ test "Interpreter - conditional branch" {
   let _ = builder.createRet(phi)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
 
   // Test case where a > b (should return v1 = 100)
   let result1 = run_mir_function(mir_func, [
@@ -299,7 +299,7 @@ test "Interpreter - memory operations" {
   let _ = builder.createRet(x_value)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let result = run_mir_function(mir_func, [])
   inspect(result, content="Int(0)")
 }
@@ -326,7 +326,7 @@ test "Interpreter - select" {
   let _ = builder.createRet(result)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
 
   // Test true condition (select a)
   let result1 = run_mir_function(mir_func, [
@@ -363,7 +363,7 @@ test "Interpreter - sitofp conversion" {
   let _ = builder.createRet(result)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let result = run_mir_function(mir_func, [@GMIR.VMValue::Int(42L)])
   inspect(result, content="Double(42)") // Auto update will capture the result
 }
@@ -386,7 +386,7 @@ test "Interpreter - fptosi conversion" {
   let _ = builder.createRet(result)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let result = run_mir_function(mir_func, [@GMIR.VMValue::Double(42.7)])
   inspect(result, content="Int(42)")
 }
@@ -420,7 +420,7 @@ test "Interpreter - complex expression" {
   let _ = builder.createRet(result)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   // Test with a=10, b=5, c=3: (10+5)*3 - (10-5) = 45 - 5 = 40
   let result = run_mir_function(mir_func, [
     @GMIR.VMValue::Int(10L),
@@ -503,7 +503,7 @@ test "Interpreter - fibonacci iterative" {
   let _ = builder.createRet(b_phi)
 
   // Convert to MIR and execute
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
 
   // Test fib(0) = 0
   let result0 = run_mir_function(mir_func, [@GMIR.VMValue::Int(0L)])

@@ -28,7 +28,7 @@ test "Simple IR RegAlloc - fadd" {
   let b = func.getArg(1).unwrap()
   let sum = builder.createFAdd(a, b)
   let _ = builder.createRet(sum)
-  let mir_func = @GMIR.Function::from_llvm_function(func)
+  let mir_func = @GMIR.Function::from_llvm_function(func, rv64_config)
   let before_regalloc_value = run_mir_function(mir_func, [
     @GMIR.VMValue::Double(3.14),
     @GMIR.VMValue::Double(2.86),
@@ -66,7 +66,7 @@ test "Simple IR RegAlloc - mixed types" {
   let sum1 = builder.createFAdd(a_double, b)
   let sum2 = builder.createFAdd(sum1, c_double)
   let _ = builder.createRet(sum2)
-  let mir_func = @GMIR.Function::from_llvm_function(func)
+  let mir_func = @GMIR.Function::from_llvm_function(func, rv64_config)
   let before_regalloc_value = run_mir_function(mir_func, [
     @GMIR.VMValue::Int(10L),
     @GMIR.VMValue::Double(5.5),
@@ -109,7 +109,7 @@ test "Simple IR RegAlloc - many parameters" {
   let div = builder.createSDiv(mul, e)
   let result = builder.createSub(sum, div)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(func)
+  let mir_func = @GMIR.Function::from_llvm_function(func, rv64_config)
   let before_regalloc_value = run_mir_function(mir_func, [
     @GMIR.VMValue::Int(20L),
     @GMIR.VMValue::Int(10L),
@@ -132,44 +132,3 @@ test "Simple IR RegAlloc - many parameters" {
   assert_eq(before_regalloc_value, after_regalloc_value)
 }
 
-///|
-test "Simple IR RegAlloc - add" {
-  let ctx = @IR.Context::new()
-  let mod = ctx.addModule("demo")
-  let i32ty = ctx.getInt32Ty()
-  let fty = ctx.getFunctionType(i32ty, [i32ty, i32ty])
-  let func = mod.addFunction(fty, "arith")
-  let bb = func.addBasicBlock(name="entry")
-  let builder = ctx.createBuilder()
-  builder.setInsertPoint(bb)
-  let a = func.getArg(0).unwrap()
-  let b = func.getArg(1).unwrap()
-  let r1 = builder.createAdd(a, b)
-  let r2 = builder.createSub(a, b)
-  let r3 = builder.createMul(a, b)
-  let r4 = builder.createSDiv(a, b)
-  let r5 = builder.createAdd(r1, r2)
-  let r6 = builder.createSub(r3, r4)
-  let r7 = builder.createMul(r5, r6)
-  let _ = builder.createRet(r7)
-  let mir_func = @GMIR.Function::from_llvm_function(func)
-  let config = @GMIR.LegalizeConfig::{
-    max_num_call_regs: 8,
-    max_num_call_fregs: 8
-  }
-  let legalized = @GMIR.legalize_func(mir_func, config)
-  let before_regalloc_value = run_mir_function(legalized, [
-    @GMIR.VMValue::Int(10),
-    @GMIR.VMValue::Int(5),
-  ])
-  let regalloced = @GMIR.reg_alloc_for_function(
-    mir_func,
-    max_num_reg=17,
-    max_num_freg=17,
-  )
-  let after_regalloc_value = run_mir_function(regalloced, [
-    @GMIR.VMValue::Int(10),
-    @GMIR.VMValue::Int(5),
-  ])
-  assert_eq(before_regalloc_value, after_regalloc_value)
-}

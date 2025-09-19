@@ -72,6 +72,8 @@ fn llvm_simple_call() -> @IR.Module raise {
 
 ///|
 fn main {
+  let rv64_config  :@GMIR.ArchConfig = @GMIR.ArchConfig::riscv64()
+
   let help_info =
     #|Usage: mbtasmbler [options] <input>
     #|
@@ -115,7 +117,9 @@ fn main {
     println("==================== LLVM IR ================")
     mod.dump()
   }
-  let gmir = @GMIR.Module::from_llvm_module(mod) catch {
+  let gmir = @GMIR.Module::new(mod, rv64_config)
+
+  gmir.run_ir_translation() catch {
     e => {
       println("Error during GMIR translation: \{e}")
       return
@@ -129,11 +133,7 @@ fn main {
     println("==================== GMIR ================")
     println(gmir)
   }
-  let config = @GMIR.LegalizeConfig ::{
-    max_num_call_regs : 8,
-    max_num_call_fregs : 8
-  }
-  let gmir = gmir.legalize(config) catch {
+  gmir.legalize() catch {
     e => {
       println("Error during GMIR legalization: \{e}")
       return
@@ -161,7 +161,7 @@ fn main {
     println("==================== GMIR RegAlloc ================")
     println(gmir)
   }
-  let gmir = gmir.post_ra_adjustments() catch {
+  gmir.post_ra() catch {
     e => {
       println("Error during GMIR post-RA adjustments: \{e}")
       return

@@ -1,3 +1,6 @@
+let rv64_config : @GMIR.ArchConfig = @GMIR.ArchConfig::riscv64()
+
+
 ///|
 /// int ret42() { retun 42; }
 test "Simple IRTranslate - ret42" {
@@ -13,7 +16,7 @@ test "Simple IRTranslate - ret42" {
   let builder = ctx.createBuilder()
   builder.setInsertPoint(bb)
   let _ = builder.createRet(fourty_two)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func ret42() {
     #|entry:
@@ -38,7 +41,7 @@ test "Simple IRTranslate - fadd" {
   let b = fval.getArg(1).unwrap()
   let sum = builder.createFAdd(a, b)
   let _ = builder.createRet(sum)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func fadd(%vf0, %vf1) {
     #|entry:
@@ -64,7 +67,7 @@ test "Simple IRTranslate - dadd" {
   let b = fval.getArg(1).unwrap()
   let sum = builder.createFAdd(a, b)
   let _ = builder.createRet(sum)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func dadd(%vf0, %vf1) {
     #|entry:
@@ -90,7 +93,7 @@ test "Simple IRTranslate - fsub" {
   let b = fval.getArg(1).unwrap()
   let result = builder.createFSub(a, b)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func fsub(%vf0, %vf1) {
     #|entry:
@@ -116,7 +119,7 @@ test "Simple IRTranslate - fmul" {
   let b = fval.getArg(1).unwrap()
   let result = builder.createFMul(a, b)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func fmul(%vf0, %vf1) {
     #|entry:
@@ -142,7 +145,7 @@ test "Simple IRTranslate - fdiv" {
   let b = fval.getArg(1).unwrap()
   let result = builder.createFDiv(a, b)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func fdiv(%vf0, %vf1) {
     #|entry:
@@ -169,7 +172,7 @@ test "Simple IRTranslate - fcmp eq" {
   let b = fval.getArg(1).unwrap()
   let result = builder.createFCmpOEQ(a, b)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func fcmp_eq(%vf0, %vf1) {
     #|entry:
@@ -198,7 +201,7 @@ test "Simple IRTranslate - add" {
   let b = fval.getArg(1).unwrap()
   let sum = builder.createAdd(a, b)
   let _ = builder.createRet(sum)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func add(%v0, %v1) {
     #|entry:
@@ -228,7 +231,7 @@ test "Simple IRTranslate - icmp" {
   let b = fval.getArg(1).unwrap()
   let cmp = builder.createICmpEQ(a, b)
   let _ = builder.createRet(cmp)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func icmp(%v0, %v1) {
     #|entry:
@@ -273,7 +276,7 @@ test "Simple IRTranslate - cond branch" {
   phi.addIncoming(v1, then_bb)
   phi.addIncoming(v2, else_bb)
   let _ = builder.createRet(phi)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func cond_branch(%v0, %v1, %v2, %v3) {
     #|entry:
@@ -306,7 +309,7 @@ test "Simple IRTranslate - mul" {
   let b = fval.getArg(1).unwrap()
   let product = builder.createMul(a, b)
   let _ = builder.createRet(product)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func mul(%v0, %v1) {
     #|entry:
@@ -332,7 +335,7 @@ test "Simple IRTranslate - div" {
   let b = fval.getArg(1).unwrap()
   let quotient = builder.createSDiv(a, b)
   let _ = builder.createRet(quotient)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func div(%v0, %v1) {
     #|entry:
@@ -358,7 +361,7 @@ test "Simple IRTranslate - rem" {
   let b = fval.getArg(1).unwrap()
   let remainder = builder.createSRem(a, b)
   let _ = builder.createRet(remainder)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func rem(%v0, %v1) {
     #|entry:
@@ -384,7 +387,7 @@ test "Simple IRTranslate - shl" {
   let b = fval.getArg(1).unwrap()
   let shifted = builder.createShl(a, b)
   let _ = builder.createRet(shifted)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func shl(%v0, %v1) {
     #|entry:
@@ -410,7 +413,7 @@ test "Simple IRTranslate - and" {
   let b = fval.getArg(1).unwrap()
   let result = builder.createAnd(a, b)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func and_op(%v0, %v1) {
     #|entry:
@@ -436,7 +439,7 @@ test "Simple IRTranslate - trunc" {
   let a = fval.getArg(0).unwrap()
   let result = builder.createTrunc(a, i16ty)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -465,7 +468,7 @@ test "Simple IRTranslate - zext" {
   let a = fval.getArg(0).unwrap()
   let result = builder.createZExt(a, i64ty)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -494,7 +497,7 @@ test "Simple IRTranslate - sext" {
   let a = fval.getArg(0).unwrap()
   let result = builder.createSExt(a, i64ty)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -523,7 +526,7 @@ test "Simple IRTranslate - fpext" {
   let a = fval.getArg(0).unwrap()
   let result = builder.createFPExt(a, f64ty)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -552,7 +555,7 @@ test "Simple IRTranslate - fptrunc" {
   let a = fval.getArg(0).unwrap()
   let result = builder.createFPTrunc(a, f32ty)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -581,7 +584,7 @@ test "Simple IRTranslate - fptosi" {
   let a = fval.getArg(0).unwrap()
   let result = builder.createFPToSI(a, i32ty)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -610,7 +613,7 @@ test "Simple IRTranslate - sitofp" {
   let a = fval.getArg(0).unwrap()
   let result = builder.createSIToFP(a, f32ty)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func sitofp_test(%v0) {
     #|entry:
@@ -648,7 +651,7 @@ test "Simple IRTranslate - alloca load store" {
 
   // return x
   let _ = builder.createRet(x_value)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func alloca_load_store_test() {
     #|entry:
@@ -683,7 +686,7 @@ test "Simple IRTranslate - gep array access" {
 
   // Return value
   let _ = builder.createRet(value)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func gep_test(%v0, %v1) {
     #|entry:
@@ -712,7 +715,7 @@ test "Simple IRTranslate - icmp ne" {
   let b = fval.getArg(1).unwrap()
   let cmp = builder.createICmpNE(a, b)
   let _ = builder.createRet(cmp)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func icmp_ne(%v0, %v1) {
     #|entry:
@@ -739,7 +742,7 @@ test "Simple IRTranslate - icmp slt" {
   let b = fval.getArg(1).unwrap()
   let cmp = builder.createICmpSLT(a, b)
   let _ = builder.createRet(cmp)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func icmp_slt(%v0, %v1) {
     #|entry:
@@ -766,7 +769,7 @@ test "Simple IRTranslate - icmp ule" {
   let b = fval.getArg(1).unwrap()
   let cmp = builder.createICmpULE(a, b)
   let _ = builder.createRet(cmp)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   let expected =
     #|func icmp_ule(%v0, %v1) {
     #|entry:
@@ -793,7 +796,7 @@ test "Simple IRTranslate - fcmp one" {
   let b = fval.getArg(1).unwrap()
   let result = builder.createFCmpONE(a, b)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -823,7 +826,7 @@ test "Simple IRTranslate - fcmp ogt double" {
   let b = fval.getArg(1).unwrap()
   let result = builder.createFCmpOGT(a, b)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -856,7 +859,7 @@ test "Simple IRTranslate - select" {
   let b = fval.getArg(2).unwrap()
   let result = builder.createSelect(cond, a, b)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -914,7 +917,7 @@ test "Simple IRTranslate - simple phi" {
   result_phi.addIncoming(a, then_bb)
   result_phi.addIncoming(b, else_bb)
   let _ = builder.createRet(result_phi)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -966,7 +969,7 @@ test "Simple IRTranslate - call with return" {
   let y = caller_func.getArg(1).unwrap()
   let result = builder.createCall(helper_func, [x, y])
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(caller_func)
+  let mir_func = @GMIR.Function::from_llvm_function(caller_func, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -1008,7 +1011,7 @@ test "Simple IRTranslate - call void" {
   let value = ctx.getConstInt32(42)
   let _ = builder.createCall(helper_func, [value])
   let _ = builder.createRetVoid()
-  let mir_func = @GMIR.Function::from_llvm_function(caller_func)
+  let mir_func = @GMIR.Function::from_llvm_function(caller_func, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -1055,7 +1058,7 @@ test "Simple IRTranslate - call mixed types" {
   let pi = ctx.getConstFloat(3.14)
   let result = builder.createCall(helper_func, [x, pi])
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(caller_func)
+  let mir_func = @GMIR.Function::from_llvm_function(caller_func, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -1098,7 +1101,7 @@ test "Simple IRTranslate - constant array access" {
   // Load and return value
   let result = builder.createLoad(i32ty, arr_alloca)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -1143,7 +1146,7 @@ test "Simple IRTranslate - proper struct access" {
   let val_y = builder.createLoad(i32ty, gep_y)
   let sum = builder.createAdd(val_x, val_y)
   let _ = builder.createRet(sum)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -1178,7 +1181,7 @@ test "Simple IRTranslate - constants float" {
   let neg_val = ctx.getConstFloat(-2.5)
   let result = builder.createFAdd(pi, neg_val)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -1212,7 +1215,7 @@ test "Simple IRTranslate - constants bool" {
   let cond = builder.createICmpEQ(x, zero)
   let result = builder.createSelect(cond, one, zero)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -1251,7 +1254,7 @@ test "Simple IRTranslate - constants zero" {
   let _ = builder.createStore(zero_int, x_alloca)
   let _ = builder.createStore(zero_float, f_alloca)
   let _ = builder.createRetVoid()
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -1303,7 +1306,7 @@ test "Simple IRTranslate - array operations" {
   let sum1 = builder.createAdd(val0, val1)
   let total = builder.createAdd(sum1, val2)
   let _ = builder.createRet(total)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(
@@ -1352,7 +1355,7 @@ test "Simple IRTranslate - constant array access" {
   // Load and return value
   let result = builder.createLoad(i32ty, arr_alloca)
   let _ = builder.createRet(result)
-  let mir_func = @GMIR.Function::from_llvm_function(fval)
+  let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
   inspect(
     mir_func,
     content=(

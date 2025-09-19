@@ -1,15 +1,26 @@
 ///|
 pub(all) struct BasicBlock {
+  llvm_bb: @IR.BasicBlock
   label : String
   mut insts : Array[Instruction]
-  mut parent : Function?
+  parent : Function
   preds : Array[BasicBlock]
 }
 
-///|
-pub fn BasicBlock::new(label : String) -> BasicBlock {
-  BasicBlock::{ label, insts: Array::new(), parent: None, preds: Array::new() }
+fn BasicBlock::new(func: Function, llvm_bb: @IR.BasicBlock, label: String) -> BasicBlock {
+  BasicBlock::{
+    llvm_bb,
+    label,
+    insts: Array::new(),
+    parent: func,
+    preds: Array::new()
+  }
 }
+
+/////|
+//pub fn BasicBlock::new(llvm_bb: @IR.BasicBlock, label : String) -> BasicBlock {
+//  BasicBlock::{ llvm_bb, label, insts: Array::new(), parent: None, preds: Array::new() }
+//}
 
 ///|
 pub fn BasicBlock::add_inst_before_terminator(
@@ -24,6 +35,19 @@ pub fn BasicBlock::add_inst_before_terminator(
     self.insts.insert(self.insts.length() - 1, inst)
   } else {
     self.insts.push(inst)
+  }
+}
+
+pub fn BasicBlock::run_ir_translation(self: Self) -> Unit raise IRTranslateError {
+  for inst in self.llvm_bb.instIter() {
+    let minsts = Instruction::from_llvm_inst(inst, self.parent) catch {
+      e => {
+        println("Error converting instruction in BB \{self.label}:")
+        println("  Instruction: \{inst}")
+        raise e
+      }
+    }
+    minsts.each(i => self.insts.push(i))
   }
 }
 
