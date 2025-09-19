@@ -129,7 +129,11 @@ fn main {
     println("==================== GMIR ================")
     println(gmir)
   }
-  let gmir = gmir.legalize() catch {
+  let config = @GMIR.LegalizeConfig ::{
+    max_num_call_regs : 8,
+    max_num_call_fregs : 8
+  }
+  let gmir = gmir.legalize(config) catch {
     e => {
       println("Error during GMIR legalization: \{e}")
       return

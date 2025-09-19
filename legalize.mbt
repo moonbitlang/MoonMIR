@@ -30,7 +30,7 @@ fn make_caller_stack_param(offset : Int) -> Operand {
 }
 
 ///|
-pub struct LegalizeConfig {
+pub(all) struct LegalizeConfig {
   // Maximum Call Registers
   // If Exceeded, will spill to stack
   max_num_call_regs : Int
@@ -41,16 +41,7 @@ pub struct LegalizeConfig {
 }
 
 ///|
-// Legacy interface for compatibility
-pub fn Module::legalize(self : Self) -> Module raise {
-  self.legalize_with_config(LegalizeConfig::{
-    max_num_call_regs: 8,
-    max_num_call_fregs: 8,
-  })
-}
-
-///|
-pub fn Module::legalize_with_config(
+pub fn Module::legalize(
   self : Self,
   config : LegalizeConfig,
 ) -> Module raise {

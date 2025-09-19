@@ -247,7 +247,7 @@ fn test_calling_convention() -> Unit {
 
   // Test the legalize pass with functions that have more parameters
   // than available registers
-  let module = @GMIR.Module::new()
+  let mod = @GMIR.Module::new()
 
   // Create a function with 10 integer parameters (exceeding typical 8 regs)
   let func = @GMIR.Function::new("many_params")
@@ -279,15 +279,15 @@ fn test_calling_convention() -> Unit {
     uses: [@GMIR.VReg(108)],
   })
   func.body.push(bb)
-  module.functions.push(func)
+  mod.functions.push(func)
 
   // Legalize with 8 registers available
-  let config = @GMIR.LegalizeConfig::{
-    max_num_call_regs: 8,
-    max_num_call_fregs: 8,
-  }
   try {
-    let legalized_module = module.legalize_with_config(config)
+    let config = @GMIR.LegalizeConfig::{
+      max_num_call_regs: 8,
+      max_num_call_fregs: 8,
+    }
+    let legalized_module = mod.legalize(config)
     let legalized_func = legalized_module.functions[0]
 
     // Check that parameters 9 and 10 are now memory operands with negative offsets
@@ -326,7 +326,6 @@ fn test_calling_convention() -> Unit {
     }
 
     // Now test execution with the VM
-    let vm = @GMIR.VirtualMachine::new()
 
     // Prepare arguments: 1, 2, 3, ..., 10
     let args : Array[@GMIR.VMValue] = []

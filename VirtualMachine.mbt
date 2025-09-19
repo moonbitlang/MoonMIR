@@ -1,6 +1,15 @@
 ///|
 /// VMValue represents values that can be stored and manipulated in the VM
 pub(all) enum VMValue {
+  //Int8(Char)
+  //Int16(Int16)
+  //Int32(Int)
+  //Int64(Int64)
+  //UInt8(Byte)
+  //UInt16(UInt16)
+  //UInt32(UInt)
+  //UInt64(UInt64)
+  //Float(Float)
   Int(Int64)
   Double(Double)
   Address(Int64) // Memory addresses
