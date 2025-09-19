@@ -123,7 +123,7 @@ fn Function::sort_llvm_basick_block(self: Self) -> Array[@IR.BasicBlock] {
       return
     }
     visited.add(bb)
-    for succ in bb.getSuccessors() {
+    for succ in bb.getSuccessors().rev_iter() {
       dfs(succ, visited)
     }
     basic_blocks.push(bb)

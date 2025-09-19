@@ -1017,7 +1017,8 @@ test "Simple IRTranslate - call void" {
     content=(
       #|func call_void() {
       #|entry:
-      #|  Call print_value, 42
+      #|  %v0 = Movl 42
+      #|  Call print_value, %v0
       #|  Ret 
       #|}
       #|
@@ -1064,8 +1065,9 @@ test "Simple IRTranslate - call mixed types" {
     content=(
       #|func call_mixed(%v0) {
       #|entry:
-      #|  %vf0 = Call mixed_call, %v0, 3.140000104904175
-      #|  Ret %vf0
+      #|  %vf0 = FMovS 3.140000104904175
+      #|  %vf1 = Call mixed_call, %v0, %vf0
+      #|  Ret %vf1
       #|}
       #|
     ),
