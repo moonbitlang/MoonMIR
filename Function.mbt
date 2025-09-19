@@ -1,17 +1,17 @@
 ///|
 pub(all) struct Function {
-  mod: Module
+  mod : Module
 
   // Function Attributes
   name : String
   params : Array[Operand]
-  prologue: Array[Instruction]
+  prologue : Array[Instruction]
   body : Array[BasicBlock]
-  epilogue: Array[Instruction]
+  epilogue : Array[Instruction]
   mut stack_size : Int64
 
   // LLVM
-  llvm_func: @IR.Function
+  llvm_func : @IR.Function
 
   // Value Map
   value_map : Map[&LLVMValue, Operand]
@@ -20,7 +20,7 @@ pub(all) struct Function {
   mut vfreg_cnt : Int
 
   // Some Infos
-  phi_insts: Array[Instruction]
+  phi_insts : Array[Instruction]
 
   // phase tracking
   mut ir_translated : Bool
@@ -28,7 +28,8 @@ pub(all) struct Function {
   mut reg_allocated : Bool
 }
 
-fn Function::new(mod: Module, llvm_func: @IR.Function) -> Function {
+///|
+fn Function::new(mod : Module, llvm_func : @IR.Function) -> Function {
   Function::{
     mod,
     name: llvm_func.getName().unwrap(),
@@ -49,12 +50,17 @@ fn Function::new(mod: Module, llvm_func: @IR.Function) -> Function {
   }
 }
 
-pub fn Function::getArchConfig(self: Self) -> ArchConfig {
+///|
+pub fn Function::getArchConfig(self : Self) -> ArchConfig {
   self.mod.arch_config
 }
 
-///| For Quick Debugging
-pub fn Function::from_llvm_function(llvm_func: @IR.Function, arch_config: ArchConfig) -> Function raise IRTranslateError {
+///|
+/// For Quick Debugging
+pub fn Function::from_llvm_function(
+  llvm_func : @IR.Function,
+  arch_config : ArchConfig,
+) -> Function raise IRTranslateError {
   let llvm_mod = llvm_func.getModule()
   let mod = Module::new(llvm_mod, arch_config)
   let func = Function::new(mod, llvm_func)
@@ -62,7 +68,8 @@ pub fn Function::from_llvm_function(llvm_func: @IR.Function, arch_config: ArchCo
   func
 }
 
-pub fn Function::run_ir_translation(self: Self) -> Unit raise IRTranslateError {
+///|
+pub fn Function::run_ir_translation(self : Self) -> Unit raise IRTranslateError {
   if self.ir_translated {
     raise IRTranslateError("Function \{self.name} has already been translated.")
   }
@@ -74,26 +81,24 @@ pub fn Function::run_ir_translation(self: Self) -> Unit raise IRTranslateError {
   // Step 2 - 1: Translate each basic block.
   // Reverse Post-Order Traversal Basic Blocks first
   let sorted_bbs = self.sort_llvm_basick_block()
-
   for i, llvm_bb in sorted_bbs {
-    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}"}
+    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
     let machine_bb = BasicBlock::new(self, llvm_bb, label)
     self.body.push(machine_bb)
     self.value_map.set(llvm_bb, Label(label))
     self.bbmap.set(label, machine_bb)
   }
-  
+
   // Step 2 - 2: Translate each basic block.
   for machine_bb in self.body {
     machine_bb.run_ir_translation()
   }
   self.phi_elimination()
-
   self.ir_translated = true
 }
 
 ///|
-fn Function::assign_vreg_for_params(self: Self) -> Unit {
+fn Function::assign_vreg_for_params(self : Self) -> Unit {
   let { max_num_call_regs, max_num_call_fregs, .. } = self.mod.arch_config
   for i, arg in self.llvm_func.arguments {
     if arg.getType().isIEEELikeFPTy() {
@@ -105,24 +110,22 @@ fn Function::assign_vreg_for_params(self: Self) -> Unit {
         let op = self.bind_llvm_value_to_mem(arg, offset)
         self.params.push(op)
       }
+    } else if i < max_num_call_regs {
+      let op = self.bind_llvm_value_to_vreg(arg)
+      self.params.push(op)
     } else {
-      if i < max_num_call_regs {
-        let op = self.bind_llvm_value_to_vreg(arg)
-        self.params.push(op)
-      } else {
-        let offset = (max_num_call_regs - i).to_int64() * 8
-        let op = self.bind_llvm_value_to_mem(arg, offset)
-        self.params.push(op)
-      }
+      let offset = (max_num_call_regs - i).to_int64() * 8
+      let op = self.bind_llvm_value_to_mem(arg, offset)
+      self.params.push(op)
     }
   }
 }
 
 ///|
-fn Function::sort_llvm_basick_block(self: Self) -> Array[@IR.BasicBlock] {
+fn Function::sort_llvm_basick_block(self : Self) -> Array[@IR.BasicBlock] {
   let basic_blocks : Array[@IR.BasicBlock] = Array::new()
   let entry_bb = self.llvm_func.getEntryBlock().unwrap()
-  fn dfs(bb: @IR.BasicBlock, visited: Set[@IR.BasicBlock]) -> Unit {
+  fn dfs(bb : @IR.BasicBlock, visited : Set[@IR.BasicBlock]) -> Unit {
     if visited.contains(bb) {
       return
     }
@@ -132,6 +135,7 @@ fn Function::sort_llvm_basick_block(self: Self) -> Array[@IR.BasicBlock] {
     }
     basic_blocks.push(bb)
   }
+
   dfs(entry_bb, Set::new())
   basic_blocks.rev()
 }
@@ -144,6 +148,7 @@ fn Function::add_vreg(self : Self) -> Operand {
   op
 }
 
+///|
 fn Function::add_vfreg(self : Self) -> Operand {
   let i = self.vfreg_cnt
   let op = VFReg(i)
@@ -181,7 +186,10 @@ fn Function::bind_llvm_value_to_mem(
 }
 
 ///|
-fn Function::get_operand_from_llvm_value(self : Self, val : &LLVMValue) -> Operand? {
+fn Function::get_operand_from_llvm_value(
+  self : Self,
+  val : &LLVMValue,
+) -> Operand? {
   self.value_map.get(val)
 }
 
@@ -239,7 +247,7 @@ fn Function::phi_elimination(self : Self) -> Unit {
     }
   }
   self.delete_phi_instructions()
-  //self.prologue_epilogue_insertion()
+  self.prologue_epilogue_insertion()
 }
 
 ///|
@@ -250,6 +258,60 @@ fn Function::delete_phi_instructions(self : Self) -> Unit {
   self.phi_insts.clear()
 }
 
+///|
 fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
-  ...
+  if self.stack_size == 0 {
+    return
+  }
+
+  let frame_ptr_loc = self.stack_size
+  self.stack_size += 8; // for storing olf frame pointer
+
+  // Move StackPtr
+  let alloc_stack = Instruction::{
+    opcode: Addq,
+    defs: [StackPtr],
+    uses: [StackPtr, Imm(-self.stack_size)],
+  }
+  self.prologue.push(alloc_stack)
+
+  // Store old FramePtr
+  let store_fp = Instruction::{
+    opcode: Storeq,
+    defs: [],
+    uses: [Mem(StackPtr, frame_ptr_loc), FramePtr],
+  }
+  self.prologue.push(store_fp)
+
+  // Set new FramePtr
+  let setup_fp = Instruction::{
+    opcode: Addq,
+    defs: [FramePtr],
+    uses: [StackPtr, Imm(self.stack_size)],
+  }
+  self.prologue.push(setup_fp)
+
+  for bb in self.body {
+    let mut new_insts : Array[Instruction] = Array::new()
+    let restore_stack = Instruction::{
+      opcode: Addq,
+      defs: [StackPtr],
+      uses: [StackPtr, Imm(self.stack_size)],
+    }
+    let restore_fp = Instruction::{
+      opcode: Loadq,
+      defs: [FramePtr],
+      uses: [Mem(StackPtr, frame_ptr_loc)],
+    }
+    for inst in bb.insts {
+      if inst.opcode is Ret {
+        new_insts.push(restore_fp)
+        new_insts.push(restore_stack)
+        new_insts.push(inst)
+      } else {
+        new_insts.push(inst)
+      }
+    }
+    bb.insts = new_insts
+  }
 }
