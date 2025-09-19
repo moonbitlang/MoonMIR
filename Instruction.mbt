@@ -85,7 +85,7 @@ pub fn Instruction::new(
     | Rem(_) =>
       // Binary operations: def = op1 op op2
       match (defs, uses) {
-        ([def], [op1, op2]) if is_int_register(def) => {
+        ([def], [_, _]) if is_int_register(def) => {
           let normalized_uses = normalize_binary_uses(uses)
           match normalized_uses {
             [r1, r2] if is_int_register(r1) && is_int_register(r2) =>
@@ -112,7 +112,7 @@ pub fn Instruction::new(
     // Floating-point binary operations
     FAddS | FAddD | FSubS | FSubD | FMulS | FMulD | FDivS | FDivD =>
       match (defs, uses) {
-        ([def], [op1, op2]) if is_fp_register(def) => {
+        ([def], [_, _]) if is_fp_register(def) => {
           let normalized_uses = normalize_binary_uses(uses)
           match normalized_uses {
             [r1, r2] if is_fp_register(r1) && is_fp_register(r2) =>
@@ -141,7 +141,7 @@ pub fn Instruction::new(
     // Bitwise and shift operations
     And | Or | Xor | Shl | LShr | AShr =>
       match (defs, uses) {
-        ([def], [op1, op2]) if is_int_register(def) => {
+        ([def], [_, _]) if is_int_register(def) => {
           let normalized_uses = normalize_binary_uses(uses)
           match normalized_uses {
             [r1, r2] if is_int_register(r1) &&
@@ -208,7 +208,7 @@ pub fn Instruction::new(
     // Store operations
     Storeb | Storew | Storel | Storeq | Store(_) =>
       match (defs, uses) {
-        ([], [addr, value]) =>
+        ([], [addr, _]) =>
           match addr {
             Mem(_, _) => Instruction::{ opcode, defs, uses }
             Imm(_) =>
@@ -297,7 +297,7 @@ pub fn Instruction::new(
     // Comparison operations
     Eq | Ne | Gt | Ge | Lt | Le | Equ | Neu | Gtu | Geu | Ltu | Leu =>
       match (defs, uses) {
-        ([def], [op1, op2]) if is_int_register(def) => {
+        ([def], [_, _]) if is_int_register(def) => {
           let normalized_uses = normalize_binary_uses(uses)
           match normalized_uses {
             [r1, r2] if is_int_register(r1) &&
@@ -331,7 +331,7 @@ pub fn Instruction::new(
     | FltD
     | FleD =>
       match (defs, uses) {
-        ([def], [op1, op2]) if is_int_register(def) => {
+        ([def], [_, _]) if is_int_register(def) => {
           // FP comparisons produce integer result
           let normalized_uses = normalize_binary_uses(uses)
           match normalized_uses {
@@ -389,11 +389,6 @@ pub fn Instruction::new(
             }
           }
         }
-        ([], [cond, Imm(0), Label(_) as true_label, Label(_) as false_label]) if opcode
-          is Bne &&
-          is_int_register(cond) =>
-          // Special case for Bne with condition and 0
-          Instruction::{ opcode, defs, uses }
         _ => {
           println(
             "Branch instruction requires 0 defs and 4 uses (op1, op2, true_label, false_label):",
@@ -486,7 +481,7 @@ pub fn Instruction::new(
     // Select operation
     Select =>
       match (defs, uses) {
-        ([def], [cond, true_val, false_val]) if is_register(def) => {
+        ([def], [cond, _, _]) if is_register(def) => {
           if !(is_int_register(cond) || cond is Imm(_)) {
             println("Select condition must be integer register or immediate:")
             println("  cond: \{cond}")
@@ -519,11 +514,7 @@ pub fn Instruction::new(
     // Return operation
     Ret =>
       match (defs, uses) {
-        ([], []) =>
-          // Void return
-          Instruction::{ opcode, defs, uses }
-        ([], [ret_val]) =>
-          // Return with value
+        ([], [_] | []) =>
           Instruction::{ opcode, defs, uses }
         _ => {
           println("Return instruction requires 0 defs and 0 or 1 use:")
