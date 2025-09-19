@@ -231,7 +231,7 @@ fn Function::phi_elimination(self : Self) -> Unit {
             panic()
           })
         let from_bb = self.body[from_bb_idx]
-        let mov_inst = Instruction::{ opcode: Movq, defs: [dst_op], uses: [op] }
+        let mov_inst = Instruction::new(Movq, [dst_op], [op])
         from_bb.add_inst_before_terminator(mov_inst)
         continue rest
       }
@@ -267,40 +267,34 @@ fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
   self.stack_size += 8 // for storing olf frame pointer
 
   // Move StackPtr
-  let alloc_stack = Instruction::{
-    opcode: Addq,
-    defs: [StackPtr],
-    uses: [StackPtr, Imm(-self.stack_size)],
-  }
+  let alloc_stack = Instruction::new(Addq, [StackPtr], [
+    StackPtr,
+    Imm(-self.stack_size),
+  ])
   self.prologue.push(alloc_stack)
 
   // Store old FramePtr
-  let store_fp = Instruction::{
-    opcode: Storeq,
-    defs: [],
-    uses: [Mem(StackPtr, frame_ptr_loc), FramePtr],
-  }
+  let store_fp = Instruction::new(Storeq, [], [
+    Mem(StackPtr, frame_ptr_loc),
+    FramePtr,
+  ])
   self.prologue.push(store_fp)
 
   // Set new FramePtr
-  let setup_fp = Instruction::{
-    opcode: Addq,
-    defs: [FramePtr],
-    uses: [StackPtr, Imm(self.stack_size)],
-  }
+  let setup_fp = Instruction::new(Addq, [FramePtr], [
+    StackPtr,
+    Imm(self.stack_size),
+  ])
   self.prologue.push(setup_fp)
   for bb in self.body {
     let mut new_insts : Array[Instruction] = Array::new()
-    let restore_stack = Instruction::{
-      opcode: Addq,
-      defs: [StackPtr],
-      uses: [StackPtr, Imm(self.stack_size)],
-    }
-    let restore_fp = Instruction::{
-      opcode: Loadq,
-      defs: [FramePtr],
-      uses: [Mem(StackPtr, frame_ptr_loc)],
-    }
+    let restore_stack = Instruction::new(Addq, [StackPtr], [
+      StackPtr,
+      Imm(self.stack_size),
+    ])
+    let restore_fp = Instruction::new(Loadq, [FramePtr], [
+      Mem(StackPtr, frame_ptr_loc),
+    ])
     for inst in bb.insts {
       if inst.opcode is Ret {
         new_insts.push(restore_fp)

@@ -107,6 +107,7 @@ pub(all) struct Instruction {
   uses : Array[Operand]
 }
 fn Instruction::legalize(Self) -> Array[Self] raise LegalizeError
+fn Instruction::new(OpCode, Array[Operand], Array[Operand]) -> Self
 impl Show for Instruction
 
 pub(all) struct Module {

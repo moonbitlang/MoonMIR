@@ -62,32 +62,24 @@ fn Instruction::post_ra(
     { opcode: Ret, defs: [], uses: [v] } => {
       match v {
         Reg(_) => {
-          let inst = Instruction::{ opcode: Movq, defs: [Reg(0)], uses: [v] }
+          let inst = Instruction::new(Movq, [Reg(0)], [v])
           new_insts.push(inst)
         }
         FReg(_) => {
-          let inst = Instruction::{ opcode: FMovD, defs: [FReg(0)], uses: [v] }
+          let inst = Instruction::new(FMovD, [FReg(0)], [v])
           new_insts.push(inst)
         }
         Imm(i) => {
-          let inst = Instruction::{
-            opcode: Movq,
-            defs: [Reg(0)],
-            uses: [Imm(i)],
-          }
+          let inst = Instruction::new(Movq, [Reg(0)], [Imm(i)])
           new_insts.push(inst)
         }
         Mem(base, offset) => {
-          let inst = Instruction::{
-            opcode: Loadq,
-            defs: [Reg(0)],
-            uses: [Mem(base, offset)],
-          }
+          let inst = Instruction::new(Loadq, [Reg(0)], [Mem(base, offset)])
           new_insts.push(inst)
         }
         _ => raise PostRAError("Unsupported operand for return")
       }
-      let ret_inst = Instruction::{ opcode: Ret, defs: [], uses: [] }
+      let ret_inst = Instruction::new(Ret, [], [])
       new_insts.push(ret_inst)
     }
     inst => new_insts.push(inst)

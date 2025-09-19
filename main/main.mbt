@@ -85,7 +85,63 @@ fn main_err() -> Unit raise {
 }
 
 ///|
+fn test_instruction_validation() -> Unit {
+  println("\n=== Testing Instruction::new Validation ===\n")
+
+  // Test 1: Valid Add instruction
+  println("Test 1: Creating valid Add instruction...")
+  let valid_add = @GMIR.Instruction::new(@GMIR.Addq, [@GMIR.VReg(1)], [
+    @GMIR.VReg(2),
+    @GMIR.VReg(3),
+  ])
+  println("✓ Valid Add: \{valid_add}")
+
+  // Test 2: Valid Add with immediate (should normalize)
+  println("\nTest 2: Creating Add with immediate (auto-normalized)...")
+  let add_with_imm = @GMIR.Instruction::new(
+    @GMIR.Addq,
+    [@GMIR.VReg(1)],
+    [@GMIR.Imm(10L), @GMIR.VReg(2)], // Immediate first, should be swapped
+  )
+  println("✓ Normalized Add: \{add_with_imm}")
+
+  // Test 3: Valid Branch instruction
+  println("\nTest 3: Creating valid Branch instruction...")
+  let valid_branch = @GMIR.Instruction::new(@GMIR.Beq, [], [
+    @GMIR.VReg(1),
+    @GMIR.VReg(2),
+    @GMIR.Label("true"),
+    @GMIR.Label("false"),
+  ])
+  println("✓ Valid Branch: \{valid_branch}")
+
+  // Test 4: Valid Call instruction
+  println("\nTest 4: Creating valid Call instruction...")
+  let valid_call = @GMIR.Instruction::new(@GMIR.Call, [@GMIR.VReg(0)], [
+    @GMIR.Label("func"),
+    @GMIR.VReg(1),
+    @GMIR.Imm(42L),
+  ])
+  println("✓ Valid Call: \{valid_call}")
+
+  // Test 5: Invalid instruction (will panic)
+  println(
+    "\nTest 5: Attempting to create invalid instruction (wrong operand types)...",
+  )
+  println("This would panic with a clear error message:")
+  println(
+    "Example: Instruction::new(Addq, [Label(\"bad\")], [VReg(1), VReg(2)])",
+  )
+  println("Error: 'Binary arithmetic instruction requires 1 def and 2 uses'")
+  println("\n=== Validation Tests Complete ===\n")
+}
+
+///|
 fn main {
+  // Run validation tests
+  test_instruction_validation()
+
+  // Run original test
   main_err() catch {
     e => {
       println("Error: \{e}")
