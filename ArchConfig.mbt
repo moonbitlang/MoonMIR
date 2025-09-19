@@ -17,3 +17,11 @@ pub fn ArchConfig::riscv64() -> ArchConfig {
     support_select : false
   }
 }
+
+pub fn ArchConfig::debug() -> ArchConfig {
+  ArchConfig::{
+    max_num_call_regs : 4,
+    max_num_call_fregs : 4,
+    support_select : false
+  }
+}

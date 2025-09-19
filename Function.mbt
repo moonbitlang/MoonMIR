@@ -5,7 +5,9 @@ pub(all) struct Function {
   // Function Attributes
   name : String
   params : Array[Operand]
+  prologue: Array[Instruction]
   body : Array[BasicBlock]
+  epilogue: Array[Instruction]
   mut stack_size : Int64
 
   // LLVM
@@ -30,7 +32,9 @@ fn Function::new(mod: Module, llvm_func: @IR.Function) -> Function {
   Function::{
     mod,
     name: llvm_func.getName().unwrap(),
+    prologue: Array::new(),
     params: Array::new(),
+    epilogue: Array::new(),
     body: Array::new(),
     stack_size: 0,
     llvm_func,
@@ -192,8 +196,16 @@ pub impl Show for Function with output(self, logger) {
   let pstr = self.params.map(p => p.to_string()).join(", ")
   logger.write_string(pstr)
   logger.write_string(") {\n")
+  for inst in self.prologue {
+    logger.write_string("  \{inst}")
+    logger.write_string("\n")
+  }
   for bb in self.body {
     logger.write_string(bb.to_string())
+  }
+  for inst in self.epilogue {
+    logger.write_string("  \{inst}")
+    logger.write_string("\n")
   }
   logger.write_string("}\n")
 }
@@ -227,6 +239,7 @@ fn Function::phi_elimination(self : Self) -> Unit {
     }
   }
   self.delete_phi_instructions()
+  //self.prologue_epilogue_insertion()
 }
 
 ///|
@@ -238,5 +251,5 @@ fn Function::delete_phi_instructions(self : Self) -> Unit {
 }
 
 fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
-  
+  ...
 }

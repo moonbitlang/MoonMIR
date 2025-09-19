@@ -1,5 +1,6 @@
 
-let rv64_config:@GMIR.ArchConfig  = @GMIR.ArchConfig::riscv64()
+//let rv64_config:@GMIR.ArchConfig  = @GMIR.ArchConfig::riscv64()
+let debug_config:@GMIR.ArchConfig  = @GMIR.ArchConfig::debug()
 
 ///|
 /// 10 number add
@@ -67,7 +68,7 @@ fn main_err() -> Unit raise {
   println(mod)
 
   // translate to machine IR
-  let machine_mod = @GMIR.Module::new(mod, rv64_config)
+  let machine_mod = @GMIR.Module::new(mod, debug_config)
   machine_mod.run_ir_translation()
   println(machine_mod)
 }
