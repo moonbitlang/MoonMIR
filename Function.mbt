@@ -6,7 +6,7 @@ pub(all) struct Function {
   name : String
   params : Array[Operand]
   body : Array[BasicBlock]
-  mut stack_size : Int
+  mut stack_size : Int64
 
   // LLVM
   llvm_func: @IR.Function
@@ -43,6 +43,10 @@ fn Function::new(mod: Module, llvm_func: @IR.Function) -> Function {
     legalized: false,
     reg_allocated: false,
   }
+}
+
+pub fn Function::getArchConfig(self: Self) -> ArchConfig {
+  self.mod.arch_config
 }
 
 ///| For Quick Debugging
@@ -93,7 +97,7 @@ fn Function::assign_vreg_for_params(self: Self) -> Unit {
         let op = self.bind_llvm_value_to_vfreg(arg)
         self.params.push(op)
       } else {
-        let offset = (max_num_call_fregs - i) * 8
+        let offset = (max_num_call_fregs - i).to_int64() * 8
         let op = self.bind_llvm_value_to_mem(arg, offset)
         self.params.push(op)
       }
@@ -102,7 +106,7 @@ fn Function::assign_vreg_for_params(self: Self) -> Unit {
         let op = self.bind_llvm_value_to_vreg(arg)
         self.params.push(op)
       } else {
-        let offset = (max_num_call_regs - i) * 8
+        let offset = (max_num_call_regs - i).to_int64() * 8
         let op = self.bind_llvm_value_to_mem(arg, offset)
         self.params.push(op)
       }
@@ -136,6 +140,13 @@ fn Function::add_vreg(self : Self) -> Operand {
   op
 }
 
+fn Function::add_vfreg(self : Self) -> Operand {
+  let i = self.vfreg_cnt
+  let op = VFReg(i)
+  self.vfreg_cnt += 1
+  op
+}
+
 ///|
 fn Function::bind_llvm_value_to_vreg(self : Self, val : &LLVMValue) -> Operand {
   let i = self.vreg_cnt
@@ -158,7 +169,7 @@ fn Function::bind_llvm_value_to_vfreg(self : Self, val : &LLVMValue) -> Operand 
 fn Function::bind_llvm_value_to_mem(
   self : Self,
   val : &LLVMValue,
-  offset : Int,
+  offset : Int64,
 ) -> Operand {
   let op = Mem(StackPtr, offset)
   self.value_map[val] = op

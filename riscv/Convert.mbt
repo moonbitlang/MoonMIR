@@ -121,7 +121,7 @@ pub fn from_gmir_func(func : @GMIR.Function) -> Array[RvAsm] raise {
   let fname = func.name
   insts.push(Label(fname))
   if func.stack_size > 0 {
-    insts.push(Addi(Sp, Sp, -func.stack_size))
+    insts.push(Addi(Sp, Sp, -func.stack_size.to_int()))
   }
   for i, bb in func.body {
     let bb_insts = from_gmir_bb(bb, i)

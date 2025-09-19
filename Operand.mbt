@@ -127,7 +127,7 @@ pub(all) enum Operand {
   FReg(Int) // Physical Floating Point Register
   Imm(Int64) // Immediate Value
   FImm(Double) // Floating Point Immediate Value
-  Mem(Operand, Int) // Memory Addressing (Base, Offset)
+  Mem(Operand, Int64) // Memory Addressing (Base, Offset)
   Label(String) // Label
   StackPtr // Stack Top (for stack pointer)
   FramePtr // Frame Pointer

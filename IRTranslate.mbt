@@ -89,7 +89,7 @@ fn Instruction::from_llvm_inst(
   let data_layout = mod.getDataLayout()
   match inst.asInstEnum() {
     AllocaInst({ data_ty, .. }) => {
-      let data_size = data_layout.getTypeAllocSize(data_ty)
+      let data_size = data_layout.getTypeAllocSize(data_ty).to_int64()
       let offset = func.stack_size
       func.stack_size += data_size
       let _ = func.bind_llvm_value_to_mem(inst, offset)
@@ -784,20 +784,145 @@ fn Instruction::from_llvm_inst(
         [minst]
       }
     CallInst({ callee, args, .. }) => {
+      let { max_num_call_regs, max_num_call_fregs, .. } = func.getArchConfig()
+      let insts : Array[Instruction] = Array::new()
+      let mut vreg_arg_cnt = 0 
+      let mut vfreg_arg_cnt = 0
       let callee_name = callee.getName().unwrap()
       let uses : Array[Operand] = Array::new()
       uses.push(Label(callee_name))
       for arg in args {
         match arg.asValueEnum() {
-          ConstantInt(c) => uses.push(Imm(c.getValueAsInt64()))
-          ConstantFP(f) => uses.push(FImm(f.value))
+          ConstantInt(c) if vreg_arg_cnt < max_num_call_regs => {
+            let vreg = func.add_vreg()
+            let opcode = match c.getType().tryAsIntTypeEnum() {
+              Some(Int1Type(_)) | Some(Int8Type(_)) => Movb
+              Some(Int16Type(_)) => Movw
+              Some(Int32Type(_)) => Movl
+              Some(Int64Type(_)) => Movq
+              _ => raise IRTranslateError("CallInst: unsupported ConstantInt type for argument")
+            }
+            let loadi = Instruction::{ opcode, defs: [vreg], uses: [Imm(c.getValueAsInt64())] }
+            insts.push(loadi)
+            uses.push(vreg)
+            vreg_arg_cnt += 1
+          }
+          // if vreg_arg_cnt >= max_num_call_regs, we pass the argument on stack
+          ConstantInt(c) => {
+            let offset = func.stack_size
+            let storei = Instruction::{
+              opcode: Storeq,
+              defs: [],
+              uses: [Mem(StackPtr, offset), Imm(c.getValueAsInt64())],
+            }
+            insts.push(storei)
+            uses.push(Mem(StackPtr, offset))
+            func.stack_size += 8 // Align to 8 bytes
+          }
+          ConstantFP(f) if vfreg_arg_cnt < max_num_call_fregs => {
+            let vfreg = func.add_vfreg()
+            let opcode = match f.getType().tryAsFPTypeEnum() {
+              Some(FloatType(_)) => FMovS
+              Some(DoubleType(_)) => FMovD
+              _ => raise IRTranslateError("CallInst: unsupported ConstantFP type for argument")
+            }
+            let loadfi = Instruction::{ opcode, defs: [vfreg], uses: [FImm(f.value)] }
+            insts.push(loadfi)
+            uses.push(vfreg)
+            vfreg_arg_cnt += 1
+          }
+          ConstantFP(f) => {
+            let offset = func.stack_size
+            let storei = Instruction::{
+              opcode: Storeq,
+              defs: [],
+              uses: [Mem(StackPtr, offset), FImm(f.value)],
+            }
+            insts.push(storei)
+            uses.push(Mem(StackPtr, offset))
+            func.stack_size += 8 // Align to 8 bytes
+          }
           _ => {
             guard func.get_operand_from_llvm_value(arg) is Some(op) else {
-              raise IRTranslateError(
-                "CallInst: argument operand not found in value map",
-              )
+              raise IRTranslateError("CallInst: argument operand not found in value map")
             }
-            uses.push(op)
+            match op {
+              VReg(_) if vreg_arg_cnt < max_num_call_regs => {
+                uses.push(op)
+                vreg_arg_cnt += 1
+              }
+              VReg(_) => {
+                let offset = func.stack_size
+                let storei = Instruction::{
+                  opcode: Storeq,
+                  defs: [],
+                  uses: [Mem(StackPtr, offset), op],
+                }
+                insts.push(storei)
+                uses.push(Mem(StackPtr, offset))
+                func.stack_size += 8 // Align to 8 bytes
+              }
+              VFReg(_) if vfreg_arg_cnt < max_num_call_fregs => {
+                uses.push(op)
+                vfreg_arg_cnt += 1
+              }
+              VFReg(_) => {
+                let offset = func.stack_size
+                let storei = Instruction::{
+                  opcode: Storeq,
+                  defs: [],
+                  uses: [Mem(StackPtr, offset), op],
+                }
+                insts.push(storei)
+                uses.push(Mem(StackPtr, offset))
+                func.stack_size += 8 // Align to 8 bytes
+              }
+              Mem(r, offset) if !(arg.getType().isIEEELikeFPTy()) && vreg_arg_cnt < max_num_call_regs => {
+                let vreg = func.add_vreg()
+                let loadi = Instruction::{
+                  opcode: Loadq,
+                  defs: [vreg],
+                  uses: [Mem(r, offset)],
+                }
+                insts.push(loadi)
+                uses.push(vreg)
+                vreg_arg_cnt += 1
+              }
+              Mem(r, offset) if arg.getType().isIEEELikeFPTy() && vfreg_arg_cnt < max_num_call_fregs => {
+                let vfreg = func.add_vfreg()
+                let loadi = Instruction::{
+                  opcode: FMovD,
+                  defs: [vfreg],
+                  uses: [Mem(r, offset)],
+                }
+                insts.push(loadi)
+                uses.push(vfreg)
+                vfreg_arg_cnt += 1
+              }
+              Mem(r, offset) if !(arg.getType().isIEEELikeFPTy()) => {
+                let stack_offset = func.stack_size
+                let storei = Instruction::{
+                  opcode: Storeq,
+                  defs: [],
+                  uses: [Mem(StackPtr, stack_offset), Mem(r, offset)],
+                }
+                insts.push(storei)
+                uses.push(Mem(StackPtr, stack_offset))
+                func.stack_size += 8 // Align to 8 bytes
+              }
+              Mem(r, offset) => {
+                let stack_offset = func.stack_size
+                let storei = Instruction::{
+                  opcode: Storeq,
+                  defs: [],
+                  uses: [Mem(StackPtr, stack_offset), Mem(r, offset)],
+                }
+                insts.push(storei)
+                uses.push(Mem(StackPtr, stack_offset))
+                func.stack_size += 8 // Align to 8 bytes
+              }
+              _ => raise IRTranslateError("CallInst: unsupported argument operand type")
+            }
           }
         }
       }
@@ -811,7 +936,8 @@ fn Instruction::from_llvm_inst(
         defs.push(ret_op)
       }
       let call_inst = Instruction::{ opcode: Call, defs, uses }
-      [call_inst]
+      insts.push(call_inst)
+      insts
     }
     ExtractValueInst(_) =>
       raise IRTranslateError("ExtractValueInst is not supported yet")

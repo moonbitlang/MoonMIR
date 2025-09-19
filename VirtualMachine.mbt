@@ -115,8 +115,8 @@ fn ExecutionContext::get_operand_value(
     Mem(base, offset) => {
       let base_val = self.get_operand_value(base)
       let addr = match base_val {
-        VMValue::Int(base_addr) => base_addr + offset.to_int64()
-        VMValue::Address(base_addr) => base_addr + offset.to_int64()
+        VMValue::Int(base_addr) => base_addr + offset
+        VMValue::Address(base_addr) => base_addr + offset
         _ =>
           raise VMError::RuntimeError(
             "Invalid base address for memory operation",
@@ -153,8 +153,8 @@ fn ExecutionContext::set_operand_value(
     Mem(base, offset) => {
       let base_val = self.get_operand_value(base)
       let addr = match base_val {
-        VMValue::Int(base_addr) => base_addr + offset.to_int64()
-        VMValue::Address(base_addr) => base_addr + offset.to_int64()
+        VMValue::Int(base_addr) => base_addr + offset
+        VMValue::Address(base_addr) => base_addr + offset
         _ =>
           raise VMError::RuntimeError(
             "Invalid base address for memory operation",
