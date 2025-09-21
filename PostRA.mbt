@@ -348,8 +348,229 @@ fn Function::promote_ret(self : Function) -> Unit raise PostRAError {
 // be careful the special case: call func_name, %a3, %a2, % a1, %a0
 
 ///|
-fn Function::call_inst_transform(self : Function) -> Unit raise PostRAError {
-  if false {
-    raise PostRAError("Not implemented")
+fn Function::call_inst_transform(self : Function) -> Unit {
+  let arch_config = self.getArchConfig()
+  let { num_arg_regs, num_arg_fregs, .. } = arch_config
+  
+  for bb in self.body {
+    let new_insts : Array[Instruction] = Array::new()
+    
+    for inst in bb.insts {
+      match inst {
+        { opcode: Call, defs, uses: [func_label, ..args], livein, liveout, .. } => {
+          // Separate integer and floating-point arguments
+          let mut int_args : Array[(Int, Operand)] = []
+          let mut fp_args : Array[(Int, Operand)] = []
+          let mut stack_args : Array[Operand] = []
+          
+          for arg in args {
+            match arg {
+              FReg(_) | FAReg(_) | FTReg(_) | FSReg(_) | FImm(_) => {
+                if fp_args.length() < num_arg_fregs {
+                  fp_args.push((fp_args.length(), arg))
+                } else {
+                  stack_args.push(arg)
+                }
+              }
+              _ => {
+                if int_args.length() < num_arg_regs {
+                  int_args.push((int_args.length(), arg))
+                } else {
+                  stack_args.push(arg)
+                }
+              }
+            }
+          }
+          
+          // Handle integer arguments - need to be careful about dependencies
+          let mut moves_before : Array[Instruction] = []
+          
+          // Build dependency graph for integer arguments
+          let mut pending_moves : Array[(Operand, Operand)] = []
+          let mut completed : Set[Int] = Set::new()
+          
+          for pair in int_args {
+            let (idx, src) = pair
+            let target = AReg(idx)
+            pending_moves.push((target, src))
+          }
+          
+          // Process moves that don't have dependencies first
+          let mut progress = true
+          while progress && !pending_moves.is_empty() {
+            progress = false
+            let mut remaining : Array[(Operand, Operand)] = []
+            
+            for move_pair in pending_moves {
+              let (target, src) = move_pair
+              
+              // Check if this move can be done now
+              let can_move = match (target, src) {
+                (AReg(t_idx), AReg(s_idx)) => {
+                  if t_idx == s_idx {
+                    // No move needed
+                    true
+                  } else {
+                    // Check if any pending move needs AReg(t_idx) as source
+                    let mut blocked = false
+                    for other_move in pending_moves {
+                      let (_, other_src) = other_move
+                      match other_src {
+                        AReg(other_s_idx) if other_s_idx == t_idx => {
+                          // This target is needed as source elsewhere
+                          blocked = true
+                          break
+                        }
+                        _ => ()
+                      }
+                    }
+                    !blocked
+                  }
+                }
+                (AReg(_), _) => true  // Non-AReg sources can always be moved
+                _ => true
+              }
+              
+              if can_move {
+                match (target, src) {
+                  (AReg(t_idx), AReg(s_idx)) if t_idx == s_idx => {
+                    // No move needed
+                    completed.add(t_idx)
+                    progress = true
+                  }
+                  _ => {
+                    moves_before.push(Instruction::new(Movq, [target], [src], bb=Some(bb)))
+                    match target {
+                      AReg(idx) => completed.add(idx)
+                      _ => ()
+                    }
+                    progress = true
+                  }
+                }
+              } else {
+                remaining.push(move_pair)
+              }
+            }
+            
+            pending_moves = remaining
+          }
+          
+          // Handle any remaining circular dependencies
+          if !pending_moves.is_empty() {
+            let (free_regs, _) = self.collect_free_regs()
+            
+            for move_pair in pending_moves {
+              let (target, src) = move_pair
+              
+              match (target, src) {
+                (AReg(t_idx), AReg(s_idx)) if t_idx == s_idx => ()  // No move needed
+                _ => {
+                  match free_regs.pop_front() {
+                    Some(temp_reg) => {
+                      // Use free register for swap
+                      moves_before.push(Instruction::new(Movq, [temp_reg], [src], bb=Some(bb)))
+                      moves_before.push(Instruction::new(Movq, [target], [temp_reg], bb=Some(bb)))
+                    }
+                    None => {
+                      // No free register, use stack
+                      let old_stack_size = self.stack_size
+                      self.extend_stack(8, 8)
+                      let stack_offset = self.stack_size - 8
+                      
+                      // Store to stack
+                      moves_before.push(Instruction::new(Storeq, [], [Mem(StackPtr, stack_offset), src], bb=Some(bb)))
+                      // Load from stack
+                      moves_before.push(Instruction::new(Loadq, [target], [Mem(StackPtr, stack_offset)], bb=Some(bb)))
+                      
+                      // Adjust stack argument offsets if stack was extended
+                      if self.stack_size != old_stack_size {
+                        for i, arg in stack_args {
+                          match arg {
+                            Mem(StackPtr, offset) => {
+                              stack_args[i] = Mem(StackPtr, offset + 8)
+                            }
+                            _ => ()
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          
+          // Handle floating-point arguments similarly
+          let mut fp_pending_moves : Array[(Operand, Operand)] = []
+          for pair in fp_args {
+            let (idx, src) = pair
+            let target = FAReg(idx)
+            fp_pending_moves.push((target, src))
+          }
+          
+          // Process floating-point moves
+          for move_pair in fp_pending_moves {
+            let (target, src) = move_pair
+            match (target, src) {
+              (FAReg(t_idx), FAReg(s_idx)) if t_idx == s_idx => ()  // No move needed
+              _ => moves_before.push(Instruction::new(FMovD, [target], [src], bb=Some(bb)))
+            }
+          }
+          
+          // Add all move instructions before the call
+          for move_inst in moves_before {
+            new_insts.push(move_inst)
+          }
+          
+          // Create the new call instruction with properly positioned arguments
+          let mut new_uses : Array[Operand] = [func_label]
+          
+          // Add argument registers in order
+          for i in 0..<int_args.length() {
+            new_uses.push(AReg(i))
+          }
+          for i in 0..<fp_args.length() {
+            new_uses.push(FAReg(i))
+          }
+          // Add stack arguments
+          for arg in stack_args {
+            new_uses.push(arg)
+          }
+          
+          let new_call = Instruction::{
+            opcode: Call,
+            defs: [],
+            uses: new_uses,
+            bb: Some(bb),
+            livein,
+            liveout,
+          }
+          new_insts.push(new_call)
+          
+          // Handle return value
+          if !defs.is_empty() {
+            let ret_val = defs[0]
+            match ret_val {
+              AReg(0) => ()  // Already in the right place for integer return
+              FAReg(0) => ()  // Already in the right place for FP return
+              FReg(_) | FTReg(_) | FSReg(_) | VFReg(_) => {
+                // Floating-point return value
+                new_insts.push(Instruction::new(FMovD, [ret_val], [FAReg(0)], bb=Some(bb)))
+              }
+              _ => {
+                // Integer return value
+                new_insts.push(Instruction::new(Movq, [ret_val], [AReg(0)], bb=Some(bb)))
+              }
+            }
+          }
+        }
+        _ => {
+          // Not a call instruction, keep as-is
+          new_insts.push(inst)
+        }
+      }
+    }
+    
+    bb.insts = new_insts
   }
 }
