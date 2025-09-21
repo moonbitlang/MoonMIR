@@ -53,7 +53,6 @@ pub(all) enum FReg {
   Ft10
   Ft11
 }
-fn FReg::from_vfreg(Int) -> Self raise
 impl Compare for FReg
 impl Eq for FReg
 impl Hash for FReg
@@ -102,7 +101,7 @@ pub(all) enum Reg {
   T5
   T6
 }
-fn Reg::from_vreg(Int) -> Self raise
+fn Reg::from_mir_operand(@GMIR.Operand) -> Self raise
 impl Compare for Reg
 impl Eq for Reg
 impl Hash for Reg

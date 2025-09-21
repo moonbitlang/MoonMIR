@@ -9,11 +9,7 @@ import(
 // Values
 fn live_analysis(Function) -> (Graph[Int], Graph[Int])
 
-fn reg_alloc_for_function(Function, max_num_reg~ : Int, max_num_freg~ : Int) -> Function raise RegAllocError
-
 fn rewrite_instruction(Instruction, vreg_operand_map~ : Map[Int, Operand], vfreg_operand_map~ : Map[Int, Operand]) -> Unit raise RegAllocError
-
-fn rewrite_param_reg(Function) -> Unit
 
 // Errors
 pub suberror IRTranslateError String
@@ -28,16 +24,16 @@ impl Show for PostRAError
 pub suberror RegAllocError String
 impl Show for RegAllocError
 
-pub suberror VMError {
-  IRError(String)
-  RuntimeError(String)
-}
-impl Show for VMError
-
 // Types and methods
 pub(all) struct ArchConfig {
-  max_num_call_regs : Int
-  max_num_call_fregs : Int
+  max_num_reg : Int
+  max_num_freg : Int
+  num_arg_regs : Int
+  num_arg_fregs : Int
+  num_temp_regs : Int
+  num_temp_fregs : Int
+  num_saved_regs : Int
+  num_saved_fregs : Int
   support_select : Bool
 }
 fn ArchConfig::debug() -> Self
@@ -55,18 +51,6 @@ fn BasicBlock::legalize(Self) -> Unit raise LegalizeError
 fn BasicBlock::run_ir_translation(Self) -> Unit raise IRTranslateError
 impl Show for BasicBlock
 
-pub struct ExecutionContext {
-  mut vregs : Map[Int, VMValue]
-  mut vfregs : Map[Int, VMValue]
-  mut regs : Map[Int, VMValue]
-  mut fregs : Map[Int, VMValue]
-  mut current_bb : Int
-  mut current_inst : Int
-  mut stack : Array[VMValue]
-  mut stack_ptr : Int
-  function : Function
-}
-
 pub(all) struct Function {
   mod : Module
   name : String
@@ -75,6 +59,7 @@ pub(all) struct Function {
   body : Array[BasicBlock]
   epilogue : Array[Instruction]
   mut stack_size : Int64
+  terminal_bb : Array[BasicBlock]
   llvm_func : @IR.Function
   value_map : Map[&@IR.Value, Operand]
   bbmap : Map[String, BasicBlock]
@@ -85,6 +70,7 @@ pub(all) struct Function {
   mut legalized : Bool
   mut reg_allocated : Bool
 }
+fn Function::alloc_register(Self) -> Unit raise RegAllocError
 fn Function::from_llvm_function(@IR.Function, ArchConfig) -> Self raise IRTranslateError
 fn Function::getArchConfig(Self) -> ArchConfig
 fn Function::legalize(Self) -> Unit raise LegalizeError
@@ -105,9 +91,12 @@ pub(all) struct Instruction {
   opcode : OpCode
   defs : Array[Operand]
   uses : Array[Operand]
+  bb : BasicBlock?
+  livein : Array[Operand]
+  liveout : Array[Operand]
 }
 fn Instruction::legalize(Self) -> Array[Self] raise LegalizeError
-fn Instruction::new(OpCode, Array[Operand], Array[Operand]) -> Self
+fn Instruction::new(OpCode, Array[Operand], Array[Operand], bb? : BasicBlock?) -> Self
 impl Show for Instruction
 
 pub(all) struct Module {
@@ -120,11 +109,11 @@ pub(all) struct Module {
   mut legalized : Bool
   mut reg_allocated : Bool
 }
+fn Module::alloc_register(Self) -> Self raise RegAllocError
 fn Module::legalize(Self) -> Unit raise LegalizeError
 fn Module::new(@IR.Module, ArchConfig) -> Self
 fn Module::peephole_optimizations(Self) -> Self
 fn Module::post_ra(Self) -> Unit raise PostRAError
-fn Module::reg_alloc(Self, max_num_reg~ : Int, max_num_freg~ : Int) -> Self raise RegAllocError
 fn Module::run_ir_translation(Self) -> Unit raise IRTranslateError
 impl Show for Module
 
@@ -256,6 +245,12 @@ pub(all) enum Operand {
   FReg(Int)
   Imm(Int64)
   FImm(Double)
+  AReg(Int)
+  TReg(Int)
+  SReg(Int)
+  FAReg(Int)
+  FTReg(Int)
+  FSReg(Int)
   Mem(Operand, Int64)
   Label(String)
   StackPtr
@@ -263,23 +258,6 @@ pub(all) enum Operand {
 }
 impl Eq for Operand
 impl Show for Operand
-
-pub(all) enum VMValue {
-  Int(Int64)
-  Double(Double)
-  Address(Int64)
-  Void
-}
-impl Eq for VMValue
-impl Show for VMValue
-
-pub struct VirtualMachine {
-  external_functions : Map[String, (Array[VMValue]) -> VMValue raise VMError]
-  mut memory : Array[VMValue]
-}
-fn VirtualMachine::eval_function(Self, Function, Array[VMValue]) -> VMValue raise VMError
-fn VirtualMachine::eval_module(Self, Module) -> Unit raise VMError
-fn VirtualMachine::new() -> Self
 
 // Type aliases
 

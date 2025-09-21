@@ -9,7 +9,7 @@ pub(all) struct Function {
   body : Array[BasicBlock]
   epilogue : Array[Instruction]
   mut stack_size : Int64
-  terminal_bb: Array[BasicBlock] // BasicBlocks that end with ret instruction
+  terminal_bb : Array[BasicBlock] // BasicBlocks that end with ret instruction
 
   // LLVM
   llvm_func : @IR.Function

@@ -2,11 +2,11 @@
 pub suberror RegAllocError String derive(Show)
 
 ///|
-pub fn Module::alloc_register(
-  self : Module,
-) -> Module raise RegAllocError {
+pub fn Module::alloc_register(self : Module) -> Module raise RegAllocError {
   if self.reg_allocated {
-    raise RegAllocError("Register allocation has already been run on this module.")
+    raise RegAllocError(
+      "Register allocation has already been run on this module.",
+    )
   }
   for func in self.functions {
     func.alloc_register()
@@ -15,11 +15,11 @@ pub fn Module::alloc_register(
 }
 
 ///|
-pub fn Function::alloc_register(
-  f : Function,
-) -> Unit raise RegAllocError {
+pub fn Function::alloc_register(f : Function) -> Unit raise RegAllocError {
   if f.reg_allocated {
-    raise RegAllocError("Register allocation has already been run on this function.")
+    raise RegAllocError(
+      "Register allocation has already been run on this function.",
+    )
   }
   let { max_num_reg, max_num_freg, .. } = f.getArchConfig()
 
@@ -186,7 +186,12 @@ pub fn rewrite_instruction(
   }
 }
 
-fn Function::swap_register(self: Function, reg1: Operand, reg2: Operand) -> Unit {
+///|
+fn Function::swap_register(
+  self : Function,
+  reg1 : Operand,
+  reg2 : Operand,
+) -> Unit {
   for i, param in self.params {
     if param == reg1 {
       self.params[i] = reg2

@@ -5,6 +5,8 @@ pub(all) struct BasicBlock {
   mut insts : Array[Instruction]
   parent : Function
   preds : Array[BasicBlock]
+  livein: Set[Operand]
+  liveout: Set[Operand]
 }
 
 ///|
@@ -19,6 +21,8 @@ fn BasicBlock::new(
     insts: Array::new(),
     parent: func,
     preds: Array::new(),
+    livein: Set::new(),
+    liveout: Set::new(),
   }
 }
 

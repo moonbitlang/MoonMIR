@@ -55,7 +55,7 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> RvAsm raise {
       let src1 = Reg::from_mir_operand(src1)
       Addi(dst, src1, -src2.to_int())
     }
-    { opcode: Subq, defs: [dst], uses: [src1, src2] , ..} => {
+    { opcode: Subq, defs: [dst], uses: [src1, src2], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)

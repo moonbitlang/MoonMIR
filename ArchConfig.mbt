@@ -4,26 +4,25 @@ pub(all) struct ArchConfig {
   // The Number of Total Physical Registers
   // max_num_reg should be = num_arg_regs + num_temp_regs + num_saved_regs
   // not include special registers like zero, ra, sp
-  max_num_reg: Int
+  max_num_reg : Int
   // The Number of Total Physical Floating Point Registers
   // max_num_freg should be = num_arg_fregs + num_temp_fregs + num_saved_fregs
-  max_num_freg: Int
+  max_num_freg : Int
   // The Number of Physicial Argument Registers
-  num_arg_regs: Int
+  num_arg_regs : Int
   // The Number of Physical Argument Floating Point Registers
-  num_arg_fregs: Int
+  num_arg_fregs : Int
   // The Number of Physical Temporary Registers
-  num_temp_regs: Int
+  num_temp_regs : Int
   // The Number of Physical Temporary Floating Point Registers
-  num_temp_fregs: Int
+  num_temp_fregs : Int
   // The Number of Physical Saved Registers
-  num_saved_regs: Int
+  num_saved_regs : Int
   // The Number of Physical Saved Floating Point Registers
-  num_saved_fregs: Int
+  num_saved_fregs : Int
   // Whether to support select instruction
   // If false, will lower to branches
   support_select : Bool
-
 }
 
 ///|
