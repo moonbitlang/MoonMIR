@@ -47,7 +47,7 @@ fn Function::post_ra(self : Function) -> Unit raise PostRAError {
   self.group_registers()
 
   // Step 2:
-   self.call_inst_transform()
+  self.call_inst_transform()
   // Step 3: Promote return value
   // rewrite `ret v` to `mov ret_reg, v; ret`
   self.promote_ret()
@@ -346,6 +346,8 @@ fn Function::promote_ret(self : Function) -> Unit raise PostRAError {
 // %t1 = movq %a0
 // ```
 // be careful the special case: call func_name, %a3, %a2, % a1, %a0
+
+///|
 fn Function::call_inst_transform(self : Function) -> Unit raise PostRAError {
   if false {
     raise PostRAError("Not implemented")

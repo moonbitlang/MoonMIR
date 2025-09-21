@@ -10,7 +10,7 @@ fn from_gmir_bb(@GMIR.BasicBlock, Int) -> Array[RvAsm] raise
 
 fn from_gmir_func(@GMIR.Function) -> Array[RvAsm] raise
 
-fn from_gmir_inst(@GMIR.Instruction) -> RvAsm raise
+fn from_gmir_inst(@GMIR.Instruction) -> Array[RvAsm] raise
 
 fn from_gmir_module(@GMIR.Module) -> Array[RvAsm] raise
 
@@ -53,6 +53,7 @@ pub(all) enum FReg {
   Ft10
   Ft11
 }
+fn FReg::from_mir_operand(@GMIR.Operand) -> Self raise
 impl Compare for FReg
 impl Eq for FReg
 impl Hash for FReg
@@ -60,7 +61,7 @@ impl Show for FReg
 
 pub(all) struct Mem {
   base : Reg
-  offset : Int
+  offset : Int64
 }
 impl Compare for Mem
 impl Eq for Mem

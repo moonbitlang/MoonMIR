@@ -36,6 +36,7 @@ pub fn Reg::from_mir_operand(v : @GMIR.Operand) -> Reg raise {
   }
 }
 
+///|
 pub fn FReg::from_mir_operand(v : @GMIR.Operand) -> FReg raise {
   match v {
     FAReg(0) => Fa0
@@ -66,36 +67,63 @@ pub fn FReg::from_mir_operand(v : @GMIR.Operand) -> FReg raise {
     FSReg(9) => Fs9
     FSReg(10) => Fs10
     FSReg(11) => Fs11
-    _ => raise GMIRToRvAsmError("Error: Unsupported GMIR floating-point register: \{v}")
+    _ =>
+      raise GMIRToRvAsmError(
+        "Error: Unsupported GMIR floating-point register: \{v}",
+      )
   }
 }
 
-fn get_free_reg(inst: @GMIR.Instruction) -> Array[Reg] raise {
-  let all_regs: Set[@GMIR.Operand] = Set::of([
-    AReg(0), AReg(1), AReg(2), AReg(3), AReg(4), AReg(5), AReg(6), AReg(7),
-    TReg(0), TReg(1), TReg(2), TReg(3), TReg(4), TReg(5), TReg(6),
-    SReg(0), SReg(1), SReg(2), SReg(3), SReg(4), SReg(5), SReg(6), SReg(7), SReg(8), SReg(9), SReg(10)
+///|
+fn get_free_reg(inst : @GMIR.Instruction) -> Array[Reg] raise {
+  let all_regs : Set[@GMIR.Operand] = Set::of([
+    AReg(0),
+    AReg(1),
+    AReg(2),
+    AReg(3),
+    AReg(4),
+    AReg(5),
+    AReg(6),
+    AReg(7),
+    TReg(0),
+    TReg(1),
+    TReg(2),
+    TReg(3),
+    TReg(4),
+    TReg(5),
+    TReg(6),
+    SReg(0),
+    SReg(1),
+    SReg(2),
+    SReg(3),
+    SReg(4),
+    SReg(5),
+    SReg(6),
+    SReg(7),
+    SReg(8),
+    SReg(9),
+    SReg(10),
   ])
   let { liveout, .. } = inst
   for op in liveout {
     match op {
-      AReg(_)| TReg(_) | SReg(_) as op => all_regs.remove(op)
+      AReg(_) | TReg(_) | SReg(_) as op => all_regs.remove(op)
       _ => ()
     }
   }
   let free_regs : Array[Reg] = Array::new()
   for op in all_regs {
-    if op is AReg(_){
+    if op is AReg(_) {
       free_regs.push(Reg::from_mir_operand(op))
     }
   }
   for op in all_regs {
-    if op is TReg(_){
+    if op is TReg(_) {
       free_regs.push(Reg::from_mir_operand(op))
     }
   }
   for op in all_regs {
-    if op is SReg(_){
+    if op is SReg(_) {
       free_regs.push(Reg::from_mir_operand(op))
     }
   }
@@ -146,46 +174,53 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let dst = Reg::from_mir_operand(dst)
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
-    [Addw(dst, src1, src2)]
+      [Addw(dst, src1, src2)]
     }
     { opcode: Storel, defs: [], uses: [Mem(base, offset), Imm(i)], .. } => {
       // riscv doesn't support store immediate, need to use a temp register
       let base = Reg::from_mir_operand(base)
       let free_regs = get_free_reg(inst)
-      let free_reg = free_regs.get(0).unwrap_or_else(fn () raise { raise GMIRToRvAsmError("No free register available")})
+      let free_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available")
+        })
       let insts : Array[RvAsm] = Array::new()
       insts.push(Li(free_reg, i.to_string()))
-      insts.push(Sw(free_reg, Mem::{ base, offset} ))
+      insts.push(Sw(free_reg, Mem::{ base, offset }))
       insts
     }
     { opcode: Loadl, defs: [dst], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let base = Reg::from_mir_operand(base)
-      [Lw(dst, Mem::{ base, offset} )]
+      [Lw(dst, Mem::{ base, offset })]
     }
     { opcode: Storeq, defs: [], uses: [Mem(base, offset), Imm(i)], .. } => {
       // riscv doesn't support store immediate, need to use a temp register
       let base = Reg::from_mir_operand(base)
       let free_regs = get_free_reg(inst)
-      let free_reg = free_regs.get(0).unwrap_or_else(fn () raise { raise GMIRToRvAsmError("No free register available")})
+      let free_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available")
+        })
       let insts : Array[RvAsm] = Array::new()
       insts.push(Li(free_reg, i.to_string()))
-      insts.push(Sd(free_reg, Mem::{ base, offset} ))
+      insts.push(Sd(free_reg, Mem::{ base, offset }))
       insts
     }
     { opcode: Storeq, defs: [], uses: [Mem(base, offset), src], .. } => {
       let base = Reg::from_mir_operand(base)
       let src = Reg::from_mir_operand(src)
-      [Sd(src, Mem::{ base, offset} )]
+      [Sd(src, Mem::{ base, offset })]
     }
     { opcode: Loadq, defs: [dst], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let base = Reg::from_mir_operand(base)
-      [Ld(dst, Mem::{ base, offset} )]
+      [Ld(dst, Mem::{ base, offset })]
     }
-    { opcode: Call, defs: [], uses: [Label(func_name)], .. } => {
+    { opcode: Call, defs: [], uses: [Label(func_name)], .. } =>
       [Call(func_name)]
-    }
     _ => raise GMIRToRvAsmError("UnImplemented GMIR instruction: \{inst}")
   }
 }
