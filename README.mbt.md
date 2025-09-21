@@ -1,1 +1,1 @@
-# username/GMIR
+# Kaida-Amethyst/GMIR

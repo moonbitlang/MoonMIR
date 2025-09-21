@@ -522,25 +522,10 @@ fn Function::call_inst_transform(self : Function) -> Unit {
             new_insts.push(move_inst)
           }
           
-          // Create the new call instruction with properly positioned arguments
-          let mut new_uses : Array[Operand] = [func_label]
-          
-          // Add argument registers in order
-          for i in 0..<int_args.length() {
-            new_uses.push(AReg(i))
-          }
-          for i in 0..<fp_args.length() {
-            new_uses.push(FAReg(i))
-          }
-          // Add stack arguments
-          for arg in stack_args {
-            new_uses.push(arg)
-          }
-          
           let new_call = Instruction::{
             opcode: Call,
             defs: [],
-            uses: new_uses,
+            uses: [func_label],
             bb: Some(bb),
             livein,
             liveout,
