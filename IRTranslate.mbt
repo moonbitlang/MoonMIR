@@ -736,7 +736,7 @@ fn Instruction::from_llvm_inst(
         [minst]
       }
     CallInst({ callee, args, .. }) => {
-      let { max_num_call_regs, max_num_call_fregs, .. } = func.getArchConfig()
+      let { num_arg_regs, num_arg_fregs, .. } = func.getArchConfig()
       let insts : Array[Instruction] = Array::new()
       let mut vreg_arg_cnt = 0
       let mut vfreg_arg_cnt = 0
@@ -745,7 +745,7 @@ fn Instruction::from_llvm_inst(
       uses.push(Label(callee_name))
       for arg in args {
         match arg.asValueEnum() {
-          ConstantInt(c) if vreg_arg_cnt < max_num_call_regs => {
+          ConstantInt(c) if vreg_arg_cnt < num_arg_regs => {
             let vreg = func.add_vreg()
             let opcode = match c.getType().tryAsIntTypeEnum() {
               Some(Int1Type(_)) | Some(Int8Type(_)) => Movb
@@ -764,7 +764,7 @@ fn Instruction::from_llvm_inst(
             uses.push(vreg)
             vreg_arg_cnt += 1
           }
-          // if vreg_arg_cnt >= max_num_call_regs, we pass the argument on stack
+          // if vreg_arg_cnt >= num_arg_regs, we pass the argument on stack
           ConstantInt(c) => {
             let offset = func.stack_size
             let storei = Instruction::new(Storeq, [], [
@@ -775,7 +775,7 @@ fn Instruction::from_llvm_inst(
             uses.push(Mem(StackPtr, offset))
             func.stack_size += 8 // Align to 8 bytes
           }
-          ConstantFP(f) if vfreg_arg_cnt < max_num_call_fregs => {
+          ConstantFP(f) if vfreg_arg_cnt < num_arg_fregs => {
             let vfreg = func.add_vfreg()
             let opcode = match f.getType().tryAsFPTypeEnum() {
               Some(FloatType(_)) => FMovS
@@ -807,7 +807,7 @@ fn Instruction::from_llvm_inst(
               )
             }
             match op {
-              VReg(_) if vreg_arg_cnt < max_num_call_regs => {
+              VReg(_) if vreg_arg_cnt < num_arg_regs => {
                 uses.push(op)
                 vreg_arg_cnt += 1
               }
@@ -821,7 +821,7 @@ fn Instruction::from_llvm_inst(
                 uses.push(Mem(StackPtr, offset))
                 func.stack_size += 8 // Align to 8 bytes
               }
-              VFReg(_) if vfreg_arg_cnt < max_num_call_fregs => {
+              VFReg(_) if vfreg_arg_cnt < num_arg_fregs => {
                 uses.push(op)
                 vfreg_arg_cnt += 1
               }
@@ -836,7 +836,7 @@ fn Instruction::from_llvm_inst(
                 func.stack_size += 8 // Align to 8 bytes
               }
               Mem(r, offset) if !arg.getType().isIEEELikeFPTy() &&
-                vreg_arg_cnt < max_num_call_regs => {
+                vreg_arg_cnt < num_arg_regs => {
                 let vreg = func.add_vreg()
                 let loadi = Instruction::new(Loadq, [vreg], [Mem(r, offset)])
                 insts.push(loadi)
@@ -844,7 +844,7 @@ fn Instruction::from_llvm_inst(
                 vreg_arg_cnt += 1
               }
               Mem(r, offset) if arg.getType().isIEEELikeFPTy() &&
-                vfreg_arg_cnt < max_num_call_fregs => {
+                vfreg_arg_cnt < num_arg_fregs => {
                 let vfreg = func.add_vfreg()
                 let loadi = Instruction::new(FMovD, [vfreg], [Mem(r, offset)])
                 insts.push(loadi)

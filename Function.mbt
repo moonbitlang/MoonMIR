@@ -99,22 +99,22 @@ pub fn Function::run_ir_translation(self : Self) -> Unit raise IRTranslateError 
 
 ///|
 fn Function::assign_vreg_for_params(self : Self) -> Unit {
-  let { max_num_call_regs, max_num_call_fregs, .. } = self.mod.arch_config
+  let { num_arg_regs, num_arg_fregs, .. } = self.mod.arch_config
   for i, arg in self.llvm_func.arguments {
     if arg.getType().isIEEELikeFPTy() {
-      if i < max_num_call_fregs {
+      if i < num_arg_fregs {
         let op = self.bind_llvm_value_to_vfreg(arg)
         self.params.push(op)
       } else {
-        let offset = (max_num_call_fregs - i).to_int64() * 8
+        let offset = (num_arg_fregs - i).to_int64() * 8
         let op = self.bind_llvm_value_to_mem(arg, offset)
         self.params.push(op)
       }
-    } else if i < max_num_call_regs {
+    } else if i < num_arg_regs {
       let op = self.bind_llvm_value_to_vreg(arg)
       self.params.push(op)
     } else {
-      let offset = (max_num_call_regs - i).to_int64() * 8
+      let offset = (num_arg_regs - i).to_int64() * 8
       let op = self.bind_llvm_value_to_mem(arg, offset)
       self.params.push(op)
     }

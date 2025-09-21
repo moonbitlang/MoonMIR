@@ -127,6 +127,12 @@ pub(all) enum Operand {
   FReg(Int) // Physical Floating Point Register
   Imm(Int64) // Immediate Value
   FImm(Double) // Floating Point Immediate Value
+  AReg(Int) // Argument Register // Appeared in Post Register Allocation
+  TReg(Int) // Temporary Register // Appeared in Post Register Allocation
+  SReg(Int) // Saved Register // Appeared in Post Register Allocation
+  FAReg(Int) // Argument Floating Point Register // Appeared in Post Register Allocation
+  FTReg(Int) // Temporary Floating Point Register // Appeared in Post Register Allocation
+  FSReg(Int) // Saved Floating Point Register // Appeared in Post Register Allocation
   Mem(Operand, Int64) // Memory Addressing (Base, Offset)
   Label(String) // Label
   StackPtr // Stack Top (for stack pointer)
@@ -140,6 +146,12 @@ pub impl Show for Operand with output(self, logger) {
     VFReg(i) => "%vf\{i}"
     Reg(i) => "%r\{i}"
     FReg(i) => "%f\{i}"
+    AReg(i) => "%a\{i}"
+    TReg(i) => "%t\{i}"
+    SReg(i) => "%s\{i}"
+    FAReg(i) => "%fa\{i}"
+    FTReg(i) => "%ft\{i}"
+    FSReg(i) => "%fs\{i}"
     Imm(i) => "\{i}"
     FImm(f) => "\{f}"
     Mem(base, offset) =>
