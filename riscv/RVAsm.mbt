@@ -1,7 +1,7 @@
 ///|
 pub(all) struct Mem {
   base : Reg
-  offset : Int
+  offset : Int64
 } derive(Eq, Compare, Hash)
 
 ///|
