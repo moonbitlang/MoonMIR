@@ -142,8 +142,9 @@ fn Function::sort_llvm_basick_block(self : Self) -> Array[@IR.BasicBlock] {
   basic_blocks.rev()
 }
 
-fn Function::extend_stack(self: Self, size: Int64, align: Int64) -> Unit {
-  self.stack_size = ((self.stack_size + size + align - 1) / align) * align
+///|
+fn Function::extend_stack(self : Self, size : Int64, align : Int64) -> Unit {
+  self.stack_size = (self.stack_size + size + align - 1) / align * align
 }
 
 ///|
