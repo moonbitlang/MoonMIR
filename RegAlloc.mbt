@@ -78,29 +78,6 @@ pub fn Function::alloc_register(f : Function) -> Unit raise RegAllocError {
       _ => ()
     }
   }
-
-  // Swap registers
-  // After Register Allocation, we need to ensure the order of arg register
-  // make sure the arg registers are in order, like r0, r1, r2, r3, ...
-  let mut arg_reg_cnt = 0
-  let mut arg_freg_cnt = 0
-  for op in f.params {
-    match op {
-      Reg(i) => {
-        if i != arg_reg_cnt {
-          f.swap_register(op, Reg(arg_reg_cnt))
-        }
-        arg_reg_cnt += 1
-      }
-      FReg(i) => {
-        if i != arg_freg_cnt {
-          f.swap_register(op, FReg(arg_freg_cnt))
-        }
-        arg_freg_cnt += 1
-      }
-      _ => ()
-    }
-  }
 }
 
 ///|
@@ -182,39 +159,6 @@ pub fn rewrite_instruction(
         uses[i] = operand
       }
       _ => ()
-    }
-  }
-}
-
-///|
-fn Function::swap_register(
-  self : Function,
-  reg1 : Operand,
-  reg2 : Operand,
-) -> Unit {
-  for i, param in self.params {
-    if param == reg1 {
-      self.params[i] = reg2
-    } else if param == reg2 {
-      self.params[i] = reg1
-    }
-  }
-  for bb in self.body {
-    for inst in bb.insts {
-      for i, op in inst.defs {
-        if op == reg1 {
-          inst.defs[i] = reg2
-        } else if op == reg2 {
-          inst.defs[i] = reg1
-        }
-      }
-      for i, op in inst.uses {
-        if op == reg1 {
-          inst.uses[i] = reg2
-        } else if op == reg2 {
-          inst.uses[i] = reg1
-        }
-      }
     }
   }
 }

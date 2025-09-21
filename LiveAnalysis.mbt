@@ -24,7 +24,6 @@ pub fn live_analysis(func : Function) -> (Graph[Int], Graph[Int]) {
   if func.body.is_empty() {
     return (vreg_graph, vfreg_graph)
   }
-  //let bb_queue = func.terminal_basic_blocks
   let bb_queue : Deque[BasicBlock] = Deque::new()
   let visited_bb_labels : Set[String] = Set::new()
   live_analysis_for_basic_blocks(
