@@ -2,102 +2,84 @@
 pub suberror GMIRToRvAsmError String derive(Show)
 
 ///|
-pub fn Reg::from_vreg(v : Int) -> Reg raise {
+pub fn Reg::from_mir_operand(v : @GMIR.Operand) -> Reg raise {
   match v {
-    0 => A0
-    1 => A1
-    2 => A2
-    3 => A3
-    4 => A4
-    5 => A5
-    6 => A6
-    7 => A7
-    8 => T0
-    9 => T1
-    10 => T2
-    11 => T3
-    12 => T4
-    13 => T5
-    14 => T6
-    15 => S1
-    16 => S2
-    17 => S3
-    18 => S4
-    19 => S5
-    20 => S6
-    21 => S7
-    22 => S8
-    23 => S9
-    24 => S10
-    25 => S11
-    _ => raise GMIRToRvAsmError("Unsupported vreg number: \{v}")
-  }
-}
-
-///|
-pub fn FReg::from_vfreg(v : Int) -> FReg raise {
-  match v {
-    0 => Fa0
-    1 => Fa1
-    2 => Fa2
-    3 => Fa3
-    4 => Fa4
-    5 => Fa5
-    6 => Fa6
-    7 => Fa7
-    8 => Ft0
-    9 => Ft1
-    10 => Ft2
-    11 => Ft3
-    12 => Ft4
-    13 => Ft5
-    14 => Ft6
-    15 => Ft7
-    16 => Fs0
-    17 => Fs1
-    18 => Fs2
-    19 => Fs3
-    20 => Fs4
-    21 => Fs5
-    22 => Fs6
-    23 => Fs7
-    24 => Fs8
-    25 => Fs9
-    26 => Fs10
-    27 => Fs11
-    _ => raise GMIRToRvAsmError("Unsupported vfreg number: \{v}")
+    AReg(0) => A0
+    AReg(1) => A1
+    AReg(2) => A2
+    AReg(3) => A3
+    AReg(4) => A4
+    AReg(5) => A5
+    AReg(6) => A6
+    AReg(7) => A7
+    TReg(0) => T0
+    TReg(1) => T1
+    TReg(2) => T2
+    TReg(3) => T3
+    TReg(4) => T4
+    TReg(5) => T5
+    TReg(6) => T6
+    SReg(0) => S1
+    SReg(1) => S2
+    SReg(2) => S3
+    SReg(3) => S4
+    SReg(4) => S5
+    SReg(5) => S6
+    SReg(6) => S7
+    SReg(7) => S8
+    SReg(8) => S9
+    SReg(9) => S10
+    SReg(10) => S11
+    StackPtr => Sp
+    FramePtr => Fp // S0
+    _ => raise GMIRToRvAsmError("Error: Unsupported GMIR register: \{v}")
   }
 }
 
 ///|
 pub fn from_gmir_inst(inst : @GMIR.Instruction) -> RvAsm raise {
   match inst {
-    { opcode: Addq, defs: [Reg(dst)], uses: [Reg(src1), Reg(src2)] } => {
-      let dst = Reg::from_vreg(dst)
-      let src1 = Reg::from_vreg(src1)
-      let src2 = Reg::from_vreg(src2)
+    { opcode: Addq, defs: [dst], uses: [src1, Imm(src2)] } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      Addi(dst, src1, src2.to_int())
+    }
+    { opcode: Addq, defs: [dst], uses: [src1, src2] } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
       Add(dst, src1, src2)
     }
-    { opcode: Subq, defs: [Reg(dst)], uses: [Reg(src1), Reg(src2)] } => {
-      let dst = Reg::from_vreg(dst)
-      let src1 = Reg::from_vreg(src1)
-      let src2 = Reg::from_vreg(src2)
+    { opcode: Subq, defs: [dst], uses: [src1, Imm(src2)] } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      Addi(dst, src1, -src2.to_int())
+    }
+    { opcode: Subq, defs: [dst], uses: [src1, src2] } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
       Sub(dst, src1, src2)
     }
-    { opcode: Movq, defs: [Reg(dst)], uses: [Imm(i)] } => {
-      let dst = Reg::from_vreg(dst)
+    { opcode: Movq, defs: [dst], uses: [Imm(i)] } => {
+      let dst = Reg::from_mir_operand(dst)
       Li(dst, i.to_string())
     }
-    { opcode: Movq, defs: [Reg(dst)], uses: [Reg(src)] } => {
-      let dst = Reg::from_vreg(dst)
-      let src = Reg::from_vreg(src)
+    { opcode: Movq, defs: [dst], uses: [src] } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src = Reg::from_mir_operand(src)
       Mv(dst, src)
     }
     { opcode: Ret, defs: [], uses: [] } => Ret
-    { opcode: Addl, defs: [Reg(dst)], uses: [Reg(src1), Reg(src2)] } => {
-      let dst = Reg::from_vreg(dst)
-      let src1 = Reg::from_vreg(src1)
-      let src2 = Reg::from_vreg(src2)
+    { opcode: Addl, defs: [dst], uses: [src1, Imm(src2)] } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      Addi(dst, src1, src2.to_int())
+    }
+    { opcode: Addl, defs: [dst], uses: [src1, src2] } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
       Addw(dst, src1, src2)
     }
     _ => raise GMIRToRvAsmError("UnImplemented GMIR instruction: \{inst}")
