@@ -117,7 +117,7 @@ pub(all) enum OpCode {
   Ret
   Nop
   Intrinsic(String)
-} derive(Show)
+} derive(Hash, Show)
 
 ///|
 pub(all) enum Operand {
@@ -137,7 +137,7 @@ pub(all) enum Operand {
   Label(String) // Label
   StackPtr // Stack Top (for stack pointer)
   FramePtr // Frame Pointer
-} derive(Eq)
+} derive(Hash, Eq)
 
 ///|
 pub impl Show for Operand with output(self, logger) {

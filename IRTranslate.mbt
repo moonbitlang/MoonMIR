@@ -763,7 +763,7 @@ fn Instruction::from_llvm_inst(
             raise IRTranslateError("ReturnInst: unsupported return value type")
         }
         let ret_inst = Instruction::new(Ret, [], [ret_op], bb~)
-        func.terminal_bb.push(bb.unwrap())
+        func.terminal_basic_blocks.push(bb.unwrap())
         [ret_inst]
       } else {
         let minst = Instruction::new(Ret, [], [], bb~)

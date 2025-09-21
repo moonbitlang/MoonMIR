@@ -26,6 +26,21 @@ fn BasicBlock::new(
   }
 }
 
+fn BasicBlock::successors_label(self: Self) -> Array[String] {
+  guard self.insts.last() is Some(last_inst) else {
+    return Array::new()
+  }
+  let succ_labels = Array::new()
+  if last_inst is { opcode: Beq | Bne | Bgt | Blt | Bge | Ble | Bequ | Bneu | Bgtu | Bgeu | Bltu | Bleu | Jmp, uses, ..} {
+    uses.each(u => {
+      if u is Label(l) {
+        succ_labels.push(l)
+      }
+    })
+  }
+  succ_labels
+}
+
 /////|
 //pub fn BasicBlock::new(llvm_bb: @IR.BasicBlock, label : String) -> BasicBlock {
 //  BasicBlock::{ llvm_bb, label, insts: Array::new(), parent: None, preds: Array::new() }
