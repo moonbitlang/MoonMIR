@@ -48,7 +48,7 @@ pub fn BasicBlock::run_ir_translation(
   self : Self,
 ) -> Unit raise IRTranslateError {
   for inst in self.llvm_bb.instIter() {
-    let minsts = Instruction::from_llvm_inst(inst, self.parent) catch {
+    let minsts = Instruction::from_llvm_inst(inst, self) catch {
       e => {
         println("Error converting instruction in BB \{self.label}:")
         println("  Instruction: \{inst}")

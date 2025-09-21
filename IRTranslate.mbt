@@ -82,11 +82,12 @@ pub suberror IRTranslateError String derive(Show)
 ///|
 fn Instruction::from_llvm_inst(
   inst : &@IR.Instruction,
-  func : Function,
+  bb : BasicBlock,
 ) -> Array[Instruction] raise IRTranslateError {
-  //let ctx = inst.getContext()
+  let func = bb.parent
   let mod = inst.getModule()
   let data_layout = mod.getDataLayout()
+  let bb = Some(bb)
   match inst.asInstEnum() {
     AllocaInst({ data_ty, .. }) => {
       let data_size = data_layout.getTypeAllocSize(data_ty).to_int64()
@@ -114,7 +115,7 @@ fn Instruction::from_llvm_inst(
         8 => Loadq
         _ => Load(data_size)
       }
-      let minst = Instruction::new(opcode, [op], [ptr_op])
+      let minst = Instruction::new(opcode, [op], [ptr_op], bb~)
       [minst]
     }
     StoreInst({ value, ptr, .. }) => {
@@ -145,7 +146,7 @@ fn Instruction::from_llvm_inst(
         8 => Storeq
         _ => Store(data_size)
       }
-      let minst = Instruction::new(opcode, [], [ptr_op, value_op])
+      let minst = Instruction::new(opcode, [], [ptr_op, value_op], bb~)
       [minst]
     }
     BinaryInst({ opcode, lhs, rhs, .. }) => {
@@ -230,7 +231,7 @@ fn Instruction::from_llvm_inst(
         }
         _ => raise IRTranslateError("BinaryInst: unsupported rhs type")
       }
-      let minst = Instruction::new(opcode, [def_op], [lhs_op, rhs_op])
+      let minst = Instruction::new(opcode, [def_op], [lhs_op, rhs_op], bb~)
       [minst]
     }
     // TODO: Should be Branch Inst sometimes
@@ -275,7 +276,7 @@ fn Instruction::from_llvm_inst(
         }
         _ => raise IRTranslateError("ICmpInst: unsupported rhs type")
       }
-      let minst = Instruction::new(opcode, [def_op], [lhs_op, rhs_op])
+      let minst = Instruction::new(opcode, [def_op], [lhs_op, rhs_op], bb~)
       [minst]
     }
     FCmpInst({ predicate, lhs, rhs, .. }) => {
@@ -324,7 +325,7 @@ fn Instruction::from_llvm_inst(
         }
         _ => raise IRTranslateError("FCmpInst: unsupported rhs type")
       }
-      let minst = Instruction::new(opcode, [def_op], [lhs_op, rhs_op])
+      let minst = Instruction::new(opcode, [def_op], [lhs_op, rhs_op], bb~)
       [minst]
     }
     BranchInst(
@@ -346,7 +347,7 @@ fn Instruction::from_llvm_inst(
         )
       }
       let minst = if func.get_operand_from_llvm_value(cond) is Some(cond_op) {
-        Instruction::new(Bne, [], [cond_op, Imm(0), true_label, false_label])
+        Instruction::new(Bne, [], [cond_op, Imm(0), true_label, false_label], bb~)
       } else {
         // Must Be ICmp
         guard cond.asValueEnum() is ICmpInst({ predicate, lhs, rhs, .. }) else {
@@ -384,7 +385,7 @@ fn Instruction::from_llvm_inst(
           }
           _ => raise IRTranslateError("BranchInst: unsupported rhs type")
         }
-        Instruction::new(opcode, [], [lhs_op, rhs_op, true_label, false_label])
+        Instruction::new(opcode, [], [lhs_op, rhs_op, true_label, false_label], bb~)
       }
       [minst]
     }
@@ -394,7 +395,7 @@ fn Instruction::from_llvm_inst(
           "BranchInst: true block operand not found in value map",
         )
       }
-      let minst = Instruction::new(Jmp, [], [true_label])
+      let minst = Instruction::new(Jmp, [], [true_label], bb~)
       [minst]
     }
     BranchInst(b) => {
@@ -434,7 +435,7 @@ fn Instruction::from_llvm_inst(
       } else {
         func.bind_llvm_value_to_vreg(inst)
       }
-      let minst = Instruction::new(PHI, [def_op], uses)
+      let minst = Instruction::new(PHI, [def_op], uses, bb~)
       func.phi_insts.push(minst)
       [minst]
     }
@@ -527,7 +528,7 @@ fn Instruction::from_llvm_inst(
       } else {
         func.bind_llvm_value_to_vreg(inst)
       }
-      let minst = Instruction::new(opcode, [def_op], [from_op])
+      let minst = Instruction::new(opcode, [def_op], [from_op], bb~)
       [minst]
     }
     GetElementPtrInst({ ptr, indices, pointeeType, .. }) => {
@@ -550,7 +551,7 @@ fn Instruction::from_llvm_inst(
           if offset != 0 {
             let offset_op = Imm(offset)
             let new_ptr = func.add_vreg()
-            let minst = Instruction::new(Addq, [new_ptr], [ptr, offset_op])
+            let minst = Instruction::new(Addq, [new_ptr], [ptr, offset_op], bb~)
             insts.push(minst)
             continue (elem_ty.asTypeEnum(), rest, new_ptr)
           } else {
@@ -567,7 +568,7 @@ fn Instruction::from_llvm_inst(
           if elem_size == 1 {
             // For byte arrays, no need to scale
             let new_ptr = func.add_vreg()
-            let minst = Instruction::new(Addq, [new_ptr], [ptr, idx_op])
+            let minst = Instruction::new(Addq, [new_ptr], [ptr, idx_op], bb~)
             insts.push(minst)
             continue (elem_ty.asTypeEnum(), rest, new_ptr)
           } else {
@@ -576,10 +577,10 @@ fn Instruction::from_llvm_inst(
             let scale_inst = Instruction::new(Mulq, [offset_op], [
               idx_op,
               Imm(elem_size),
-            ])
+            ], bb~)
             insts.push(scale_inst)
             let new_ptr = func.add_vreg()
-            let add_inst = Instruction::new(Addq, [new_ptr], [ptr, offset_op])
+            let add_inst = Instruction::new(Addq, [new_ptr], [ptr, offset_op], bb~)
             insts.push(add_inst)
             continue (elem_ty.asTypeEnum(), rest, new_ptr)
           }
@@ -590,7 +591,7 @@ fn Instruction::from_llvm_inst(
           if offset != 0 {
             let offset_op = Imm(offset)
             let new_ptr = func.add_vreg()
-            let minst = Instruction::new(Addq, [new_ptr], [ptr, offset_op])
+            let minst = Instruction::new(Addq, [new_ptr], [ptr, offset_op], bb~)
             insts.push(minst)
             let elem_ty = structTy.elements[i]
             continue (elem_ty.asTypeEnum(), rest, new_ptr)
@@ -617,7 +618,7 @@ fn Instruction::from_llvm_inst(
           if offset != 0 {
             let offset_op = Imm(offset)
             let final_ptr = func.bind_llvm_value_to_vreg(inst)
-            let minst = Instruction::new(Addq, [final_ptr], [ptr, offset_op])
+            let minst = Instruction::new(Addq, [final_ptr], [ptr, offset_op], bb~)
             insts.push(minst)
           } else {
             // offset is 0, just bind the pointer to the result
@@ -634,7 +635,7 @@ fn Instruction::from_llvm_inst(
           if elem_size == 1 {
             // For byte pointers, no need to scale
             let final_ptr = func.bind_llvm_value_to_vreg(inst)
-            let minst = Instruction::new(Addq, [final_ptr], [ptr, idx_op])
+            let minst = Instruction::new(Addq, [final_ptr], [ptr, idx_op], bb~)
             insts.push(minst)
           } else {
             // Scale the index
@@ -642,10 +643,10 @@ fn Instruction::from_llvm_inst(
             let scale_inst = Instruction::new(Mulq, [offset_op], [
               idx_op,
               Imm(elem_size),
-            ])
+            ], bb~)
             insts.push(scale_inst)
             let final_ptr = func.bind_llvm_value_to_vreg(inst)
-            let add_inst = Instruction::new(Addq, [final_ptr], [ptr, offset_op])
+            let add_inst = Instruction::new(Addq, [final_ptr], [ptr, offset_op], bb~)
             insts.push(add_inst)
           }
           // We're done
@@ -710,7 +711,7 @@ fn Instruction::from_llvm_inst(
       }
       let minst = Instruction::new(Select, [def_op], [
         cond_op, true_op, false_op,
-      ])
+      ], bb~)
       [minst]
     }
     ReturnInst({ retVal, .. }) =>
@@ -729,10 +730,10 @@ fn Instruction::from_llvm_inst(
           _ =>
             raise IRTranslateError("ReturnInst: unsupported return value type")
         }
-        let ret_inst = Instruction::new(Ret, [], [ret_op])
+        let ret_inst = Instruction::new(Ret, [], [ret_op], bb~)
         [ret_inst]
       } else {
-        let minst = Instruction::new(Ret, [], [])
+        let minst = Instruction::new(Ret, [], [], bb~)
         [minst]
       }
     CallInst({ callee, args, .. }) => {
@@ -759,7 +760,7 @@ fn Instruction::from_llvm_inst(
             }
             let loadi = Instruction::new(opcode, [vreg], [
               Imm(c.getValueAsInt64()),
-            ])
+            ], bb~)
             insts.push(loadi)
             uses.push(vreg)
             vreg_arg_cnt += 1
@@ -770,7 +771,7 @@ fn Instruction::from_llvm_inst(
             let storei = Instruction::new(Storeq, [], [
               Mem(StackPtr, offset),
               Imm(c.getValueAsInt64()),
-            ])
+            ], bb~)
             insts.push(storei)
             uses.push(Mem(StackPtr, offset))
             func.stack_size += 8 // Align to 8 bytes
@@ -785,7 +786,7 @@ fn Instruction::from_llvm_inst(
                   "CallInst: unsupported ConstantFP type for argument",
                 )
             }
-            let loadfi = Instruction::new(opcode, [vfreg], [FImm(f.value)])
+            let loadfi = Instruction::new(opcode, [vfreg], [FImm(f.value)], bb~)
             insts.push(loadfi)
             uses.push(vfreg)
             vfreg_arg_cnt += 1
@@ -795,7 +796,7 @@ fn Instruction::from_llvm_inst(
             let storei = Instruction::new(Storeq, [], [
               Mem(StackPtr, offset),
               FImm(f.value),
-            ])
+            ], bb~)
             insts.push(storei)
             uses.push(Mem(StackPtr, offset))
             func.stack_size += 8 // Align to 8 bytes
@@ -816,7 +817,7 @@ fn Instruction::from_llvm_inst(
                 let storei = Instruction::new(Storeq, [], [
                   Mem(StackPtr, offset),
                   op,
-                ])
+                ], bb~)
                 insts.push(storei)
                 uses.push(Mem(StackPtr, offset))
                 func.stack_size += 8 // Align to 8 bytes
@@ -830,7 +831,7 @@ fn Instruction::from_llvm_inst(
                 let storei = Instruction::new(Storeq, [], [
                   Mem(StackPtr, offset),
                   op,
-                ])
+                ], bb~)
                 insts.push(storei)
                 uses.push(Mem(StackPtr, offset))
                 func.stack_size += 8 // Align to 8 bytes
@@ -838,7 +839,7 @@ fn Instruction::from_llvm_inst(
               Mem(r, offset) if !arg.getType().isIEEELikeFPTy() &&
                 vreg_arg_cnt < num_arg_regs => {
                 let vreg = func.add_vreg()
-                let loadi = Instruction::new(Loadq, [vreg], [Mem(r, offset)])
+                let loadi = Instruction::new(Loadq, [vreg], [Mem(r, offset)], bb~)
                 insts.push(loadi)
                 uses.push(vreg)
                 vreg_arg_cnt += 1
@@ -846,7 +847,7 @@ fn Instruction::from_llvm_inst(
               Mem(r, offset) if arg.getType().isIEEELikeFPTy() &&
                 vfreg_arg_cnt < num_arg_fregs => {
                 let vfreg = func.add_vfreg()
-                let loadi = Instruction::new(FMovD, [vfreg], [Mem(r, offset)])
+                let loadi = Instruction::new(FMovD, [vfreg], [Mem(r, offset)], bb~)
                 insts.push(loadi)
                 uses.push(vfreg)
                 vfreg_arg_cnt += 1
@@ -856,7 +857,7 @@ fn Instruction::from_llvm_inst(
                 let storei = Instruction::new(Storeq, [], [
                   Mem(StackPtr, stack_offset),
                   Mem(r, offset),
-                ])
+                ], bb~)
                 insts.push(storei)
                 uses.push(Mem(StackPtr, stack_offset))
                 func.stack_size += 8 // Align to 8 bytes
@@ -866,7 +867,7 @@ fn Instruction::from_llvm_inst(
                 let storei = Instruction::new(Storeq, [], [
                   Mem(StackPtr, stack_offset),
                   Mem(r, offset),
-                ])
+                ], bb~)
                 insts.push(storei)
                 uses.push(Mem(StackPtr, stack_offset))
                 func.stack_size += 8 // Align to 8 bytes
@@ -888,7 +889,7 @@ fn Instruction::from_llvm_inst(
         }
         defs.push(ret_op)
       }
-      let call_inst = Instruction::new(Call, defs, uses)
+      let call_inst = Instruction::new(Call, defs, uses, bb~)
       insts.push(call_inst)
       insts
     }

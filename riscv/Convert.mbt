@@ -39,44 +39,44 @@ pub fn Reg::from_mir_operand(v : @GMIR.Operand) -> Reg raise {
 ///|
 pub fn from_gmir_inst(inst : @GMIR.Instruction) -> RvAsm raise {
   match inst {
-    { opcode: Addq, defs: [dst], uses: [src1, Imm(src2)] } => {
+    { opcode: Addq, defs: [dst], uses: [src1, Imm(src2)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let src1 = Reg::from_mir_operand(src1)
       Addi(dst, src1, src2.to_int())
     }
-    { opcode: Addq, defs: [dst], uses: [src1, src2] } => {
+    { opcode: Addq, defs: [dst], uses: [src1, src2], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
       Add(dst, src1, src2)
     }
-    { opcode: Subq, defs: [dst], uses: [src1, Imm(src2)] } => {
+    { opcode: Subq, defs: [dst], uses: [src1, Imm(src2)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let src1 = Reg::from_mir_operand(src1)
       Addi(dst, src1, -src2.to_int())
     }
-    { opcode: Subq, defs: [dst], uses: [src1, src2] } => {
+    { opcode: Subq, defs: [dst], uses: [src1, src2] , ..} => {
       let dst = Reg::from_mir_operand(dst)
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
       Sub(dst, src1, src2)
     }
-    { opcode: Movq, defs: [dst], uses: [Imm(i)] } => {
+    { opcode: Movq, defs: [dst], uses: [Imm(i)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       Li(dst, i.to_string())
     }
-    { opcode: Movq, defs: [dst], uses: [src] } => {
+    { opcode: Movq, defs: [dst], uses: [src], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let src = Reg::from_mir_operand(src)
       Mv(dst, src)
     }
-    { opcode: Ret, defs: [], uses: [] } => Ret
-    { opcode: Addl, defs: [dst], uses: [src1, Imm(src2)] } => {
+    { opcode: Ret, defs: [], uses: [], .. } => Ret
+    { opcode: Addl, defs: [dst], uses: [src1, Imm(src2)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let src1 = Reg::from_mir_operand(src1)
       Addi(dst, src1, src2.to_int())
     }
-    { opcode: Addl, defs: [dst], uses: [src1, src2] } => {
+    { opcode: Addl, defs: [dst], uses: [src1, src2], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)

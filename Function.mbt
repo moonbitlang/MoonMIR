@@ -5,10 +5,11 @@ pub(all) struct Function {
   // Function Attributes
   name : String
   params : Array[Operand]
-  prologue : Array[Instruction]
+  prologue : Array[Instruction] // Instructions before the first basic block
   body : Array[BasicBlock]
   epilogue : Array[Instruction]
   mut stack_size : Int64
+  terminal_bb: Array[BasicBlock] // BasicBlocks that end with ret instruction
 
   // LLVM
   llvm_func : @IR.Function
@@ -38,6 +39,7 @@ fn Function::new(mod : Module, llvm_func : @IR.Function) -> Function {
     epilogue: Array::new(),
     body: Array::new(),
     stack_size: 0,
+    terminal_bb: Array::new(),
     llvm_func,
     value_map: Map::new(),
     bbmap: Map::new(),

@@ -17,7 +17,7 @@ fn peephole_optimizations_for_basic_block(bb : BasicBlock) -> Unit {
     ignore(i)
     match inst {
       // Remove no-op moves
-      { opcode: Movb | Movw | Movl | Movq, defs: [dst], uses: [src] } if dst ==
+      { opcode: Movb | Movw | Movl | Movq, defs: [dst], uses: [src], .. } if dst ==
         src => ()
       inst => new_insts.push(inst)
     }
