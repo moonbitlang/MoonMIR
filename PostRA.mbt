@@ -36,8 +36,9 @@ pub suberror PostRAError String derive(Show)
 //}
 
 ///|
-pub fn Module::post_ra(self : Self) -> Unit raise PostRAError {
+pub fn Module::post_ra(self : Self) -> Module raise PostRAError {
   self.functions.each(func => func.post_ra())
+  self
 }
 
 ///|

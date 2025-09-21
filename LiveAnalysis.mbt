@@ -27,6 +27,18 @@ pub fn live_analysis(func : Function) -> (Graph[Int], Graph[Int]) {
   }
   let bb_queue : Deque[BasicBlock] = Deque::new()
   let visited_bb_labels : Set[String] = Set::new()
+
+  // Initialize queue with terminal basic blocks (those ending with return)
+  // If no terminal blocks marked, use the last basic block
+  if func.terminal_basic_blocks.is_empty() {
+    if func.body.length() > 0 {
+      bb_queue.push_back(func.body[func.body.length() - 1])
+    }
+  } else {
+    for terminal_bb in func.terminal_basic_blocks {
+      bb_queue.push_back(terminal_bb)
+    }
+  }
   live_analysis_for_basic_blocks(
     bb_queue, visited_bb_labels, vreg_graph, vfreg_graph,
   )
@@ -51,6 +63,16 @@ fn live_analysis_for_basic_blocks(
       let (live_vreg_set, live_fvreg_set) = spilt_vreg_and_vfreg(inst.livein)
       update_graph(vreg_graph, live_vreg_set)
       update_graph(vfreg_graph, live_fvreg_set)
+
+      // Also add defined registers to the graph
+      // This ensures that all registers that are defined get allocated
+      for def in inst.defs {
+        match def {
+          VReg(v) => vreg_graph.add_node(v)
+          VFReg(v) => vfreg_graph.add_node(v)
+          _ => ()
+        }
+      }
     }
     for pred in head_bb.preds {
       head_bb.livein.each(i => pred.liveout.add(i))

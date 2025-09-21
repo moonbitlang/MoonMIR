@@ -115,7 +115,7 @@ fn Module::alloc_register(Self) -> Self raise RegAllocError
 fn Module::legalize(Self) -> Unit raise LegalizeError
 fn Module::new(@IR.Module, ArchConfig) -> Self
 fn Module::peephole_optimizations(Self) -> Self
-fn Module::post_ra(Self) -> Unit raise PostRAError
+fn Module::post_ra(Self) -> Self raise PostRAError
 fn Module::run_ir_translation(Self) -> Unit raise IRTranslateError
 impl Show for Module
 

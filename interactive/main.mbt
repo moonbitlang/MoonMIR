@@ -159,7 +159,7 @@ fn main {
     println("==================== GMIR RegAlloc ================")
     println(gmir)
   }
-  gmir.post_ra() catch {
+  let gmir = gmir.post_ra() catch {
     e => {
       println("Error during GMIR post-RA adjustments: \{e}")
       return

@@ -76,6 +76,11 @@ fn main_err() -> Unit raise {
   )
   println(regalloced_mod)
 
+  // Post RegAlloc Adjustments
+  let post_regalloc_mod = regalloced_mod.post_ra()
+  println("\n=== After Post Register Allocation Adjustments ===")
+  println(post_regalloc_mod)
+
   // Test RISC-V conversion to ensure prologue/epilogue works correctly
   let rv_insts = @riscv.from_gmir_module(regalloced_mod)
   println("\n=== RISC-V Assembly ===")
