@@ -37,17 +37,17 @@ pub fn Instruction::new(
 ) -> Instruction {
   // Helper function to check if operand is a register type (VReg, Reg, VFReg, FReg)
   fn is_register(op : Operand) -> Bool {
-    op is VReg(_) || op is Reg(_) || op is VFReg(_) || op is FReg(_)
+    op is (VReg(_) | Reg(_) | VFReg(_) | FReg(_) | StackPtr | FramePtr | AReg(_) | FAReg(_) | TReg(_) | FTReg(_) | SReg(_) | FSReg(_) )
   }
 
   // Helper function to check if operand is an integer register type
   fn is_int_register(op : Operand) -> Bool {
-    op is VReg(_) || op is Reg(_) || op is StackPtr || op is FramePtr
+    op is (VReg(_) | Reg(_) | StackPtr | FramePtr | AReg(_) | TReg(_) | SReg(_))
   }
 
   // Helper function to check if operand is a floating-point register type
   fn is_fp_register(op : Operand) -> Bool {
-    op is VFReg(_) || op is FReg(_)
+    op is (VFReg(_) | FReg(_) | FAReg(_) | FTReg(_) | FSReg(_))
   }
 
   // Helper function to normalize binary operation uses (put immediate as second operand)

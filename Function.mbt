@@ -195,6 +195,18 @@ fn Function::get_operand_from_llvm_value(
   self.value_map.get(val)
 }
 
+fn Function::collect_insts_by_opcode(self : Self, opcode : OpCode) -> Array[Instruction] {
+  let insts : Array[Instruction] = Array::new()
+  for bb in self.body {
+    for inst in bb.insts {
+      if inst.opcode == opcode {
+        insts.push(inst)
+      }
+    }
+  }
+  insts
+}
+
 ///|
 //pub fn Function::new(name : String) -> Function {
 //  Function::{ name, params: [], body: [], stack_size: 0 }

@@ -117,7 +117,7 @@ pub(all) enum OpCode {
   Ret
   Nop
   Intrinsic(String)
-} derive(Hash, Show)
+} derive(Hash, Show, Eq)
 
 ///|
 pub(all) enum Operand {
