@@ -47,7 +47,7 @@ fn Function::post_ra(self : Function) -> Unit raise PostRAError {
   self.group_registers()
 
   // Step 2:
-  //self.order_call_arguments()
+   self.call_inst_transform()
   // Step 3: Promote return value
   // rewrite `ret v` to `mov ret_reg, v; ret`
   self.promote_ret()
@@ -336,45 +336,18 @@ fn Function::promote_ret(self : Function) -> Unit raise PostRAError {
   }
 }
 
-/////|
-//fn BasicBlock::post_ra(bb : BasicBlock) -> Unit raise PostRAError {
-//  let new_insts : Array[Instruction] = Array::new()
-//  for inst in bb.insts {
-//    inst.post_ra().each(new_inst => bb.insts.push(new_inst))
-//  }
-//  bb.insts = new_insts
-//}
-//
-/////|
-//fn Instruction::post_ra(
-//  self : Instruction,
-//) -> Array[Instruction] raise PostRAError {
-//  let new_insts : Array[Instruction] = Array::new()
-//  match self {
-//    { opcode: Ret, defs: [], uses: [v], bb, .. } => {
-//      match v {
-//        Reg(_) => {
-//          let inst = Instruction::new(Movq, [Reg(0)], [v], bb~)
-//          new_insts.push(inst)
-//        }
-//        FReg(_) => {
-//          let inst = Instruction::new(FMovD, [FReg(0)], [v], bb~)
-//          new_insts.push(inst)
-//        }
-//        Imm(i) => {
-//          let inst = Instruction::new(Movq, [Reg(0)], [Imm(i)], bb~)
-//          new_insts.push(inst)
-//        }
-//        Mem(base, offset) => {
-//          let inst = Instruction::new(Loadq, [Reg(0)], [Mem(base, offset)], bb~)
-//          new_insts.push(inst)
-//        }
-//        _ => raise PostRAError("Unsupported operand for return")
-//      }
-//      let ret_inst = Instruction::new(Ret, [], [], bb~)
-//      new_insts.push(ret_inst)
-//    }
-//    inst => new_insts.push(inst)
-//  }
-//  new_insts
-//}
+// make call inst like `%t1 = call func_name, %t4, %t2, %s3`
+// to
+// ```
+// %a0 = movq %t4
+// %a1 = movq %t2
+// %a2 = movq %s3
+// call func_name
+// %t1 = movq %a0
+// ```
+// be careful the special case: call func_name, %a3, %a2, % a1, %a0
+fn Function::call_inst_transform(self : Function) -> Unit raise PostRAError {
+  if false {
+    raise PostRAError("Not implemented")
+  }
+}
