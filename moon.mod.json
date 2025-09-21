@@ -4,7 +4,11 @@
   "deps": {
     "Kaida-Amethyst/MoonLLVM": {
       "path": "../Aether/"
-    }
+    },
+    "Kaida-Amethyst/mbtcc": {
+      "path": "../mbtcc/"
+    },
+    "moonbitlang/x": "0.4.34"
   },
   "readme": "README.md",
   "repository": "",

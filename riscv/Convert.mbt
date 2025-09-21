@@ -164,6 +164,15 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src = Reg::from_mir_operand(src)
       [Mv(dst, src)]
     }
+    { opcode: Movl, defs: [dst], uses: [Imm(i)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      [Li(dst, i.to_string())]
+    }
+    { opcode: Movl, defs: [dst], uses: [src], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src = Reg::from_mir_operand(src)
+      [Mv(dst, src)]
+    }
     { opcode: Ret, defs: [], uses: [], .. } => [Ret]
     { opcode: Addl, defs: [dst], uses: [src1, Imm(src2)], .. } => {
       let dst = Reg::from_mir_operand(dst)
@@ -189,6 +198,11 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       insts.push(Li(free_reg, i.to_string()))
       insts.push(Sw(free_reg, Mem::{ base, offset }))
       insts
+    }
+    { opcode: Storel, defs: [], uses: [Mem(base, offset), src], .. } => {
+      let base = Reg::from_mir_operand(base)
+      let src = Reg::from_mir_operand(src)
+      [Sw(src, Mem::{ base, offset })]
     }
     { opcode: Loadl, defs: [dst], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_operand(dst)
