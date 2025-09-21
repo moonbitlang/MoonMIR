@@ -319,6 +319,17 @@ pub(all) enum RvAsm {
 
 ///|
 pub impl Show for RvAsm with output(self, logger) {
+  match self {
+    Label(name) => {
+      logger.write_string("\{name}:")
+      return
+    }
+    Comment(text) => {
+      logger.write_string("# \{text}")
+      return
+    }
+    _ => ()
+  }
   let s = match self {
     Add(dst, src1, src2) => "add \{dst}, \{src1}, \{src2}"
     Sub(dst, src1, src2) => "sub \{dst}, \{src1}, \{src2}"
@@ -454,10 +465,9 @@ pub impl Show for RvAsm with output(self, logger) {
     FcvtWuS(rd, fs) => "fcvt.wu.s \{rd}, \{fs}"
     FcvtSD(fd, fs) => "fcvt.s.d \{fd}, \{fs}"
     FcvtDS(fd, fs) => "fcvt.d.s \{fd}, \{fs}"
-    Label(name) => "\{name}:"
-    Comment(text) => "# \{text}"
+    _ => ""
   }
-  logger.write_string(s)
+  logger.write_string("  " + s)
 }
 
 //pub struct RvAsmBlock {
