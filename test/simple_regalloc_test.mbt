@@ -63,17 +63,20 @@ test "Simple IR RegAlloc - mixed types" {
   let _ = builder.createRet(sum2)
   let mir_func = @GMIR.Function::from_llvm_function(func, rv64_config)
   mir_func.alloc_register()
-  let expected =
-    #|func mixed(%r0, %f0, %r1) {
-    #|entry:
-    #|  %f2 = SIToFP(32, 64) %r0
-    #|  %f1 = SIToFP(32, 64) %r1
-    #|  %f2 = FAddD %f2, %f0
-    #|  %f2 = FAddD %f2, %f1
-    #|  Ret %f2
-    #|}
-    #|
-  inspect(mir_func, content=expected)
+  inspect(
+    mir_func,
+    content=(
+      #|func mixed(%r0, %f0, %r1) {
+      #|entry:
+      #|  %f2 = SIToFP(32, 64) %r0
+      #|  %f1 = SIToFP(32, 64) %r1
+      #|  %f0 = FAddD %f2, %f0
+      #|  %f0 = FAddD %f0, %f1
+      #|  Ret %f0
+      #|}
+      #|
+    ),
+  )
 }
 
 ///|
@@ -102,15 +105,18 @@ test "Simple IR RegAlloc - many parameters" {
   let _ = builder.createRet(result)
   let mir_func = @GMIR.Function::from_llvm_function(func, rv64_config)
   mir_func.alloc_register()
-  let expected =
-    #|func many_params(%r0, %r1, %r2, %r3, %r4) {
-    #|entry:
-    #|  %r0 = Addl %r0, %r1
-    #|  %r2 = Mull %r2, %r3
-    #|  %r2 = Divl %r2, %r4
-    #|  %r0 = Subl %r0, %r2
-    #|  Ret %r0
-    #|}
-    #|
-  inspect(mir_func, content=expected)
+  inspect(
+    mir_func,
+    content=(
+      #|func many_params(%r0, %r1, %r2, %r3, %r4) {
+      #|entry:
+      #|  %r0 = Addl %r0, %r1
+      #|  %r1 = Mull %r2, %r3
+      #|  %r1 = Divl %r1, %r4
+      #|  %r0 = Subl %r0, %r1
+      #|  Ret %r0
+      #|}
+      #|
+    ),
+  )
 }

@@ -58,8 +58,19 @@ fn live_analysis_for_basic_blocks(
     if head_bb.insts.last() is Some(last_inst) {
       last_inst.liveout.each(o => head_bb.liveout.add(o))
     }
+
+    // Process instructions from back to front
+    // The liveout of instruction i is the livein of instruction i+1
+    let mut next_livein : Set[Operand] = head_bb.liveout.copy()
     for inst in head_bb.insts.rev_iter() {
+      // Set this instruction's liveout to be the next instruction's livein
+      inst.liveout.clear()
+      next_livein.each(o => inst.liveout.add(o))
+
+      // Compute this instruction's livein
       live_analysis_for_instruction(inst)
+
+      // Build conflict graph based on livein
       let (live_vreg_set, live_fvreg_set) = spilt_vreg_and_vfreg(inst.livein)
       update_graph(vreg_graph, live_vreg_set)
       update_graph(vfreg_graph, live_fvreg_set)
@@ -73,6 +84,9 @@ fn live_analysis_for_basic_blocks(
           _ => ()
         }
       }
+
+      // Update next_livein for the previous instruction
+      next_livein = inst.livein.copy()
     }
     for pred in head_bb.preds {
       head_bb.livein.each(i => pred.liveout.add(i))

@@ -652,20 +652,23 @@ test "Simple IRTranslate - alloca load store" {
   // return x
   let _ = builder.createRet(x_value)
   let mir_func = @GMIR.Function::from_llvm_function(fval, rv64_config)
-  let expected =
-    #|func alloca_load_store_test() {
-    #|  sp = Addq sp, -12
-    #|  Storeq (sp + 4), fp
-    #|  fp = Addq sp, 12
-    #|entry:
-    #|  Storel (sp + 0), 42
-    #|  %v0 = Loadl (sp + 0)
-    #|  fp = Loadq (sp + 4)
-    #|  sp = Addq sp, 12
-    #|  Ret %v0
-    #|}
-    #|
-  inspect(mir_func, content=expected)
+  inspect(
+    mir_func,
+    content=(
+      #|func alloca_load_store_test() {
+      #|  sp = Addq sp, -16
+      #|  Storeq (sp + 4), fp
+      #|  fp = Addq sp, 16
+      #|entry:
+      #|  Storel (sp + 0), 42
+      #|  %v0 = Loadl (sp + 0)
+      #|  fp = Loadq (sp + 4)
+      #|  sp = Addq sp, 16
+      #|  Ret %v0
+      #|}
+      #|
+    ),
+  )
 }
 
 ///|
@@ -1113,14 +1116,14 @@ test "Simple IRTranslate - constant array access" {
     mir_func,
     content=(
       #|func constant_array_test() {
-      #|  sp = Addq sp, -12
+      #|  sp = Addq sp, -16
       #|  Storeq (sp + 4), fp
-      #|  fp = Addq sp, 12
+      #|  fp = Addq sp, 16
       #|entry:
       #|  Storel (sp + 0), 1
       #|  %v0 = Loadl (sp + 0)
       #|  fp = Loadq (sp + 4)
-      #|  sp = Addq sp, 12
+      #|  sp = Addq sp, 16
       #|  Ret %v0
       #|}
       #|
@@ -1377,14 +1380,14 @@ test "Simple IRTranslate - constant array access" {
     mir_func,
     content=(
       #|func constant_array_test() {
-      #|  sp = Addq sp, -12
+      #|  sp = Addq sp, -16
       #|  Storeq (sp + 4), fp
-      #|  fp = Addq sp, 12
+      #|  fp = Addq sp, 16
       #|entry:
       #|  Storel (sp + 0), 1
       #|  %v0 = Loadl (sp + 0)
       #|  fp = Loadq (sp + 4)
-      #|  sp = Addq sp, 12
+      #|  sp = Addq sp, 16
       #|  Ret %v0
       #|}
       #|
