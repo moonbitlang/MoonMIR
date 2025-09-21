@@ -89,10 +89,11 @@ fn Instruction::from_llvm_inst(
   let data_layout = mod.getDataLayout()
   let bb = Some(bb)
   match inst.asInstEnum() {
-    AllocaInst({ data_ty, .. }) => {
+    AllocaInst({ data_ty, align, .. }) => {
       let data_size = data_layout.getTypeAllocSize(data_ty).to_int64()
       let offset = func.stack_size
-      func.stack_size += data_size
+      let align = align.to_int64()
+      func.extend_stack(data_size, align)
       let _ = func.bind_llvm_value_to_mem(inst, offset)
       []
     }
@@ -812,7 +813,7 @@ fn Instruction::from_llvm_inst(
             )
             insts.push(storei)
             uses.push(Mem(StackPtr, offset))
-            func.stack_size += 8 // Align to 8 bytes
+            func.extend_stack(8, 8)
           }
           ConstantFP(f) if vfreg_arg_cnt < num_arg_fregs => {
             let vfreg = func.add_vfreg()
@@ -839,7 +840,7 @@ fn Instruction::from_llvm_inst(
             )
             insts.push(storei)
             uses.push(Mem(StackPtr, offset))
-            func.stack_size += 8 // Align to 8 bytes
+            func.extend_stack(8, 8)
           }
           _ => {
             guard func.get_operand_from_llvm_value(arg) is Some(op) else {
@@ -862,7 +863,7 @@ fn Instruction::from_llvm_inst(
                 )
                 insts.push(storei)
                 uses.push(Mem(StackPtr, offset))
-                func.stack_size += 8 // Align to 8 bytes
+                func.extend_stack(8, 8)
               }
               VFReg(_) if vfreg_arg_cnt < num_arg_fregs => {
                 uses.push(op)
@@ -878,7 +879,7 @@ fn Instruction::from_llvm_inst(
                 )
                 insts.push(storei)
                 uses.push(Mem(StackPtr, offset))
-                func.stack_size += 8 // Align to 8 bytes
+                func.extend_stack(8, 8)
               }
               Mem(r, offset) if !arg.getType().isIEEELikeFPTy() &&
                 vreg_arg_cnt < num_arg_regs => {
@@ -916,7 +917,7 @@ fn Instruction::from_llvm_inst(
                 )
                 insts.push(storei)
                 uses.push(Mem(StackPtr, stack_offset))
-                func.stack_size += 8 // Align to 8 bytes
+                func.extend_stack(8, 8)
               }
               Mem(r, offset) => {
                 let stack_offset = func.stack_size
@@ -928,7 +929,7 @@ fn Instruction::from_llvm_inst(
                 )
                 insts.push(storei)
                 uses.push(Mem(StackPtr, stack_offset))
-                func.stack_size += 8 // Align to 8 bytes
+                func.extend_stack(8, 8)
               }
               _ =>
                 raise IRTranslateError(

@@ -42,7 +42,9 @@ pub fn Function::alloc_register(f : Function) -> Unit raise RegAllocError {
   } else {
     0
   }
-  f.stack_size += ((vreg_spilled_count + vfreg_spilled_count) * 8).to_int64() // Assume 8 bytes per spill
+  let spill_count = vreg_spilled_count + vfreg_spilled_count
+  let spill_count = spill_count.to_int64()
+  f.extend_stack(spill_count * 8, 8)
 
   // Assign Colors to Operands
   let vreg_operand_map = assign_vreg_color_to_operand(

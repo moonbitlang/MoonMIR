@@ -142,6 +142,10 @@ fn Function::sort_llvm_basick_block(self : Self) -> Array[@IR.BasicBlock] {
   basic_blocks.rev()
 }
 
+fn Function::extend_stack(self: Self, size: Int64, align: Int64) -> Unit {
+  self.stack_size = ((self.stack_size + size + align - 1) / align) * align
+}
+
 ///|
 fn Function::add_vreg(self : Self) -> Operand {
   let i = self.vreg_cnt
@@ -282,7 +286,7 @@ fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
     return
   }
   let frame_ptr_loc = self.stack_size
-  self.stack_size += 8 // for storing olf frame pointer
+  self.extend_stack(8, 8) // for storing old frame pointer
 
   // Move StackPtr
   let alloc_stack = Instruction::new(Addq, [StackPtr], [
