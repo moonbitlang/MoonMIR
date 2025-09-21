@@ -1,4 +1,5 @@
-typealias @deque.Deque as Deque
+///|
+typealias @deque.Deque
 
 ///|
 pub fn live_analysis(func : Function) -> (Graph[Int], Graph[Int]) {
@@ -27,7 +28,7 @@ pub fn live_analysis(func : Function) -> (Graph[Int], Graph[Int]) {
   let bb_queue : Deque[BasicBlock] = Deque::new()
   let visited_bb_labels : Set[String] = Set::new()
   live_analysis_for_basic_blocks(
-    bb_queue, visited_bb_labels, vreg_graph, vfreg_graph
+    bb_queue, visited_bb_labels, vreg_graph, vfreg_graph,
   )
   (vreg_graph, vfreg_graph)
 }
@@ -56,17 +57,16 @@ fn live_analysis_for_basic_blocks(
     }
     visited_bb_labels.add(head_bb.label)
     for pred in head_bb.preds {
-        if pred.successors_label()
-               .iter()
-               .all(s => visited_bb_labels.contains(s)) &&
-               !visited_bb_labels.contains(pred.label) {
+      if pred.successors_label().iter().all(s => visited_bb_labels.contains(s)) &&
+        !visited_bb_labels.contains(pred.label) {
         bb_queue.push_back(pred)
       }
     }
   }
 }
 
-fn spilt_vreg_and_vfreg(opset: Set[Operand]) -> (Set[Int], Set[Int]) {
+///|
+fn spilt_vreg_and_vfreg(opset : Set[Operand]) -> (Set[Int], Set[Int]) {
   let vreg_set = Set::new()
   let vfreg_set = Set::new()
   for op in opset {
@@ -80,10 +80,8 @@ fn spilt_vreg_and_vfreg(opset: Set[Operand]) -> (Set[Int], Set[Int]) {
 }
 
 ///|
-fn live_analysis_for_instruction(
-  inst : Instruction,
-) -> Unit {
-  let { defs, uses, livein, liveout,.. } = inst
+fn live_analysis_for_instruction(inst : Instruction) -> Unit {
+  let { defs, uses, livein, liveout, .. } = inst
   liveout.each(o => livein.add(o))
   defs.each(d => if d is (VReg(_) | VFReg(_)) { livein.remove(d) })
   uses.each(u => if u is (VReg(_) | VFReg(_)) { livein.add(u) })

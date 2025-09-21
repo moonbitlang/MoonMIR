@@ -1,3 +1,4 @@
+///|
 typealias @priority_queue.T as PriorityQueue
 
 ///|
@@ -51,12 +52,14 @@ fn Function::post_ra(self : Function) -> Unit raise PostRAError {
   self.promote_ret()
 }
 
-fn Function::group_registers(self: Function) -> Unit raise PostRAError {
+///|
+fn Function::group_registers(self : Function) -> Unit raise PostRAError {
   self.group_arg_registers()
   self.group_callee_saved_registers()
   self.group_normal_registers()
 }
 
+///|
 /// After Register Allocation, we get MIR like:
 /// func foo(%r4, %r5, %r3) {
 ///   ...
@@ -64,7 +67,7 @@ fn Function::group_registers(self: Function) -> Unit raise PostRAError {
 /// rewrite  %r4 -> %a0
 ///          %r5 -> %a1
 ///          %r3 -> %a2
-fn Function::group_arg_registers(self: Function) -> Unit raise PostRAError {
+fn Function::group_arg_registers(self : Function) -> Unit raise PostRAError {
   // Group Arg registers
   let reg_areg_map : Map[Operand, Operand] = Map::new()
   let mut p_arg_reg : Int = 0
@@ -85,14 +88,17 @@ fn Function::group_arg_registers(self: Function) -> Unit raise PostRAError {
   replace_operand_in_function(self, reg_areg_map)
 }
 
-priv struct OperandUsage (Operand, Int) derive(Eq)
+///|
+priv struct OperandUsage(Operand, Int) derive(Eq)
 
+///|
 impl Compare for OperandUsage with compare(self, other) {
   let OperandUsage(_, a) = self
   let OperandUsage(_, b) = other
   a.compare(b)
 }
 
+///|
 /// Some Registers we may want to use saved registers
 /// for example
 /// %r3 = ...
@@ -100,9 +106,9 @@ impl Compare for OperandUsage with compare(self, other) {
 /// ... = %r3
 ///
 /// we may want to make %r3 to a saved register
-fn Function::group_callee_saved_registers(self: Function) -> Unit {
-  let reg_usage: Map[Operand, Int] = Map::new()
-  let freg_usage: Map[Operand, Int] = Map::new()
+fn Function::group_callee_saved_registers(self : Function) -> Unit {
+  let reg_usage : Map[Operand, Int] = Map::new()
+  let freg_usage : Map[Operand, Int] = Map::new()
   let call_insts = self.collect_insts_by_opcode(Call)
   for inst in call_insts {
     for op in inst.liveout {
@@ -151,59 +157,57 @@ fn Function::group_callee_saved_registers(self: Function) -> Unit {
 // Some are temporary registers,
 // if temp registers are not enough, use arg registers
 // if still not enough, use saved registers
-fn group_normal_registers(self: Function) -> Unit raise PostRAError {
+
+///|
+fn group_normal_registers(self : Function) -> Unit raise PostRAError {
   let (free_regs, free_fregs) = self.collect_free_regs()
   let replace_map : Map[Operand, Operand] = Map::new()
   for bb in self.body {
     for inst in bb.insts {
-      inst.defs.each(def_op => {
-        match def_op {
-          Reg(_) as r if !replace_map.contains(r) => {
-            if free_regs.pop_front() is Some(new_r) {
-              replace_map.set(r, new_r)
-            } else {
-              raise PostRAError("Not enough registers")
-            }
+      inst.defs.each(def_op => match def_op {
+        Reg(_) as r if !replace_map.contains(r) =>
+          if free_regs.pop_front() is Some(new_r) {
+            replace_map.set(r, new_r)
+          } else {
+            raise PostRAError("Not enough registers")
           }
-          FReg(_) as fr if !replace_map.contains(fr) => {
-            if free_fregs.pop_front() is Some(new_fr) {
-              replace_map.set(fr, new_fr)
-            } else {
-              raise PostRAError("Not enough floating point registers")
-            }
+        FReg(_) as fr if !replace_map.contains(fr) =>
+          if free_fregs.pop_front() is Some(new_fr) {
+            replace_map.set(fr, new_fr)
+          } else {
+            raise PostRAError("Not enough floating point registers")
           }
-          _ => ()
-        }
+        _ => ()
       })
     }
   }
   replace_operand_in_function(self, replace_map)
 }
 
-fn collect_free_regs(self: Function) -> (Deque[Operand], Deque[Operand]) {
-  let free_regs: Set[Operand] = Set::new()
-  let free_fregs: Set[Operand] = Set::new()
+///|
+fn collect_free_regs(self : Function) -> (Deque[Operand], Deque[Operand]) {
+  let free_regs : Set[Operand] = Set::new()
+  let free_fregs : Set[Operand] = Set::new()
   let argh_config = self.getArchConfig()
-  let { num_arg_regs, num_arg_fregs, ..} = argh_config
-  let { num_temp_regs, num_temp_fregs, ..} = argh_config
-  let { num_saved_regs, num_saved_fregs, ..} = argh_config
-
-  for i in 0 ..< num_arg_regs {
+  let { num_arg_regs, num_arg_fregs, .. } = argh_config
+  let { num_temp_regs, num_temp_fregs, .. } = argh_config
+  let { num_saved_regs, num_saved_fregs, .. } = argh_config
+  for i in 0..<num_arg_regs {
     free_regs.add(AReg(i))
   }
-  for i in 0 ..< num_arg_fregs {
+  for i in 0..<num_arg_fregs {
     free_fregs.add(FAReg(i))
   }
-  for i in 0 ..< num_temp_regs {
+  for i in 0..<num_temp_regs {
     free_regs.add(TReg(i))
   }
-  for i in 0 ..< num_temp_fregs {
+  for i in 0..<num_temp_fregs {
     free_fregs.add(FTReg(i))
   }
-  for i in 0 ..< num_saved_regs {
+  for i in 0..<num_saved_regs {
     free_regs.add(SReg(i))
   }
-  for i in 0 ..< num_saved_fregs {
+  for i in 0..<num_saved_fregs {
     free_fregs.add(FSReg(i))
   }
   for bb in self.body {
@@ -212,18 +216,40 @@ fn collect_free_regs(self: Function) -> (Deque[Operand], Deque[Operand]) {
       inst.uses.each(op => free_regs.remove(op))
     }
   }
-  let new_free_regs: Deque[Operand] = Deque::new()
-  let new_free_fregs: Deque[Operand] = Deque::new()
-  free_regs.iter().filter(op => op is TReg(_)).each(op => new_free_regs.push_back(op))
-  free_regs.iter().filter(op => op is AReg(_)).each(op => new_free_regs.push_back(op))
-  free_regs.iter().filter(op => op is SReg(_)).each(op => new_free_regs.push_back(op))
-  free_fregs.iter().filter(op => op is FTReg(_)).each(op => new_free_fregs.push_back(op))
-  free_fregs.iter().filter(op => op is FAReg(_)).each(op => new_free_fregs.push_back(op))
-  free_fregs.iter().filter(op => op is FSReg(_)).each(op => new_free_fregs.push_back(op))
+  let new_free_regs : Deque[Operand] = Deque::new()
+  let new_free_fregs : Deque[Operand] = Deque::new()
+  free_regs
+  .iter()
+  .filter(op => op is TReg(_))
+  .each(op => new_free_regs.push_back(op))
+  free_regs
+  .iter()
+  .filter(op => op is AReg(_))
+  .each(op => new_free_regs.push_back(op))
+  free_regs
+  .iter()
+  .filter(op => op is SReg(_))
+  .each(op => new_free_regs.push_back(op))
+  free_fregs
+  .iter()
+  .filter(op => op is FTReg(_))
+  .each(op => new_free_fregs.push_back(op))
+  free_fregs
+  .iter()
+  .filter(op => op is FAReg(_))
+  .each(op => new_free_fregs.push_back(op))
+  free_fregs
+  .iter()
+  .filter(op => op is FSReg(_))
+  .each(op => new_free_fregs.push_back(op))
   (new_free_regs, new_free_fregs)
 }
 
-fn replace_operand_in_function(func: Function, replace_map: Map[Operand, Operand]) -> Unit {
+///|
+fn replace_operand_in_function(
+  func : Function,
+  replace_map : Map[Operand, Operand],
+) -> Unit {
   for bb in func.body {
     for inst in bb.insts {
       for i, def_op in inst.defs {
@@ -264,18 +290,18 @@ fn replace_operand_in_function(func: Function, replace_map: Map[Operand, Operand
   }
 }
 
-fn Function::promote_ret(self: Function) -> Unit raise PostRAError {
+///|
+fn Function::promote_ret(self : Function) -> Unit raise PostRAError {
   for bb in self.body {
     let new_insts : Array[Instruction] = Array::new()
     for inst in bb.insts {
       match inst {
         { opcode: Ret, defs: [], uses: [v], bb, .. } => {
           match v {
-            AReg(0) | FReg(0) => {
+            AReg(0) | FReg(0) =>
               // already in return register
               // do nothing
               ignore(0)
-            }
             AReg(_) | TReg(_) | SReg(_) as v => {
               let inst = Instruction::new(Movq, [AReg(0)], [v], bb~)
               new_insts.push(inst)
@@ -289,7 +315,12 @@ fn Function::promote_ret(self: Function) -> Unit raise PostRAError {
               new_insts.push(inst)
             }
             Mem(base, offset) => {
-              let inst = Instruction::new(Loadq, [AReg(0)], [Mem(base, offset)], bb~)
+              let inst = Instruction::new(
+                Loadq,
+                [AReg(0)],
+                [Mem(base, offset)],
+                bb~,
+              )
               new_insts.push(inst)
             }
             _ => raise PostRAError("Unsupported operand for return")

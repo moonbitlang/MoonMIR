@@ -37,7 +37,19 @@ pub fn Instruction::new(
 ) -> Instruction {
   // Helper function to check if operand is a register type (VReg, Reg, VFReg, FReg)
   fn is_register(op : Operand) -> Bool {
-    op is (VReg(_) | Reg(_) | VFReg(_) | FReg(_) | StackPtr | FramePtr | AReg(_) | FAReg(_) | TReg(_) | FTReg(_) | SReg(_) | FSReg(_) )
+    op
+    is (VReg(_)
+    | Reg(_)
+    | VFReg(_)
+    | FReg(_)
+    | StackPtr
+    | FramePtr
+    | AReg(_)
+    | FAReg(_)
+    | TReg(_)
+    | FTReg(_)
+    | SReg(_)
+    | FSReg(_))
   }
 
   // Helper function to check if operand is an integer register type
@@ -220,10 +232,24 @@ pub fn Instruction::new(
         ([def], [addr]) if is_int_register(def) =>
           match addr {
             Mem(_, _) | Imm(_) | Label(_) =>
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             r if is_int_register(r) =>
               // Keep register as is - it represents a pointer
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             _ => {
               println("Invalid load instruction address:")
               println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -243,10 +269,24 @@ pub fn Instruction::new(
         ([def], [addr]) if is_fp_register(def) =>
           match addr {
             Mem(_, _) =>
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             r if is_int_register(r) =>
               // Keep register as is - it represents a pointer
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             _ => {
               println("Invalid floating-point load instruction:")
               println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -266,13 +306,34 @@ pub fn Instruction::new(
         ([], [addr, _]) =>
           match addr {
             Mem(_, _) =>
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             Imm(_) =>
               // Treat immediate as absolute address
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             r if is_int_register(r) =>
               // Keep register as is - it represents a pointer
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             _ => {
               println("Invalid store instruction address:")
               println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -292,10 +353,24 @@ pub fn Instruction::new(
         ([], [addr, value]) if is_fp_register(value) || value is FImm(_) =>
           match addr {
             Mem(_, _) =>
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             r if is_int_register(r) =>
               // Keep register as is - it represents a pointer
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             _ => {
               println("Invalid floating-point store instruction:")
               println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -317,7 +392,14 @@ pub fn Instruction::new(
         ([def], [src]) if is_int_register(def) =>
           match src {
             s if is_int_register(s) || s is Imm(_) || s is Mem(_, _) =>
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             _ => {
               println("Invalid move instruction source:")
               println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -337,7 +419,14 @@ pub fn Instruction::new(
         ([def], [src]) if is_fp_register(def) =>
           match src {
             s if is_fp_register(s) || s is FImm(_) || s is Mem(_, _) =>
-              Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+              Instruction::{
+                opcode,
+                defs,
+                uses,
+                bb,
+                livein: Set::new(),
+                liveout: Set::new(),
+              }
             _ => {
               println("Invalid floating-point move instruction:")
               println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -476,7 +565,14 @@ pub fn Instruction::new(
     Jmp =>
       match (defs, uses) {
         ([], [Label(_)]) =>
-          Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+          Instruction::{
+            opcode,
+            defs,
+            uses,
+            bb,
+            livein: Set::new(),
+            liveout: Set::new(),
+          }
         _ => {
           println("Jump instruction requires 0 defs and 1 label:")
           println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -488,7 +584,14 @@ pub fn Instruction::new(
     Trunc | ZExt | SExt | FPTrunc | FPExt | BitCast =>
       match (defs, uses) {
         ([def], [src]) if is_register(def) && is_register(src) =>
-          Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+          Instruction::{
+            opcode,
+            defs,
+            uses,
+            bb,
+            livein: Set::new(),
+            liveout: Set::new(),
+          }
         _ => {
           println("Cast instruction requires 1 def and 1 use:")
           println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -500,7 +603,14 @@ pub fn Instruction::new(
     FPToSI(_, _) | FPToUI(_, _) =>
       match (defs, uses) {
         ([def], [src]) if is_int_register(def) && is_fp_register(src) =>
-          Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+          Instruction::{
+            opcode,
+            defs,
+            uses,
+            bb,
+            livein: Set::new(),
+            liveout: Set::new(),
+          }
         _ => {
           println("FP-to-int conversion requires 1 int def and 1 FP use:")
           println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -510,7 +620,14 @@ pub fn Instruction::new(
     SIToFP(_, _) | UIToFP(_, _) =>
       match (defs, uses) {
         ([def], [src]) if is_fp_register(def) && is_int_register(src) =>
-          Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+          Instruction::{
+            opcode,
+            defs,
+            uses,
+            bb,
+            livein: Set::new(),
+            liveout: Set::new(),
+          }
         _ => {
           println("Int-to-FP conversion requires 1 FP def and 1 int use:")
           println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -544,7 +661,14 @@ pub fn Instruction::new(
               panic()
             }
           }
-          Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+          Instruction::{
+            opcode,
+            defs,
+            uses,
+            bb,
+            livein: Set::new(),
+            liveout: Set::new(),
+          }
         }
         _ => {
           println("PHI instruction requires exactly 1 def:")
@@ -562,7 +686,14 @@ pub fn Instruction::new(
             println("  cond: \{cond}")
             panic()
           }
-          Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+          Instruction::{
+            opcode,
+            defs,
+            uses,
+            bb,
+            livein: Set::new(),
+            liveout: Set::new(),
+          }
         }
         _ => {
           println(
@@ -578,7 +709,14 @@ pub fn Instruction::new(
       match uses {
         [Label(_), ..] =>
           // First use must be function label, rest are arguments
-          Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+          Instruction::{
+            opcode,
+            defs,
+            uses,
+            bb,
+            livein: Set::new(),
+            liveout: Set::new(),
+          }
         _ => {
           println("Call instruction requires label as first use:")
           println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -590,7 +728,14 @@ pub fn Instruction::new(
     Ret =>
       match (defs, uses) {
         ([], [_] | []) =>
-          Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+          Instruction::{
+            opcode,
+            defs,
+            uses,
+            bb,
+            livein: Set::new(),
+            liveout: Set::new(),
+          }
         _ => {
           println("Return instruction requires 0 defs and 0 or 1 use:")
           println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -602,7 +747,14 @@ pub fn Instruction::new(
     Nop =>
       match (defs, uses) {
         ([], []) =>
-          Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+          Instruction::{
+            opcode,
+            defs,
+            uses,
+            bb,
+            livein: Set::new(),
+            liveout: Set::new(),
+          }
         _ => {
           println("Nop instruction requires 0 defs and 0 uses:")
           println("  opcode: \{opcode}, defs: \{defs}, uses: \{uses}")
@@ -613,11 +765,25 @@ pub fn Instruction::new(
     // Intrinsic operations
     Intrinsic(_) =>
       // Intrinsics can have arbitrary operands, so we allow them
-      Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+      Instruction::{
+        opcode,
+        defs,
+        uses,
+        bb,
+        livein: Set::new(),
+        liveout: Set::new(),
+      }
 
     // Unhandled floating-point remainder operations
     FRemS | FRemD | FNegS | FNegD =>
       // These need specific validation based on their semantics
-      Instruction::{ opcode, defs, uses, bb, livein: Set::new(), liveout: Set::new() }
+      Instruction::{
+        opcode,
+        defs,
+        uses,
+        bb,
+        livein: Set::new(),
+        liveout: Set::new(),
+      }
   }
 }

@@ -5,8 +5,8 @@ pub(all) struct BasicBlock {
   mut insts : Array[Instruction]
   parent : Function
   preds : Array[BasicBlock]
-  livein: Set[Operand]
-  liveout: Set[Operand]
+  livein : Set[Operand]
+  liveout : Set[Operand]
 }
 
 ///|
@@ -26,17 +26,29 @@ fn BasicBlock::new(
   }
 }
 
-fn BasicBlock::successors_label(self: Self) -> Array[String] {
-  guard self.insts.last() is Some(last_inst) else {
-    return Array::new()
-  }
+///|
+fn BasicBlock::successors_label(self : Self) -> Array[String] {
+  guard self.insts.last() is Some(last_inst) else { return Array::new() }
   let succ_labels = Array::new()
-  if last_inst is { opcode: Beq | Bne | Bgt | Blt | Bge | Ble | Bequ | Bneu | Bgtu | Bgeu | Bltu | Bleu | Jmp, uses, ..} {
-    uses.each(u => {
-      if u is Label(l) {
-        succ_labels.push(l)
-      }
-    })
+  if last_inst
+    is {
+      opcode: Beq
+      | Bne
+      | Bgt
+      | Blt
+      | Bge
+      | Ble
+      | Bequ
+      | Bneu
+      | Bgtu
+      | Bgeu
+      | Bltu
+      | Bleu
+      | Jmp,
+      uses,
+      ..,
+    } {
+    uses.each(u => if u is Label(l) { succ_labels.push(l) })
   }
   succ_labels
 }

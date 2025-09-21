@@ -45,6 +45,8 @@ pub(all) struct BasicBlock {
   mut insts : Array[Instruction]
   parent : Function
   preds : Array[BasicBlock]
+  livein : @set.Set[Operand]
+  liveout : @set.Set[Operand]
 }
 fn BasicBlock::add_inst_before_terminator(Self, Instruction) -> Unit
 fn BasicBlock::legalize(Self) -> Unit raise LegalizeError
@@ -59,7 +61,7 @@ pub(all) struct Function {
   body : Array[BasicBlock]
   epilogue : Array[Instruction]
   mut stack_size : Int64
-  terminal_bb : Array[BasicBlock]
+  terminal_basic_blocks : Array[BasicBlock]
   llvm_func : @IR.Function
   value_map : Map[&@IR.Value, Operand]
   bbmap : Map[String, BasicBlock]
@@ -92,8 +94,8 @@ pub(all) struct Instruction {
   defs : Array[Operand]
   uses : Array[Operand]
   bb : BasicBlock?
-  livein : Array[Operand]
-  liveout : Array[Operand]
+  livein : @set.Set[Operand]
+  liveout : @set.Set[Operand]
 }
 fn Instruction::legalize(Self) -> Array[Self] raise LegalizeError
 fn Instruction::new(OpCode, Array[Operand], Array[Operand], bb? : BasicBlock?) -> Self
@@ -236,6 +238,8 @@ pub(all) enum OpCode {
   Nop
   Intrinsic(String)
 }
+impl Eq for OpCode
+impl Hash for OpCode
 impl Show for OpCode
 
 pub(all) enum Operand {
@@ -257,6 +261,7 @@ pub(all) enum Operand {
   FramePtr
 }
 impl Eq for Operand
+impl Hash for Operand
 impl Show for Operand
 
 // Type aliases
