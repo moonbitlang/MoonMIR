@@ -241,6 +241,20 @@ fn Function::collect_insts_by_opcode(
   insts
 }
 
+fn Function::has_inst_with_opcode(
+  self : Self,
+  opcode : OpCode,
+) -> Bool {
+  for bb in self.body {
+    for inst in bb.insts {
+      if inst.opcode == opcode {
+        return true
+      }
+    }
+  }
+  false
+}
+
 ///|
 //pub fn Function::new(name : String) -> Function {
 //  Function::{ name, params: [], body: [], stack_size: 0 }

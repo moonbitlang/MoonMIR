@@ -54,6 +54,7 @@ fn Function::post_ra(self : Function) -> Unit raise PostRAError {
 
   // Setp 4: Insert prologue and epilogue
   // Insert sp, fp modification instructions
+  // Insert ra save/restore instructions (if call instructions exist)
   self.prologue_epilogue_insertion()
   // Step 5: Adjust Stack
   // We now have three kinds of mem
@@ -608,15 +609,22 @@ fn Function::adjust_mem_operands(self : Function) -> Unit {
 }
 
 fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
-  if self.var_stack_size == 0 && self.reg_stack_size == 0 {
+  let has_call = self.has_inst_with_opcode(Call)
+  if self.var_stack_size == 0 && self.reg_stack_size == 0 && !has_call {
     // No stack adjustment needed
     return
   }
+  let prologue : Array[Instruction] = Array::new()
   self.extend_reg_stack(8, 8) // for storing old frame pointer
   let frame_ptr_loc = self.reg_stack_size
+  let ra_loc: Int64? = if has_call {
+    // Need to save/restore return address
+    self.extend_reg_stack(8, 8) // for storing old return address
+    Some(self.reg_stack_size)
+  } else {
+    None
+  }
   let total_stack_size = self.var_stack_size + self.reg_stack_size
-
-  let prologue : Array[Instruction] = Array::new()
 
   // Move StackPtr
   let alloc_stack = Instruction::new(Addq, [StackPtr], [
@@ -631,6 +639,13 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
     FramePtr,
   ])
   prologue.push(store_fp)
+  if ra_loc is Some(ra_loc) {
+    let store_ra = Instruction::new(Storeq, [], [
+      Mem(FramePtr, -ra_loc),
+      ReturnAddr,
+    ])
+    prologue.push(store_ra)
+  }
 
   // Set new FramePtr
   let setup_fp = Instruction::new(Addq, [FramePtr], [
@@ -647,8 +662,18 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
     let restore_fp = Instruction::new(Loadq, [FramePtr], [
       Mem(FramePtr, -frame_ptr_loc),
     ])
+    let restore_ra = if ra_loc is Some(ra_loc) {
+      Instruction::new(Loadq, [ReturnAddr], [
+        Mem(FramePtr, -ra_loc),
+      ]) |> Some
+    } else {
+      None
+    }
     for inst in bb.insts {
       if inst.opcode is Ret {
+        if restore_ra is Some(restore_ra) {
+          new_insts.push(restore_ra)
+        }
         new_insts.push(restore_fp)
         new_insts.push(restore_stack)
         new_insts.push(inst)
@@ -658,6 +683,33 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
     }
     bb.insts = new_insts
   }
+
+  //if has_call {
+  //  // Need to save/restore return address
+  //  self.extend_reg_stack(8, 8) // for storing old return address
+  //  let ra_loc = self.reg_stack_size
+  //  let store_ra = Instruction::new(Storeq, [], [
+  //    Mem(FramePtr, -ra_loc),
+  //    ReturnAddr,
+  //  ])
+  //  prologue.push(store_ra)
+  //  let restore_ra = Instruction::new(Loadq, [ReturnAddr], [
+  //    Mem(FramePtr, -ra_loc),
+  //  ])
+  //  for bb in self.body {
+  //    let new_insts : Array[Instruction] = Array::new()
+  //    for inst in bb.insts {
+  //      if inst.opcode is Ret {
+  //        new_insts.push(restore_ra)
+  //        new_insts.push(inst)
+  //      } else {
+  //        new_insts.push(inst)
+  //      }
+  //    }
+  //    bb.insts = new_insts
+  //  }
+  //}
+
   for i in prologue.rev_iter() {
     self.body[0].insts.insert(0, i)
   }

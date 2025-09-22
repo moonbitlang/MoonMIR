@@ -32,6 +32,7 @@ pub fn Reg::from_mir_operand(v : @GMIR.Operand) -> Reg raise {
     SReg(10) => S11
     StackPtr => Sp
     FramePtr => Fp // S0
+    ReturnAddr => Ra
     _ => raise GMIRToRvAsmError("Error: Unsupported GMIR register: \{v}")
   }
 }
