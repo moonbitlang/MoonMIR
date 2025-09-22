@@ -642,7 +642,13 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
   } else {
     None
   }
+
+  if self.reg_stack_size > 0 {
+    //self.extend_var_stack(8, 8) // align var stack to 8 bytes
+    self.var_stack_size = (self.var_stack_size + 8 - 1) / 8 * 8 // align to 8 bytes
+  }
   let total_stack_size = self.var_stack_size + self.reg_stack_size
+  //let total_stack_size = (self.var_stack_size + self.reg_stack_size + 8 - 1) / 8 * 8 // align to 8 bytes
 
   // Move StackPtr
   let alloc_stack = Instruction::new(Addq, [StackPtr], [
@@ -701,32 +707,6 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
     }
     bb.insts = new_insts
   }
-
-  //if has_call {
-  //  // Need to save/restore return address
-  //  self.extend_reg_stack(8, 8) // for storing old return address
-  //  let ra_loc = self.reg_stack_size
-  //  let store_ra = Instruction::new(Storeq, [], [
-  //    Mem(FramePtr, -ra_loc),
-  //    ReturnAddr,
-  //  ])
-  //  prologue.push(store_ra)
-  //  let restore_ra = Instruction::new(Loadq, [ReturnAddr], [
-  //    Mem(FramePtr, -ra_loc),
-  //  ])
-  //  for bb in self.body {
-  //    let new_insts : Array[Instruction] = Array::new()
-  //    for inst in bb.insts {
-  //      if inst.opcode is Ret {
-  //        new_insts.push(restore_ra)
-  //        new_insts.push(inst)
-  //      } else {
-  //        new_insts.push(inst)
-  //      }
-  //    }
-  //    bb.insts = new_insts
-  //  }
-  //}
 
   for i in prologue.rev_iter() {
     self.body[0].insts.insert(0, i)
