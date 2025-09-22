@@ -164,6 +164,18 @@ fn main {
     }
   }
 
-  riscv_asm.each(line => print_asm(line))
+  if args.contains("-o") && args.search("-o") is Some(idx) && idx + 1 < args.length() {
+    let output_file = args[idx + 1]
+    let mut s = ""
+    riscv_asm.each(line => s += if line is Label(_) { line.to_string() + "\n" } else { "  " + line.to_string() + "\n" })
+    @fs.write_string_to_file(output_file, s) catch {
+      err => {
+        println("Error writing assembly to file: \{err}")
+        return
+      }
+    }
+    return
+  }
 
+  riscv_asm.each(line => print_asm(line))
 }

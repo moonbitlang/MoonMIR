@@ -163,6 +163,9 @@ pub impl Show for FReg with output(self, logger) {
 
 ///|
 pub(all) enum RvAsm {
+  Global(String)
+  Asciz(String)
+
   // reg-reg arith
   Add(Reg, Reg, Reg)
   Sub(Reg, Reg, Reg)
@@ -328,6 +331,10 @@ pub impl Show for RvAsm with output(self, logger) {
       logger.write_string("# \{text}")
       return
     }
+    Global(name) => {
+      logger.write_string(".global \{name}")
+      return
+    }
     _ => ()
   }
   let s = match self {
@@ -465,6 +472,7 @@ pub impl Show for RvAsm with output(self, logger) {
     FcvtWuS(rd, fs) => "fcvt.wu.s \{rd}, \{fs}"
     FcvtSD(fd, fs) => "fcvt.s.d \{fd}, \{fs}"
     FcvtDS(fd, fs) => "fcvt.d.s \{fd}, \{fs}"
+    Asciz(s) => ".asciz \"\{s}\""
     _ => ""
   }
   logger.write_string("  " + s)

@@ -255,10 +255,6 @@ pub fn from_gmir_func(func : @GMIR.Function) -> Array[RvAsm] raise {
   let insts : Array[RvAsm] = Array::new()
   let fname = func.name
   insts.push(Label(fname))
-  //for inst in func.prologue {
-  //  let prologue_insts = from_gmir_inst(inst)
-  //  insts.append(prologue_insts)
-  //}
   for i, bb in func.body {
     let bb_insts = from_gmir_bb(bb, i)
     insts.append(bb_insts)
@@ -269,6 +265,10 @@ pub fn from_gmir_func(func : @GMIR.Function) -> Array[RvAsm] raise {
 ///|
 pub fn from_gmir_module(mod : @GMIR.Module) -> Array[RvAsm] raise {
   let insts : Array[RvAsm] = Array::new()
+  // collect all global functions
+  mod.functions.filter(f => f.is_external).each(f => {
+    insts.push(Global(f.name))
+  })
   mod.functions.each(func => {
     let func_insts = from_gmir_func(func)
     insts.append(func_insts)

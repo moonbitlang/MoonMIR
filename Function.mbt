@@ -23,6 +23,7 @@ pub(all) struct Function {
 
   // LLVM
   llvm_func : @IR.Function
+  is_external: Bool
 
   // Value Map
   value_map : Map[&LLVMValue, Operand]
@@ -50,6 +51,7 @@ fn Function::new(mod : Module, llvm_func : @IR.Function) -> Function {
     reg_stack_size: 0,
     terminal_basic_blocks: Array::new(),
     llvm_func,
+    is_external: llvm_func.linkage.val is @IR.Linkage::External,
     value_map: Map::new(),
     bbmap: Map::new(),
     vreg_cnt: 0,
@@ -296,52 +298,3 @@ fn Function::delete_phi_instructions(self : Self) -> Unit {
   self.phi_insts.clear()
 }
 
-///|
-//fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
-//  if self.stack_size == 0 {
-//    return
-//  }
-//  let frame_ptr_loc = self.stack_size
-//  self.extend_stack(8, 8) // for storing old frame pointer
-//
-//  // Move StackPtr
-//  let alloc_stack = Instruction::new(Addq, [StackPtr], [
-//    StackPtr,
-//    Imm(-self.stack_size),
-//  ])
-//  self.prologue.push(alloc_stack)
-//
-//  // Store old FramePtr
-//  let store_fp = Instruction::new(Storeq, [], [
-//    Mem(StackPtr, frame_ptr_loc),
-//    FramePtr,
-//  ])
-//  self.prologue.push(store_fp)
-//
-//  // Set new FramePtr
-//  let setup_fp = Instruction::new(Addq, [FramePtr], [
-//    StackPtr,
-//    Imm(self.stack_size),
-//  ])
-//  self.prologue.push(setup_fp)
-//  for bb in self.body {
-//    let mut new_insts : Array[Instruction] = Array::new()
-//    let restore_stack = Instruction::new(Addq, [StackPtr], [
-//      StackPtr,
-//      Imm(self.stack_size),
-//    ])
-//    let restore_fp = Instruction::new(Loadq, [FramePtr], [
-//      Mem(StackPtr, frame_ptr_loc),
-//    ])
-//    for inst in bb.insts {
-//      if inst.opcode is Ret {
-//        new_insts.push(restore_fp)
-//        new_insts.push(restore_stack)
-//        new_insts.push(inst)
-//      } else {
-//        new_insts.push(inst)
-//      }
-//    }
-//    bb.insts = new_insts
-//  }
-//}
