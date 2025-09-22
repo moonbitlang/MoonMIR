@@ -91,9 +91,9 @@ fn Instruction::from_llvm_inst(
   match inst.asInstEnum() {
     AllocaInst({ data_ty, align, .. }) => {
       let data_size = data_layout.getTypeAllocSize(data_ty).to_int64()
-      let offset = -func.var_stack_size
       let align = align.to_int64()
       func.extend_var_stack(data_size, align)
+      let offset = -func.var_stack_size
       let _ = func.bind_llvm_value_to_mem_fp_prim_offset(inst, offset)
       []
     }

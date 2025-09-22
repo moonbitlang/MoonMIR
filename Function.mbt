@@ -16,9 +16,7 @@ pub(all) struct Function {
   // Function Attributes
   name : String
   params : Array[Operand]
-  prologue : Array[Instruction] // Instructions before the first basic block
   body : Array[BasicBlock]
-  epilogue : Array[Instruction]
   mut var_stack_size : Int64
   mut reg_stack_size : Int64
   terminal_basic_blocks : Array[BasicBlock] // BasicBlocks that end with ret instruction
@@ -46,9 +44,7 @@ fn Function::new(mod : Module, llvm_func : @IR.Function) -> Function {
   Function::{
     mod,
     name: llvm_func.getName().unwrap(),
-    prologue: Array::new(),
     params: Array::new(),
-    epilogue: Array::new(),
     body: Array::new(),
     var_stack_size: 0,
     reg_stack_size: 0,
@@ -254,16 +250,8 @@ pub impl Show for Function with output(self, logger) {
   let pstr = self.params.map(p => p.to_string()).join(", ")
   logger.write_string(pstr)
   logger.write_string(") {\n")
-  for inst in self.prologue {
-    logger.write_string("  \{inst}")
-    logger.write_string("\n")
-  }
   for bb in self.body {
     logger.write_string(bb.to_string())
-  }
-  for inst in self.epilogue {
-    logger.write_string("  \{inst}")
-    logger.write_string("\n")
   }
   logger.write_string("}\n")
 }

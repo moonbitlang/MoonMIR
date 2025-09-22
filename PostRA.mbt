@@ -612,30 +612,32 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
     // No stack adjustment needed
     return
   }
-  let total_stack_size = self.var_stack_size + self.reg_stack_size
-  let frame_ptr_loc = self.reg_stack_size
   self.extend_reg_stack(8, 8) // for storing old frame pointer
+  let frame_ptr_loc = self.reg_stack_size
+  let total_stack_size = self.var_stack_size + self.reg_stack_size
+
+  let prologue : Array[Instruction] = Array::new()
 
   // Move StackPtr
   let alloc_stack = Instruction::new(Addq, [StackPtr], [
     StackPtr,
     Imm(-total_stack_size),
   ])
-  self.prologue.push(alloc_stack)
+  prologue.push(alloc_stack)
 
   // Store old FramePtr
   let store_fp = Instruction::new(Storeq, [], [
     Mem(FramePtr, -frame_ptr_loc),
     FramePtr,
   ])
-  self.prologue.push(store_fp)
+  prologue.push(store_fp)
 
   // Set new FramePtr
   let setup_fp = Instruction::new(Addq, [FramePtr], [
     StackPtr,
     Imm(total_stack_size),
   ])
-  self.prologue.push(setup_fp)
+  prologue.push(setup_fp)
   for bb in self.body {
     let new_insts : Array[Instruction] = Array::new()
     let restore_stack = Instruction::new(Addq, [StackPtr], [
@@ -655,5 +657,8 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
       }
     }
     bb.insts = new_insts
+  }
+  for i in prologue.rev_iter() {
+    self.body[0].insts.insert(0, i)
   }
 }
