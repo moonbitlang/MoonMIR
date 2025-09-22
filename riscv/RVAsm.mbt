@@ -165,6 +165,11 @@ pub impl Show for FReg with output(self, logger) {
 pub(all) enum RvAsm {
   Global(String)
   Asciz(String)
+  Byte(Byte) // actually int8, but int is easier to use
+  Half(UInt16)
+  Word(UInt)
+  Quad(UInt64)
+  Zero(UInt)
 
   // reg-reg arith
   Add(Reg, Reg, Reg)
@@ -473,6 +478,11 @@ pub impl Show for RvAsm with output(self, logger) {
     FcvtSD(fd, fs) => "fcvt.s.d \{fd}, \{fs}"
     FcvtDS(fd, fs) => "fcvt.d.s \{fd}, \{fs}"
     Asciz(s) => ".asciz \"\{s}\""
+    Byte(b) => ".byte \{b}"
+    Half(h) => ".half \{h}"
+    Word(w) => ".word \{w}"
+    Quad(q) => ".quad \{q}"
+    Zero(n) => ".zero \{n}"
     _ => ""
   }
   logger.write_string("  " + s)
