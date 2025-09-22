@@ -51,6 +51,21 @@ fn Function::post_ra(self : Function) -> Unit raise PostRAError {
   // Step 3: Promote return value
   // rewrite `ret v` to `mov ret_reg, v; ret`
   self.promote_ret()
+
+  // Setp 4: Insert prologue and epilogue
+  // Insert sp, fp modification instructions
+  self.prologue_epilogue_insertion()
+  // Step 5: Adjust Stack
+  // We now have three kinds of mem
+  // 1. Mem(FromePtr, offset)
+  // 2. Mem(StackPtr, offset)
+  // 3. Mem(FramePtrPrim, offset)
+  // FramePtr = StackPtr + var_stack_size + reg_stack_size
+  // FromePtrPrim = StackPtr + var_stack_size
+  // Hence:
+  // Mem(FramePtr, offset) -> Mem(StackPtr, offset + var_stack_size + reg_stack_size)
+  // Mem(FramePtrPrim, offset) -> Mem(StackPtr, offset + var_stack_size)
+  self.adjust_mem_operands()
 }
 
 ///|
@@ -473,21 +488,21 @@ fn Function::call_inst_transform(self : Function) -> Unit {
                     }
                     None => {
                       // No free register, use stack
-                      let old_stack_size = self.stack_size
-                      self.extend_stack(8, 8)
-                      let stack_offset = self.stack_size - 8
+                      let old_stack_size = self.reg_stack_size
+                      self.extend_reg_stack(8, 8)
+                      let stack_offset = self.reg_stack_size - 8
                       
                       // Store to stack
-                      moves_before.push(Instruction::new(Storeq, [], [Mem(StackPtr, stack_offset), src], bb=Some(bb)))
+                      moves_before.push(Instruction::new(Storeq, [], [Mem(FramePtr, -stack_offset), src], bb=Some(bb)))
                       // Load from stack
-                      moves_before.push(Instruction::new(Loadq, [target], [Mem(StackPtr, stack_offset)], bb=Some(bb)))
+                      moves_before.push(Instruction::new(Loadq, [target], [Mem(FramePtr, -stack_offset)], bb=Some(bb)))
                       
                       // Adjust stack argument offsets if stack was extended
-                      if self.stack_size != old_stack_size {
+                      if self.reg_stack_size != old_stack_size {
                         for i, arg in stack_args {
                           match arg {
-                            Mem(StackPtr, offset) => {
-                              stack_args[i] = Mem(StackPtr, offset + 8)
+                            Mem(FramePtr, offset) => {
+                              stack_args[i] = Mem(FramePtr, offset + 8)
                             }
                             _ => ()
                           }
@@ -556,6 +571,89 @@ fn Function::call_inst_transform(self : Function) -> Unit {
       }
     }
     
+    bb.insts = new_insts
+  }
+}
+
+
+fn Function::adjust_mem_operands(self : Function) -> Unit {
+  let { var_stack_size, reg_stack_size,.. } = self
+  let total_stack_size = var_stack_size + reg_stack_size
+  for bb in self.body {
+    for inst in bb.insts {
+      for i, use_op in inst.uses {
+        match use_op {
+          Mem(StackPtr, offset) =>
+            inst.uses[i] = Mem(StackPtr, offset)
+          Mem(FramePtr, offset) =>
+            inst.uses[i] = Mem(StackPtr, offset + total_stack_size)
+          Mem(FramePtrPrim, offset) =>
+            inst.uses[i] = Mem(StackPtr, offset + var_stack_size)
+          _ => ()
+        }
+      }
+      for i, def_op in inst.defs {
+        match def_op {
+          Mem(StackPtr, offset) =>
+            inst.defs[i] = Mem(StackPtr, offset)
+          Mem(FramePtr, offset) =>
+            inst.defs[i] = Mem(StackPtr, offset + total_stack_size)
+          Mem(FramePtrPrim, offset) =>
+            inst.defs[i] = Mem(StackPtr, offset + var_stack_size)
+          _ => ()
+        }
+      }
+    }
+  }
+}
+
+fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
+  if self.var_stack_size == 0 && self.reg_stack_size == 0 {
+    // No stack adjustment needed
+    return
+  }
+  let total_stack_size = self.var_stack_size + self.reg_stack_size
+  let frame_ptr_loc = self.reg_stack_size
+  self.extend_reg_stack(8, 8) // for storing old frame pointer
+
+  // Move StackPtr
+  let alloc_stack = Instruction::new(Addq, [StackPtr], [
+    StackPtr,
+    Imm(-total_stack_size),
+  ])
+  self.prologue.push(alloc_stack)
+
+  // Store old FramePtr
+  let store_fp = Instruction::new(Storeq, [], [
+    Mem(FramePtr, -frame_ptr_loc),
+    FramePtr,
+  ])
+  self.prologue.push(store_fp)
+
+  // Set new FramePtr
+  let setup_fp = Instruction::new(Addq, [FramePtr], [
+    StackPtr,
+    Imm(total_stack_size),
+  ])
+  self.prologue.push(setup_fp)
+  for bb in self.body {
+    let new_insts : Array[Instruction] = Array::new()
+    let restore_stack = Instruction::new(Addq, [StackPtr], [
+      StackPtr,
+      Imm(total_stack_size),
+    ])
+    let restore_fp = Instruction::new(Loadq, [FramePtr], [
+      Mem(FramePtr, -frame_ptr_loc),
+    ])
+    for inst in bb.insts {
+      if inst.opcode is Ret {
+        new_insts.push(restore_fp)
+        new_insts.push(restore_stack)
+        new_insts.push(inst)
+      } else {
+        new_insts.push(inst)
+      }
+    }
     bb.insts = new_insts
   }
 }

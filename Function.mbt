@@ -1,4 +1,15 @@
 ///|
+///
+///  ---------- fp
+///     reg_stack
+///  { callee-saved registers }
+///  { spilled registers }
+///  { temporary space for registers }
+///  ---------- fp'
+///     var_stack
+///  { local variables }
+///  { function parameters passed on stack }
+///  ---------- sp
 pub(all) struct Function {
   mod : Module
 
@@ -8,7 +19,8 @@ pub(all) struct Function {
   prologue : Array[Instruction] // Instructions before the first basic block
   body : Array[BasicBlock]
   epilogue : Array[Instruction]
-  mut stack_size : Int64
+  mut var_stack_size : Int64
+  mut reg_stack_size : Int64
   terminal_basic_blocks : Array[BasicBlock] // BasicBlocks that end with ret instruction
 
   // LLVM
@@ -38,7 +50,8 @@ fn Function::new(mod : Module, llvm_func : @IR.Function) -> Function {
     params: Array::new(),
     epilogue: Array::new(),
     body: Array::new(),
-    stack_size: 0,
+    var_stack_size: 0,
+    reg_stack_size: 0,
     terminal_basic_blocks: Array::new(),
     llvm_func,
     value_map: Map::new(),
@@ -108,16 +121,16 @@ fn Function::assign_vreg_for_params(self : Self) -> Unit {
         let op = self.bind_llvm_value_to_vfreg(arg)
         self.params.push(op)
       } else {
-        let offset = (num_arg_fregs - i).to_int64() * 8
-        let op = self.bind_llvm_value_to_mem(arg, offset)
+        let offset = (i - num_arg_fregs).to_int64() * 8
+        let op = self.bind_llvm_value_to_mem_sp_offset(arg, offset)
         self.params.push(op)
       }
     } else if i < num_arg_regs {
       let op = self.bind_llvm_value_to_vreg(arg)
       self.params.push(op)
     } else {
-      let offset = (num_arg_regs - i).to_int64() * 8
-      let op = self.bind_llvm_value_to_mem(arg, offset)
+      let offset = (i - num_arg_regs).to_int64() * 8
+      let op = self.bind_llvm_value_to_mem_sp_offset(arg, offset)
       self.params.push(op)
     }
   }
@@ -143,8 +156,12 @@ fn Function::sort_llvm_basick_block(self : Self) -> Array[@IR.BasicBlock] {
 }
 
 ///|
-fn Function::extend_stack(self : Self, size : Int64, align : Int64) -> Unit {
-  self.stack_size = (self.stack_size + size + align - 1) / align * align
+fn Function::extend_var_stack(self : Self, size : Int64, align : Int64) -> Unit {
+  self.var_stack_size = (self.var_stack_size + size + align - 1) / align * align
+}
+
+fn Function::extend_reg_stack(self : Self, size : Int64, align : Int64) -> Unit {
+  self.reg_stack_size = (self.reg_stack_size + size + align - 1) / align * align
 }
 
 ///|
@@ -182,12 +199,22 @@ fn Function::bind_llvm_value_to_vfreg(self : Self, val : &LLVMValue) -> Operand 
 }
 
 ///|
-fn Function::bind_llvm_value_to_mem(
+fn Function::bind_llvm_value_to_mem_sp_offset(
   self : Self,
   val : &LLVMValue,
   offset : Int64,
 ) -> Operand {
   let op = Mem(StackPtr, offset)
+  self.value_map[val] = op
+  op
+}
+
+fn Function::bind_llvm_value_to_mem_fp_prim_offset(
+  self : Self,
+  val : &LLVMValue,
+  offset : Int64,
+) -> Operand {
+  let op = Mem(FramePtrPrim, offset)
   self.value_map[val] = op
   op
 }
@@ -270,7 +297,7 @@ fn Function::phi_elimination(self : Self) -> Unit {
     }
   }
   self.delete_phi_instructions()
-  self.prologue_epilogue_insertion()
+  //self.prologue_epilogue_insertion()
 }
 
 ///|
@@ -282,51 +309,51 @@ fn Function::delete_phi_instructions(self : Self) -> Unit {
 }
 
 ///|
-fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
-  if self.stack_size == 0 {
-    return
-  }
-  let frame_ptr_loc = self.stack_size
-  self.extend_stack(8, 8) // for storing old frame pointer
-
-  // Move StackPtr
-  let alloc_stack = Instruction::new(Addq, [StackPtr], [
-    StackPtr,
-    Imm(-self.stack_size),
-  ])
-  self.prologue.push(alloc_stack)
-
-  // Store old FramePtr
-  let store_fp = Instruction::new(Storeq, [], [
-    Mem(StackPtr, frame_ptr_loc),
-    FramePtr,
-  ])
-  self.prologue.push(store_fp)
-
-  // Set new FramePtr
-  let setup_fp = Instruction::new(Addq, [FramePtr], [
-    StackPtr,
-    Imm(self.stack_size),
-  ])
-  self.prologue.push(setup_fp)
-  for bb in self.body {
-    let mut new_insts : Array[Instruction] = Array::new()
-    let restore_stack = Instruction::new(Addq, [StackPtr], [
-      StackPtr,
-      Imm(self.stack_size),
-    ])
-    let restore_fp = Instruction::new(Loadq, [FramePtr], [
-      Mem(StackPtr, frame_ptr_loc),
-    ])
-    for inst in bb.insts {
-      if inst.opcode is Ret {
-        new_insts.push(restore_fp)
-        new_insts.push(restore_stack)
-        new_insts.push(inst)
-      } else {
-        new_insts.push(inst)
-      }
-    }
-    bb.insts = new_insts
-  }
-}
+//fn Function::prologue_epilogue_insertion(self : Self) -> Unit {
+//  if self.stack_size == 0 {
+//    return
+//  }
+//  let frame_ptr_loc = self.stack_size
+//  self.extend_stack(8, 8) // for storing old frame pointer
+//
+//  // Move StackPtr
+//  let alloc_stack = Instruction::new(Addq, [StackPtr], [
+//    StackPtr,
+//    Imm(-self.stack_size),
+//  ])
+//  self.prologue.push(alloc_stack)
+//
+//  // Store old FramePtr
+//  let store_fp = Instruction::new(Storeq, [], [
+//    Mem(StackPtr, frame_ptr_loc),
+//    FramePtr,
+//  ])
+//  self.prologue.push(store_fp)
+//
+//  // Set new FramePtr
+//  let setup_fp = Instruction::new(Addq, [FramePtr], [
+//    StackPtr,
+//    Imm(self.stack_size),
+//  ])
+//  self.prologue.push(setup_fp)
+//  for bb in self.body {
+//    let mut new_insts : Array[Instruction] = Array::new()
+//    let restore_stack = Instruction::new(Addq, [StackPtr], [
+//      StackPtr,
+//      Imm(self.stack_size),
+//    ])
+//    let restore_fp = Instruction::new(Loadq, [FramePtr], [
+//      Mem(StackPtr, frame_ptr_loc),
+//    ])
+//    for inst in bb.insts {
+//      if inst.opcode is Ret {
+//        new_insts.push(restore_fp)
+//        new_insts.push(restore_stack)
+//        new_insts.push(inst)
+//      } else {
+//        new_insts.push(inst)
+//      }
+//    }
+//    bb.insts = new_insts
+//  }
+//}

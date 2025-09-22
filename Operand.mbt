@@ -137,6 +137,7 @@ pub(all) enum Operand {
   Label(String) // Label
   StackPtr // Stack Top (for stack pointer)
   FramePtr // Frame Pointer
+  FramePtrPrim // fp', fake frame pointer used in prologue/epilogue
 } derive(Hash, Eq)
 
 ///|
@@ -163,6 +164,7 @@ pub impl Show for Operand with output(self, logger) {
     Label(name) => "\{name}"
     StackPtr => "sp"
     FramePtr => "fp"
+    FramePtrPrim => "fp'"
   }
   logger.write_string(s)
 }

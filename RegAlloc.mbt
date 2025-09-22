@@ -31,7 +31,6 @@ pub fn Function::alloc_register(f : Function) -> Unit raise RegAllocError {
   let (vfreg_color_map, max_vfreg_color) = vfreg_graph.coloring()
 
   // Adjust Stack Size for Spilled Variables
-  let ori_stack_size = f.stack_size
   let vreg_spilled_count = if max_vreg_color > max_num_reg {
     max_vreg_color - max_num_reg
   } else {
@@ -44,16 +43,14 @@ pub fn Function::alloc_register(f : Function) -> Unit raise RegAllocError {
   }
   let spill_count = vreg_spilled_count + vfreg_spilled_count
   let spill_count = spill_count.to_int64()
-  f.extend_stack(spill_count * 8, 8)
+  f.extend_reg_stack(spill_count * 8, 8)
 
   // Assign Colors to Operands
   let vreg_operand_map = assign_vreg_color_to_operand(
-    ori_stack_size~,
     vreg_color_map~,
     max_num_reg~,
   )
   let vfreg_operand_map = assign_vfreg_color_to_operand(
-    ori_stack_size~,
     vfreg_color_map~,
     max_num_freg~,
   )
@@ -84,7 +81,6 @@ pub fn Function::alloc_register(f : Function) -> Unit raise RegAllocError {
 
 ///|
 fn assign_vreg_color_to_operand(
-  ori_stack_size~ : Int64,
   vreg_color_map~ : Map[Int, Int],
   max_num_reg~ : Int,
 ) -> Map[Int, Operand] {
@@ -94,9 +90,8 @@ fn assign_vreg_color_to_operand(
     if color < max_num_reg {
       operand_map.set(vreg, Reg(color))
     } else {
-      let offset = ori_stack_size +
-        (color.to_int64() - max_num_reg.to_int64()) * 8 // Assume 8 bytes per spill
-      operand_map.set(vreg, Mem(StackPtr, offset))
+      let offset = (color.to_int64() - max_num_reg.to_int64()) * 8 // Assume 8 bytes per spill
+      operand_map.set(vreg, Mem(FramePtr, -offset))
     }
   }
   operand_map
@@ -104,7 +99,6 @@ fn assign_vreg_color_to_operand(
 
 ///|
 fn assign_vfreg_color_to_operand(
-  ori_stack_size~ : Int64,
   vfreg_color_map~ : Map[Int, Int],
   max_num_freg~ : Int,
 ) -> Map[Int, Operand] {
@@ -114,9 +108,8 @@ fn assign_vfreg_color_to_operand(
     if color < max_num_freg {
       operand_map.set(vfreg, FReg(color))
     } else {
-      let offset = ori_stack_size +
-        (color.to_int64() - max_num_freg.to_int64()) * 8 // Assume 8 bytes per spill
-      operand_map.set(vfreg, Mem(StackPtr, offset))
+      let offset = (color.to_int64() - max_num_freg.to_int64()) * 8 // Assume 8 bytes per spill
+      operand_map.set(vfreg, Mem(FramePtr, -offset))
     }
   }
   operand_map
