@@ -4,37 +4,6 @@ typealias @priority_queue.T as PriorityQueue
 ///|
 pub suberror PostRAError String derive(Show)
 
-//pub fn Module::post_ra(self: Self) -> Module raise PostRAError {
-//  //// This module performs post-register allocation optimizations and cleanups.
-//  //// It includes tasks such as instruction scheduling, peephole optimizations,
-//  //// and final adjustments to ensure the generated code is efficient and correct.
-//  //
-//  //// Step 1: Instruction Scheduling
-//  //fn instruction_scheduling() {
-//  //    // Reorder instructions to minimize stalls and improve pipeline efficiency.
-//  //    // This may involve moving independent instructions closer together.
-//  //}
-//  //
-//  //// Step 2: Peephole Optimizations
-//  //fn peephole_optimizations() {
-//  //    // Look for small patterns of instructions that can be replaced with more efficient sequences.
-//  //    // Examples include eliminating redundant moves or combining multiple operations into one.
-//  //}
-//  //
-//  //// Step 3: Final Adjustments
-//  //fn final_adjustments() {
-//  //    // Ensure that all instructions conform to the target architecture's constraints.
-//  //    // This may involve adjusting immediate values, fixing up branch targets, etc.
-//  //}
-//  //
-//  //// Execute the steps in order
-//  //instruction_scheduling();
-//  let mod = pre_adjustments(self)
-//  let mod = peephole_optimizations(mod);
-//  //final_adjustments();
-//  mod
-//}
-
 ///|
 pub fn Module::post_ra(self : Self) -> Module raise PostRAError {
   self.functions.each(func => func.post_ra())
@@ -73,6 +42,7 @@ fn Function::post_ra(self : Function) -> Unit raise PostRAError {
 fn Function::group_registers(self : Function) -> Unit raise PostRAError {
   self.group_arg_registers()
   self.group_callee_saved_registers()
+  self.group_call_registers()
   self.group_normal_registers()
 }
 
@@ -169,13 +139,61 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
   replace_operand_in_function(self, replace_map)
 }
 
-// After grouping arg registers and callee saved registers,
-// other registers need to be grouped.
-// Some are temporary registers,
-// if temp registers are not enough, use arg registers
-// if still not enough, use saved registers
+// for `call func_name, %r4, %r1, %r7`
+// first, collect all free registers
+// if %a0 is free, use %a0 for %r4
+// if %a1 is free, use %a1 for %r1
+// if %a2 is free, use %a2 for %r7
+// if %a0 is not free, do nothing for %r4, others same
+fn group_call_registers(self: Function) -> Unit {
+  let (free_regs, free_fregs) = self.collect_free_regs()
+  let free_regs = Set::from_array(free_regs.iter().collect())
+  let free_fregs = Set::from_array(free_fregs.iter().collect())
+  let replace_map : Map[Operand, Operand] = Map::new()
+  let call_insts = self.collect_insts_by_opcode(Call)
+  for inst in call_insts {
+    for i, arg in inst.uses[1:] {
+      match arg {
+        Reg(_) as r if !replace_map.contains(r) && free_regs.contains(AReg(i)) => {
+          replace_map.set(r, AReg(i))
+          free_regs.remove(AReg(i))
+        }
+        FReg(_) as fr if !replace_map.contains(fr) && free_fregs.contains(FAReg(i)) => {
+          replace_map.set(fr, FAReg(i))
+          free_fregs.remove(FAReg(i))
+        }
+        _ => ()
+      }
+    }
+  }
+
+  let ret_insts = self.collect_insts_by_opcode(Ret)
+  for inst in ret_insts {
+    if inst is { defs: [v], .. } {
+      match v {
+        Reg(_) as r if !replace_map.contains(r) && free_regs.contains(AReg(0)) => {
+          replace_map.set(r, AReg(0))
+          free_regs.remove(AReg(0))
+        }
+        FReg(_) as fr if !replace_map.contains(fr) && free_fregs.contains(FAReg(0)) => {
+          replace_map.set(fr, FAReg(0))
+          free_fregs.remove(FAReg(0))
+        }
+        _ => ()
+      }
+    }
+  }
+  replace_operand_in_function(self, replace_map)
+}
+
 
 ///|
+///
+/// After grouping arg registers and callee saved registers,
+/// other registers need to be grouped.
+/// Some are temporary registers,
+/// if temp registers are not enough, use arg registers
+/// if still not enough, use saved registers
 fn group_normal_registers(self : Function) -> Unit raise PostRAError {
   let (free_regs, free_fregs) = self.collect_free_regs()
   let replace_map : Map[Operand, Operand] = Map::new()
