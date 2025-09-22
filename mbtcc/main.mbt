@@ -132,12 +132,12 @@ fn main {
       return
     }
   }
-  if args.contains("--stop-after=PostRAAdjustments") {
+  if args.contains("--stop-after=PostRA") {
     println(gmir)
     return
   }
   if args.contains("--print-all") {
-    println("==================== GMIR PostRA Adjustment ================")
+    println("==================== GMIR PostRA ================")
     println(gmir)
   }
   let gmir = gmir.peephole_optimizations()
