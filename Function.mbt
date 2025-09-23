@@ -23,7 +23,7 @@ pub(all) struct Function {
 
   // LLVM
   llvm_func : @IR.Function
-  is_external: Bool
+  is_external : Bool
 
   // Value Map
   value_map : Map[&LLVMValue, Operand]
@@ -113,23 +113,39 @@ pub fn Function::run_ir_translation(self : Self) -> Unit raise IRTranslateError 
 ///|
 fn Function::assign_vreg_for_params(self : Self) -> Unit {
   let { num_arg_regs, num_arg_fregs, .. } = self.mod.arch_config
-  for i, arg in self.llvm_func.arguments {
+  let mut int_arg_count = 0
+  let mut fp_arg_count = 0
+  for arg in self.llvm_func.arguments {
     if arg.getType().isIEEELikeFPTy() {
-      if i < num_arg_fregs {
+      if fp_arg_count < num_arg_fregs {
         let op = self.bind_llvm_value_to_vfreg(arg)
         self.params.push(op)
+        fp_arg_count += 1
       } else {
-        let offset = (i - num_arg_fregs).to_int64() * 8
-        let op = self.bind_llvm_value_to_mem_sp_offset(arg, offset)
+        // Stack parameters are passed by caller and should be accessed via frame pointer
+        // In RISC-V, stack arguments start at fp + 0, fp + 8, etc.
+        let stack_arg_index = fp_arg_count - num_arg_fregs
+        let offset = stack_arg_index.to_int64() * 8
+        let op = Mem(FramePtr, offset)
+        self.value_map[arg] = op
         self.params.push(op)
+        fp_arg_count += 1
       }
-    } else if i < num_arg_regs {
+    } else if int_arg_count < num_arg_regs {
       let op = self.bind_llvm_value_to_vreg(arg)
       self.params.push(op)
+      int_arg_count += 1
     } else {
-      let offset = (i - num_arg_regs).to_int64() * 8
-      let op = self.bind_llvm_value_to_mem_sp_offset(arg, offset)
+      // Stack parameters for integers: 
+      // In RISC-V, stack arguments are passed by caller and should be accessed
+      // relative to the frame pointer after prologue setup. 
+      // Stack args start at fp + 0, fp + 8, etc.
+      let stack_arg_index = int_arg_count - num_arg_regs
+      let offset = stack_arg_index.to_int64() * 8
+      let op = Mem(FramePtr, offset)
+      self.value_map[arg] = op
       self.params.push(op)
+      int_arg_count += 1
     }
   }
 }
@@ -158,6 +174,7 @@ fn Function::extend_var_stack(self : Self, size : Int64, align : Int64) -> Unit 
   self.var_stack_size = (self.var_stack_size + size + align - 1) / align * align
 }
 
+///|
 fn Function::extend_reg_stack(self : Self, size : Int64, align : Int64) -> Unit {
   self.reg_stack_size = (self.reg_stack_size + size + align - 1) / align * align
 }
@@ -197,16 +214,6 @@ fn Function::bind_llvm_value_to_vfreg(self : Self, val : &LLVMValue) -> Operand 
 }
 
 ///|
-fn Function::bind_llvm_value_to_mem_sp_offset(
-  self : Self,
-  val : &LLVMValue,
-  offset : Int64,
-) -> Operand {
-  let op = Mem(StackPtr, offset)
-  self.value_map[val] = op
-  op
-}
-
 fn Function::bind_llvm_value_to_mem_fp_prim_offset(
   self : Self,
   val : &LLVMValue,
@@ -241,10 +248,8 @@ fn Function::collect_insts_by_opcode(
   insts
 }
 
-fn Function::has_inst_with_opcode(
-  self : Self,
-  opcode : OpCode,
-) -> Bool {
+///|
+fn Function::has_inst_with_opcode(self : Self, opcode : OpCode) -> Bool {
   for bb in self.body {
     for inst in bb.insts {
       if inst.opcode == opcode {
@@ -311,4 +316,3 @@ fn Function::delete_phi_instructions(self : Self) -> Unit {
   }
   self.phi_insts.clear()
 }
-

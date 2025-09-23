@@ -146,7 +146,9 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
 // if %a1 is free, use %a1 for %r1
 // if %a2 is free, use %a2 for %r7
 // if %a0 is not free, do nothing for %r4, others same
-fn group_call_registers(self: Function) -> Unit {
+
+///|
+fn group_call_registers(self : Function) -> Unit {
   let (free_regs, free_fregs) = self.collect_free_regs()
   let free_regs = Set::from_array(free_regs.iter().collect())
   let free_fregs = Set::from_array(free_fregs.iter().collect())
@@ -159,7 +161,8 @@ fn group_call_registers(self: Function) -> Unit {
           replace_map.set(r, AReg(i))
           free_regs.remove(AReg(i))
         }
-        FReg(_) as fr if !replace_map.contains(fr) && free_fregs.contains(FAReg(i)) => {
+        FReg(_) as fr if !replace_map.contains(fr) &&
+          free_fregs.contains(FAReg(i)) => {
           replace_map.set(fr, FAReg(i))
           free_fregs.remove(FAReg(i))
         }
@@ -167,7 +170,6 @@ fn group_call_registers(self: Function) -> Unit {
       }
     }
   }
-
   let ret_insts = self.collect_insts_by_opcode(Ret)
   for inst in ret_insts {
     if inst is { defs: [v], .. } {
@@ -176,7 +178,8 @@ fn group_call_registers(self: Function) -> Unit {
           replace_map.set(r, AReg(0))
           free_regs.remove(AReg(0))
         }
-        FReg(_) as fr if !replace_map.contains(fr) && free_fregs.contains(FAReg(0)) => {
+        FReg(_) as fr if !replace_map.contains(fr) &&
+          free_fregs.contains(FAReg(0)) => {
           replace_map.set(fr, FAReg(0))
           free_fregs.remove(FAReg(0))
         }
@@ -186,7 +189,6 @@ fn group_call_registers(self: Function) -> Unit {
   }
   replace_operand_in_function(self, replace_map)
 }
-
 
 ///|
 ///
@@ -386,62 +388,55 @@ fn Function::promote_ret(self : Function) -> Unit raise PostRAError {
 fn Function::call_inst_transform(self : Function) -> Unit {
   let arch_config = self.getArchConfig()
   let { num_arg_regs, num_arg_fregs, .. } = arch_config
-  
   for bb in self.body {
     let new_insts : Array[Instruction] = Array::new()
-    
     for inst in bb.insts {
       match inst {
-        { opcode: Call, defs, uses: [func_label, ..args], livein, liveout, .. } => {
+        { opcode: Call, defs, uses: [func_label, .. args], livein, liveout, .. } => {
           // Separate integer and floating-point arguments
           let mut int_args : Array[(Int, Operand)] = []
           let mut fp_args : Array[(Int, Operand)] = []
           let mut stack_args : Array[Operand] = []
-          
           for arg in args {
             match arg {
-              FReg(_) | FAReg(_) | FTReg(_) | FSReg(_) | FImm(_) => {
+              FReg(_) | FAReg(_) | FTReg(_) | FSReg(_) | FImm(_) =>
                 if fp_args.length() < num_arg_fregs {
                   fp_args.push((fp_args.length(), arg))
                 } else {
                   stack_args.push(arg)
                 }
-              }
-              _ => {
+              _ =>
                 if int_args.length() < num_arg_regs {
                   int_args.push((int_args.length(), arg))
                 } else {
                   stack_args.push(arg)
                 }
-              }
             }
           }
-          
+
           // Handle integer arguments - need to be careful about dependencies
           let mut moves_before : Array[Instruction] = []
-          
+
           // Build dependency graph for integer arguments
           let mut pending_moves : Array[(Operand, Operand)] = []
           let mut completed : Set[Int] = Set::new()
-          
           for pair in int_args {
             let (idx, src) = pair
             let target = AReg(idx)
             pending_moves.push((target, src))
           }
-          
+
           // Process moves that don't have dependencies first
           let mut progress = true
           while progress && !pending_moves.is_empty() {
             progress = false
             let mut remaining : Array[(Operand, Operand)] = []
-            
             for move_pair in pending_moves {
               let (target, src) = move_pair
-              
+
               // Check if this move can be done now
               let can_move = match (target, src) {
-                (AReg(t_idx), AReg(s_idx)) => {
+                (AReg(t_idx), AReg(s_idx)) =>
                   if t_idx == s_idx {
                     // No move needed
                     true
@@ -461,11 +456,9 @@ fn Function::call_inst_transform(self : Function) -> Unit {
                     }
                     !blocked
                   }
-                }
-                (AReg(_), _) => true  // Non-AReg sources can always be moved
+                (AReg(_), _) => true // Non-AReg sources can always be moved
                 _ => true
               }
-              
               if can_move {
                 match (target, src) {
                   (AReg(t_idx), AReg(s_idx)) if t_idx == s_idx => {
@@ -474,7 +467,9 @@ fn Function::call_inst_transform(self : Function) -> Unit {
                     progress = true
                   }
                   _ => {
-                    moves_before.push(Instruction::new(Movq, [target], [src], bb=Some(bb)))
+                    moves_before.push(
+                      Instruction::new(Movq, [target], [src], bb=Some(bb)),
+                    )
                     match target {
                       AReg(idx) => completed.add(idx)
                       _ => ()
@@ -486,55 +481,73 @@ fn Function::call_inst_transform(self : Function) -> Unit {
                 remaining.push(move_pair)
               }
             }
-            
             pending_moves = remaining
           }
-          
+
           // Handle any remaining circular dependencies
           if !pending_moves.is_empty() {
             let (free_regs, _) = self.collect_free_regs()
-            
             for move_pair in pending_moves {
               let (target, src) = move_pair
-              
               match (target, src) {
-                (AReg(t_idx), AReg(s_idx)) if t_idx == s_idx => ()  // No move needed
-                _ => {
+                (AReg(t_idx), AReg(s_idx)) if t_idx == s_idx => () // No move needed
+                _ =>
                   match free_regs.pop_front() {
                     Some(temp_reg) => {
                       // Use free register for swap
-                      moves_before.push(Instruction::new(Movq, [temp_reg], [src], bb=Some(bb)))
-                      moves_before.push(Instruction::new(Movq, [target], [temp_reg], bb=Some(bb)))
+                      moves_before.push(
+                        Instruction::new(Movq, [temp_reg], [src], bb=Some(bb)),
+                      )
+                      moves_before.push(
+                        Instruction::new(
+                          Movq,
+                          [target],
+                          [temp_reg],
+                          bb=Some(bb),
+                        ),
+                      )
                     }
                     None => {
                       // No free register, use stack
                       let old_stack_size = self.reg_stack_size
                       self.extend_reg_stack(8, 8)
                       let stack_offset = self.reg_stack_size - 8
-                      
+
                       // Store to stack
-                      moves_before.push(Instruction::new(Storeq, [], [Mem(FramePtr, -stack_offset), src], bb=Some(bb)))
+                      moves_before.push(
+                        Instruction::new(
+                          Storeq,
+                          [],
+                          [Mem(FramePtr, -stack_offset), src],
+                          bb=Some(bb),
+                        ),
+                      )
                       // Load from stack
-                      moves_before.push(Instruction::new(Loadq, [target], [Mem(FramePtr, -stack_offset)], bb=Some(bb)))
-                      
+                      moves_before.push(
+                        Instruction::new(
+                          Loadq,
+                          [target],
+                          [Mem(FramePtr, -stack_offset)],
+                          bb=Some(bb),
+                        ),
+                      )
+
                       // Adjust stack argument offsets if stack was extended
                       if self.reg_stack_size != old_stack_size {
                         for i, arg in stack_args {
                           match arg {
-                            Mem(FramePtr, offset) => {
+                            Mem(FramePtr, offset) =>
                               stack_args[i] = Mem(FramePtr, offset + 8)
-                            }
                             _ => ()
                           }
                         }
                       }
                     }
                   }
-                }
               }
             }
           }
-          
+
           // Handle floating-point arguments similarly
           let mut fp_pending_moves : Array[(Operand, Operand)] = []
           for pair in fp_args {
@@ -542,21 +555,23 @@ fn Function::call_inst_transform(self : Function) -> Unit {
             let target = FAReg(idx)
             fp_pending_moves.push((target, src))
           }
-          
+
           // Process floating-point moves
           for move_pair in fp_pending_moves {
             let (target, src) = move_pair
             match (target, src) {
-              (FAReg(t_idx), FAReg(s_idx)) if t_idx == s_idx => ()  // No move needed
-              _ => moves_before.push(Instruction::new(FMovD, [target], [src], bb=Some(bb)))
+              (FAReg(t_idx), FAReg(s_idx)) if t_idx == s_idx => () // No move needed
+              _ =>
+                moves_before.push(
+                  Instruction::new(FMovD, [target], [src], bb=Some(bb)),
+                )
             }
           }
-          
+
           // Add all move instructions before the call
           for move_inst in moves_before {
             new_insts.push(move_inst)
           }
-          
           let new_call = Instruction::{
             opcode: Call,
             defs: [],
@@ -566,45 +581,44 @@ fn Function::call_inst_transform(self : Function) -> Unit {
             liveout,
           }
           new_insts.push(new_call)
-          
+
           // Handle return value
           if !defs.is_empty() {
             let ret_val = defs[0]
             match ret_val {
-              AReg(0) => ()  // Already in the right place for integer return
-              FAReg(0) => ()  // Already in the right place for FP return
-              FReg(_) | FTReg(_) | FSReg(_) | VFReg(_) => {
+              AReg(0) => () // Already in the right place for integer return
+              FAReg(0) => () // Already in the right place for FP return
+              FReg(_) | FTReg(_) | FSReg(_) | VFReg(_) =>
                 // Floating-point return value
-                new_insts.push(Instruction::new(FMovD, [ret_val], [FAReg(0)], bb=Some(bb)))
-              }
-              _ => {
+                new_insts.push(
+                  Instruction::new(FMovD, [ret_val], [FAReg(0)], bb=Some(bb)),
+                )
+              _ =>
                 // Integer return value
-                new_insts.push(Instruction::new(Movq, [ret_val], [AReg(0)], bb=Some(bb)))
-              }
+                new_insts.push(
+                  Instruction::new(Movq, [ret_val], [AReg(0)], bb=Some(bb)),
+                )
             }
           }
         }
-        _ => {
+        _ =>
           // Not a call instruction, keep as-is
           new_insts.push(inst)
-        }
       }
     }
-    
     bb.insts = new_insts
   }
 }
 
-
+///|
 fn Function::adjust_mem_operands(self : Function) -> Unit {
-  let { var_stack_size, reg_stack_size,.. } = self
+  let { var_stack_size, reg_stack_size, .. } = self
   let total_stack_size = var_stack_size + reg_stack_size
   for bb in self.body {
     for inst in bb.insts {
       for i, use_op in inst.uses {
         match use_op {
-          Mem(StackPtr, offset) =>
-            inst.uses[i] = Mem(StackPtr, offset)
+          Mem(StackPtr, offset) => inst.uses[i] = Mem(StackPtr, offset)
           Mem(FramePtr, offset) =>
             inst.uses[i] = Mem(StackPtr, offset + total_stack_size)
           Mem(FramePtrPrim, offset) =>
@@ -614,8 +628,7 @@ fn Function::adjust_mem_operands(self : Function) -> Unit {
       }
       for i, def_op in inst.defs {
         match def_op {
-          Mem(StackPtr, offset) =>
-            inst.defs[i] = Mem(StackPtr, offset)
+          Mem(StackPtr, offset) => inst.defs[i] = Mem(StackPtr, offset)
           Mem(FramePtr, offset) =>
             inst.defs[i] = Mem(StackPtr, offset + total_stack_size)
           Mem(FramePtrPrim, offset) =>
@@ -627,7 +640,8 @@ fn Function::adjust_mem_operands(self : Function) -> Unit {
   }
 }
 
-fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
+///|
+fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
   let has_call = self.has_inst_with_opcode(Call)
   if self.var_stack_size == 0 && self.reg_stack_size == 0 && !has_call {
     // No stack adjustment needed
@@ -636,14 +650,13 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
   let prologue : Array[Instruction] = Array::new()
   self.extend_reg_stack(8, 8) // for storing old frame pointer
   let frame_ptr_loc = self.reg_stack_size
-  let ra_loc: Int64? = if has_call {
+  let ra_loc : Int64? = if has_call {
     // Need to save/restore return address
     self.extend_reg_stack(8, 8) // for storing old return address
     Some(self.reg_stack_size)
   } else {
     None
   }
-
   if self.reg_stack_size > 0 {
     //self.extend_var_stack(8, 8) // align var stack to 8 bytes
     self.var_stack_size = (self.var_stack_size + 8 - 1) / 8 * 8 // align to 8 bytes
@@ -688,9 +701,7 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
       Mem(FramePtr, -frame_ptr_loc),
     ])
     let restore_ra = if ra_loc is Some(ra_loc) {
-      Instruction::new(Loadq, [ReturnAddr], [
-        Mem(FramePtr, -ra_loc),
-      ]) |> Some
+      Instruction::new(Loadq, [ReturnAddr], [Mem(FramePtr, -ra_loc)]) |> Some
     } else {
       None
     }
@@ -708,7 +719,6 @@ fn Function::prologue_epilogue_insertion(self: Function) -> Unit {
     }
     bb.insts = new_insts
   }
-
   for i in prologue.rev_iter() {
     self.body[0].insts.insert(0, i)
   }

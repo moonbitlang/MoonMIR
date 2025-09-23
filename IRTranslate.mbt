@@ -806,7 +806,12 @@ fn Instruction::from_llvm_inst(
           ConstantInt(c) => {
             let offset = (vreg_arg_cnt - num_arg_regs) * 8
             let memloc = Mem(StackPtr, offset.to_int64())
-            let storei = Instruction::new(Storeq, [], [memloc, Imm(c.getValueAsInt64())], bb~)
+            let storei = Instruction::new(
+              Storeq,
+              [],
+              [memloc, Imm(c.getValueAsInt64())],
+              bb~,
+            )
             insts.push(storei)
             uses.push(memloc)
             func.extend_var_stack(8, 8)
@@ -830,7 +835,12 @@ fn Instruction::from_llvm_inst(
           ConstantFP(f) => {
             let offset = (vfreg_arg_cnt - num_arg_fregs) * 8
             let memloc = Mem(StackPtr, offset.to_int64())
-            let storei = Instruction::new(Storeq, [], [memloc, FImm(f.value)], bb~)
+            let storei = Instruction::new(
+              Storeq,
+              [],
+              [memloc, FImm(f.value)],
+              bb~,
+            )
             insts.push(storei)
             uses.push(memloc)
             func.extend_var_stack(8, 8)
@@ -854,6 +864,7 @@ fn Instruction::from_llvm_inst(
                 insts.push(storei)
                 uses.push(memloc)
                 func.extend_var_stack(8, 8)
+                vreg_arg_cnt += 1
               }
               VFReg(_) if vfreg_arg_cnt < num_arg_fregs => {
                 uses.push(op)
@@ -866,6 +877,7 @@ fn Instruction::from_llvm_inst(
                 insts.push(storei)
                 uses.push(memloc)
                 func.extend_var_stack(8, 8)
+                vfreg_arg_cnt += 1
               }
               Mem(r, offset) if !arg.getType().isIEEELikeFPTy() &&
                 vreg_arg_cnt < num_arg_regs => {
@@ -905,14 +917,21 @@ fn Instruction::from_llvm_inst(
                 insts.push(storei)
                 uses.push(memloc)
                 func.extend_var_stack(8, 8)
+                vreg_arg_cnt += 1
               }
               Mem(r, offset) => {
                 let stack_offset = (vfreg_arg_cnt - num_arg_fregs) * 8
                 let memloc = Mem(StackPtr, stack_offset.to_int64())
-                let storei = Instruction::new(Storeq, [], [memloc, Mem(r, offset)], bb~)
+                let storei = Instruction::new(
+                  Storeq,
+                  [],
+                  [memloc, Mem(r, offset)],
+                  bb~,
+                )
                 insts.push(storei)
                 uses.push(memloc)
                 func.extend_var_stack(8, 8)
+                vfreg_arg_cnt += 1
               }
               _ =>
                 raise IRTranslateError(
