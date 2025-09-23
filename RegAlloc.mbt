@@ -121,7 +121,7 @@ pub fn rewrite_instruction(
   vreg_operand_map~ : Map[Int, Operand],
   vfreg_operand_map~ : Map[Int, Operand],
 ) -> Unit raise RegAllocError {
-  let { defs, uses, .. } = inst
+  let { defs, uses, livein, liveout, .. } = inst
   for i, op in defs {
     match op {
       VReg(v) => {
@@ -156,4 +156,42 @@ pub fn rewrite_instruction(
       _ => ()
     }
   }
+  let new_livein : Set[Operand] = Set::new()
+  let new_liveout : Set[Operand] = Set::new()
+  for op in livein {
+    match op {
+      VReg(v) => {
+        guard vreg_operand_map.get(v) is Some(operand) else {
+          raise RegAllocError("No operand found for vreg \{v}")
+        }
+        new_livein.add(operand)
+      }
+      VFReg(v) => {
+        guard vfreg_operand_map.get(v) is Some(operand) else {
+          raise RegAllocError("No operand found for vfreg \{v}")
+        }
+        new_livein.add(operand)
+      }
+      _ => new_livein.add(op)
+    }
+  }
+  for op in liveout {
+    match op {
+      VReg(v) => {
+        guard vreg_operand_map.get(v) is Some(operand) else {
+          raise RegAllocError("No operand found for vreg \{v}")
+        }
+        new_liveout.add(operand)
+      }
+      VFReg(v) => {
+        guard vfreg_operand_map.get(v) is Some(operand) else {
+          raise RegAllocError("No operand found for vfreg \{v}")
+        }
+        new_liveout.add(operand)
+      }
+      _ => new_liveout.add(op)
+    }
+  }
+  inst.livein = new_livein
+  inst.liveout = new_liveout
 }

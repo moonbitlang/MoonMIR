@@ -810,6 +810,7 @@ fn Instruction::from_llvm_inst(
             insts.push(storei)
             uses.push(memloc)
             func.extend_var_stack(8, 8)
+            vreg_arg_cnt += 1
           }
           ConstantFP(f) if vfreg_arg_cnt < num_arg_fregs => {
             let vfreg = func.add_vfreg()
@@ -833,6 +834,7 @@ fn Instruction::from_llvm_inst(
             insts.push(storei)
             uses.push(memloc)
             func.extend_var_stack(8, 8)
+            vfreg_arg_cnt += 1
           }
           _ => {
             guard func.get_operand_from_llvm_value(arg) is Some(op) else {

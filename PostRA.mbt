@@ -41,8 +41,8 @@ fn Function::post_ra(self : Function) -> Unit raise PostRAError {
 ///|
 fn Function::group_registers(self : Function) -> Unit raise PostRAError {
   self.group_arg_registers()
-  self.group_callee_saved_registers()
   self.group_call_registers()
+  self.group_callee_saved_registers()
   self.group_normal_registers()
 }
 
@@ -54,7 +54,7 @@ fn Function::group_registers(self : Function) -> Unit raise PostRAError {
 /// rewrite  %r4 -> %a0
 ///          %r5 -> %a1
 ///          %r3 -> %a2
-fn Function::group_arg_registers(self : Function) -> Unit raise PostRAError {
+fn Function::group_arg_registers(self : Function) -> Unit {
   // Group Arg registers
   let reg_areg_map : Map[Operand, Operand] = Map::new()
   let mut p_arg_reg : Int = 0
@@ -69,7 +69,8 @@ fn Function::group_arg_registers(self : Function) -> Unit raise PostRAError {
         reg_areg_map.set(p, FAReg(p_arg_freg))
         p_arg_freg += 1
       }
-      _ => raise PostRAError("Parameter is not a register")
+      _ => ()
+      //_ => raise PostRAError("Parameter is not a register")
     }
   }
   replace_operand_in_function(self, reg_areg_map)
