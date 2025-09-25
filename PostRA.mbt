@@ -642,6 +642,34 @@ fn Function::adjust_mem_operands(self : Function) -> Unit {
 
 ///|
 fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
+  // Load and store callee-saved registers
+  let sreg_stack_loc_map : Map[Operand, Operand] = Map::new()
+  for bb in self.body {
+    for inst in bb.insts {
+      let defs_uses = inst.defs.copy()
+      defs_uses.append(inst.uses.copy())
+      for op in defs_uses {
+        match op {
+          SReg(_) as r => {
+            if !sreg_stack_loc_map.contains(r) {
+              self.extend_reg_stack(8, 8)
+              let offset = self.reg_stack_size
+              sreg_stack_loc_map.set(r, Mem(FramePtrPrim, -offset))
+            }
+          }
+          FSReg(_) as fr => {
+            if !sreg_stack_loc_map.contains(fr) {
+              self.extend_reg_stack(8, 8)
+              let offset = self.reg_stack_size
+              sreg_stack_loc_map.set(fr, Mem(FramePtrPrim, -offset))
+            }
+          }
+          _ => ()
+        }
+      }
+    }
+  }
+
   let has_call = self.has_inst_with_opcode(Call)
   if self.var_stack_size == 0 && self.reg_stack_size == 0 && !has_call {
     // No stack adjustment needed
@@ -691,6 +719,16 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
     Imm(total_stack_size),
   ])
   prologue.push(setup_fp)
+  // Store callee-saved registers
+  for pair in sreg_stack_loc_map {
+    let (r, loc) = pair
+    let store_inst = match r {
+      SReg(_) => Instruction::new(Storeq, [], [loc, r], bb=None)
+      FSReg(_) => Instruction::new(FStoreD, [], [loc, r], bb=None)
+      _ => continue // should not happen
+    }
+    prologue.push(store_inst)
+  }
   for bb in self.body {
     let new_insts : Array[Instruction] = Array::new()
     let restore_stack = Instruction::new(Addq, [StackPtr], [
@@ -705,11 +743,22 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
     } else {
       None
     }
+    let restore_sregs : Array[Instruction] = Array::new()
+    for pair in sreg_stack_loc_map {
+      let (r, loc) = pair
+      let load_inst = match r {
+        SReg(_) => Instruction::new(Loadq, [r], [loc], bb=None)
+        FSReg(_) => Instruction::new(FLoadD, [r], [loc], bb=None)
+        _ => continue // should not happen
+      }
+      restore_sregs.push(load_inst)
+    }
     for inst in bb.insts {
       if inst.opcode is Ret {
         if restore_ra is Some(restore_ra) {
           new_insts.push(restore_ra)
         }
+        new_insts.append(restore_sregs)
         new_insts.push(restore_fp)
         new_insts.push(restore_stack)
         new_insts.push(inst)

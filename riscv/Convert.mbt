@@ -293,6 +293,16 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
     }
     { opcode: Call, defs: [], uses: [Label(func_name)], .. } =>
       [Call(func_name)]
+    { opcode: Bgt, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Bgt(src1, src2, label1), J(label2)]
+    }
+    { opcode: Blt, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Blt(src1, src2, label1), J(label2)]
+    }
     _ => raise GMIRToRvAsmError("UnImplemented GMIR instruction: \{inst}")
   }
 }

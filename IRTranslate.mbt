@@ -398,6 +398,10 @@ fn Instruction::from_llvm_inst(
           bb~,
         )
       }
+      guard true_label is Label(true_label)
+      guard false_label is Label(false_label)
+      func.bbmap[true_label].preds.push(bb.unwrap())
+      func.bbmap[false_label].preds.push(bb.unwrap())
       [minst]
     }
     BranchInst({ condition: None, trueBlock: Some(trueBB), .. }) => {
@@ -407,6 +411,8 @@ fn Instruction::from_llvm_inst(
         )
       }
       let minst = Instruction::new(Jmp, [], [true_label], bb~)
+      guard true_label is Label(true_label)
+      func.bbmap[true_label].preds.push(bb.unwrap())
       [minst]
     }
     BranchInst(b) => {

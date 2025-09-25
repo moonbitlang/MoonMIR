@@ -95,7 +95,7 @@ pub fn Function::run_ir_translation(self : Self) -> Unit raise IRTranslateError 
   // Reverse Post-Order Traversal Basic Blocks first
   let sorted_bbs = self.sort_llvm_basick_block()
   for i, llvm_bb in sorted_bbs {
-    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
+    let label = if llvm_bb.getName() is Some(n) { n } else { "\{self.name}_L\{i}" }
     let machine_bb = BasicBlock::new(self, llvm_bb, label)
     self.body.push(machine_bb)
     self.value_map.set(llvm_bb, Label(label))
