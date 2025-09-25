@@ -117,6 +117,8 @@ pub(all) enum RvAsm {
   Word(UInt)
   Quad(UInt64)
   Zero(UInt)
+  LuiHi(Reg, String)
+  AddiLo(Reg, Reg, String)
   Add(Reg, Reg, Reg)
   Sub(Reg, Reg, Reg)
   Xor(Reg, Reg, Reg)

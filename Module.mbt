@@ -5,7 +5,7 @@ pub(all) struct Module {
   functions : Array[Function]
   all_llvm_functions : Map[String, @IR.Function] // includes external functions
   external_functions : Map[String, @IR.Function]
-  global_values: Array[GlobalValue]
+  global_values : Array[GlobalValue]
 
   // Phase tracking
   mut ir_translated : Bool
@@ -44,7 +44,6 @@ pub fn Module::run_ir_translation(self : Self) -> Unit raise IRTranslateError {
         self.global_values.push(g)
       }
     }
-
   }
   for func_pair in self.llvm_mod.functions {
     let (_, func) = func_pair
@@ -65,7 +64,6 @@ pub impl Show for Module with output(self, logger) {
     logger.write_string(gv.to_string())
     logger.write_string("\n")
   }
-
   for func in self.functions {
     logger.write_string(func.to_string())
     logger.write_string("\n")

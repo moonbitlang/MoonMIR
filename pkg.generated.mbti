@@ -80,6 +80,28 @@ fn Function::legalize(Self) -> Unit raise LegalizeError
 fn Function::run_ir_translation(Self) -> Unit raise IRTranslateError
 impl Show for Function
 
+pub(all) struct GlobalValue {
+  label : String
+  content : GlobalValueContent
+  mod : Module
+  llvm_gv : &@IR.GlobalValue
+}
+fn GlobalValue::new(Module, &@IR.GlobalValue) -> Self raise IRTranslateError
+impl Show for GlobalValue
+
+pub(all) enum GlobalValueContent {
+  String(String)
+  Zero(Int)
+  Data(Array[GlobalValueData])
+}
+
+pub(all) enum GlobalValueData {
+  Quad(UInt64)
+  Word(UInt)
+  Half(UInt16)
+  Byte(Byte)
+}
+
 pub struct Graph[T] {
   nodes : @set.Set[T]
   edges : Map[T, @set.Set[T]]
@@ -108,6 +130,7 @@ pub(all) struct Module {
   functions : Array[Function]
   all_llvm_functions : Map[String, @IR.Function]
   external_functions : Map[String, @IR.Function]
+  global_values : Array[GlobalValue]
   mut ir_translated : Bool
   mut legalized : Bool
   mut reg_allocated : Bool
