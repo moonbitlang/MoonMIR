@@ -1,4 +1,8 @@
 
+void print_int(int);
+
+
 int main() {
-  return 42;
+  print_int(42);
+  return 0;
 }
