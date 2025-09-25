@@ -121,7 +121,7 @@ pub fn rewrite_instruction(
   inst : Instruction,
   vreg_operand_map~ : Map[Int, Operand],
   vfreg_operand_map~ : Map[Int, Operand],
-  loc~: SourceLoc
+  loc~ : SourceLoc,
 ) -> Unit raise RegAllocError {
   let { defs, uses, livein, liveout, .. } = inst
   for i, op in defs {

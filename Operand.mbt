@@ -138,7 +138,7 @@ pub(all) enum Operand {
   StackPtr // Stack Top (for stack pointer)
   FramePtr // Frame Pointer
   FramePtrPrim // fp', fake frame pointer used in prologue/epilogue
-  ReturnAddr   // Return Address (for jalr instruction)
+  ReturnAddr // Return Address (for jalr instruction)
 } derive(Hash, Eq)
 
 ///|

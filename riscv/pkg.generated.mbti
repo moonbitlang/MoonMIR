@@ -102,13 +102,21 @@ pub(all) enum Reg {
   T5
   T6
 }
-fn Reg::from_mir_operand(@GMIR.Operand) -> Self raise
+#callsite(autofill(loc))
+fn Reg::from_mir_operand(@GMIR.Operand, loc~ : SourceLoc) -> Self raise
 impl Compare for Reg
 impl Eq for Reg
 impl Hash for Reg
 impl Show for Reg
 
 pub(all) enum RvAsm {
+  Global(String)
+  Asciz(String)
+  Byte(Byte)
+  Half(UInt16)
+  Word(UInt)
+  Quad(UInt64)
+  Zero(UInt)
   Add(Reg, Reg, Reg)
   Sub(Reg, Reg, Reg)
   Xor(Reg, Reg, Reg)

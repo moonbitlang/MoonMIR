@@ -59,7 +59,15 @@ pub fn Instruction::new(
 
   // Helper function to check if operand is an integer register type
   fn is_int_register(op : Operand) -> Bool {
-    op is (VReg(_) | Reg(_) | StackPtr | FramePtr | ReturnAddr | AReg(_) | TReg(_) | SReg(_))
+    op
+    is (VReg(_)
+    | Reg(_)
+    | StackPtr
+    | FramePtr
+    | ReturnAddr
+    | AReg(_)
+    | TReg(_)
+    | SReg(_))
   }
 
   // Helper function to check if operand is a floating-point register type

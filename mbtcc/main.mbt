@@ -1,4 +1,4 @@
-
+///|
 fn main {
   let rv64_config = @GMIR.ArchConfig::riscv64()
   let help_info =
@@ -14,24 +14,20 @@ fn main {
     #|  --stop-after=RegAlloc      Stop after register allocation
     #|  --stop-after=PostRA        Stop after post register allocation
     #|  --print-all               Print intermediate representations at all stages
-
-  let args = @env.args();
-
+  let args = @env.args()
   if args.length() == 1 || args.contains("-h") || args.contains("--help") {
-    println(help_info);
-    return;
+    println(help_info)
+    return
   }
-
   let input_file = if args.search("-f") is Some(idx) && idx + 1 < args.length() {
     args[idx + 1]
   } else if args.search("--file") is Some(idx) && idx + 1 < args.length() {
     args[idx + 1]
   } else {
-    println("Error: No input file specified.");
-    println(help_info);
-    return;
+    println("Error: No input file specified.")
+    println(help_info)
+    return
   }
-
   let parser_ctx = @parser.ParserContext::create_by_file(input_file)
   parser_ctx.tokenize() catch {
     err => {
@@ -60,7 +56,6 @@ fn main {
       return
     }
   }
-
   let mod = codegen.llvm_mod
   if args.contains("-emit-llvm") {
     if args.search("-o") is Some(idx) && idx + 1 < args.length() {
@@ -77,12 +72,10 @@ fn main {
     }
     return
   }
-
   if args.contains("--print-all") {
     println("==================== LLVM IR ================")
     println(mod)
   }
-
   let gmir = @GMIR.Module::new(mod, rv64_config)
   gmir.run_ir_translation() catch {
     e => {
@@ -97,7 +90,6 @@ fn main {
     println("==================== GMIR ================")
     println(gmir)
   }
-
   gmir.legalize() catch {
     e => {
       println("Error during GMIR legalization: \{e}")
@@ -164,10 +156,16 @@ fn main {
     }
   }
 
-  if args.contains("-o") && args.search("-o") is Some(idx) && idx + 1 < args.length() {
+  if args.contains("-o") &&
+    args.search("-o") is Some(idx) &&
+    idx + 1 < args.length() {
     let output_file = args[idx + 1]
     let mut s = ""
-    riscv_asm.each(line => s += if line is Label(_) { line.to_string() + "\n" } else { "  " + line.to_string() + "\n" })
+    riscv_asm.each(line => s += if line is Label(_) {
+      line.to_string() + "\n"
+    } else {
+      "  " + line.to_string() + "\n"
+    })
     @fs.write_string_to_file(output_file, s) catch {
       err => {
         println("Error writing assembly to file: \{err}")
@@ -176,6 +174,5 @@ fn main {
     }
     return
   }
-
   riscv_asm.each(line => print_asm(line))
 }

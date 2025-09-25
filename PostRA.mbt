@@ -650,26 +650,23 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
       defs_uses.append(inst.uses.copy())
       for op in defs_uses {
         match op {
-          SReg(_) as r => {
+          SReg(_) as r =>
             if !sreg_stack_loc_map.contains(r) {
               self.extend_reg_stack(8, 8)
               let offset = self.reg_stack_size
               sreg_stack_loc_map.set(r, Mem(FramePtrPrim, -offset))
             }
-          }
-          FSReg(_) as fr => {
+          FSReg(_) as fr =>
             if !sreg_stack_loc_map.contains(fr) {
               self.extend_reg_stack(8, 8)
               let offset = self.reg_stack_size
               sreg_stack_loc_map.set(fr, Mem(FramePtrPrim, -offset))
             }
-          }
           _ => ()
         }
       }
     }
   }
-
   let has_call = self.has_inst_with_opcode(Call)
   if self.var_stack_size == 0 && self.reg_stack_size == 0 && !has_call {
     // No stack adjustment needed

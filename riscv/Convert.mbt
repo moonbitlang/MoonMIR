@@ -3,7 +3,7 @@ pub suberror GMIRToRvAsmError String derive(Show)
 
 ///|
 #callsite(autofill(loc))
-pub fn Reg::from_mir_operand(v : @GMIR.Operand, loc~: SourceLoc) -> Reg raise {
+pub fn Reg::from_mir_operand(v : @GMIR.Operand, loc~ : SourceLoc) -> Reg raise {
   match v {
     AReg(0) => A0
     AReg(1) => A1
@@ -34,7 +34,10 @@ pub fn Reg::from_mir_operand(v : @GMIR.Operand, loc~: SourceLoc) -> Reg raise {
     StackPtr => Sp
     FramePtr => Fp // S0
     ReturnAddr => Ra
-    _ => raise GMIRToRvAsmError("Error: Unsupported GMIR register: \{v}, loc: \{loc}")
+    _ =>
+      raise GMIRToRvAsmError(
+        "Error: Unsupported GMIR register: \{v}, loc: \{loc}",
+      )
   }
 }
 
@@ -237,7 +240,12 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       insts.push(Sw(free_reg, Mem::{ base, offset }))
       insts
     }
-    { opcode: Storel, defs: [], uses: [Mem(base1, offset1), Mem(base2, offset2)], .. } => {
+    {
+      opcode: Storel,
+      defs: [],
+      uses: [Mem(base1, offset1), Mem(base2, offset2)],
+      ..,
+    } => {
       // riscv doesn't support store from memory to memory, need to use a temp register
       let base1 = Reg::from_mir_operand(base1)
       let base2 = Reg::from_mir_operand(base2)
@@ -293,12 +301,22 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
     }
     { opcode: Call, defs: [], uses: [Label(func_name)], .. } =>
       [Call(func_name)]
-    { opcode: Bgt, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Bgt,
+      defs: [],
+      uses: [src1, src2, Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
       [Bgt(src1, src2, label1), J(label2)]
     }
-    { opcode: Blt, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Blt,
+      defs: [],
+      uses: [src1, src2, Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
       [Blt(src1, src2, label1), J(label2)]
@@ -334,9 +352,7 @@ pub fn from_gmir_func(func : @GMIR.Function) -> Array[RvAsm] raise {
 pub fn from_gmir_module(mod : @GMIR.Module) -> Array[RvAsm] raise {
   let insts : Array[RvAsm] = Array::new()
   // collect all global functions
-  mod.functions.filter(f => f.is_external).each(f => {
-    insts.push(Global(f.name))
-  })
+  mod.functions.filter(f => f.is_external).each(f => insts.push(Global(f.name)))
   mod.functions.each(func => {
     let func_insts = from_gmir_func(func)
     insts.append(func_insts)
