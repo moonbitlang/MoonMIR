@@ -68,10 +68,10 @@ test "Simple IR RegAlloc - mixed types" {
     content=(
       #|func mixed(%r0, %f0, %r1) {
       #|entry:
-      #|  %f2 = SIToFP(32, 64) %r0
-      #|  %f1 = SIToFP(32, 64) %r1
-      #|  %f0 = FAddD %f2, %f0
-      #|  %f0 = FAddD %f0, %f1
+      #|  %f1 = SIToFP(32, 64) %r0
+      #|  %f2 = SIToFP(32, 64) %r1
+      #|  %f0 = FAddD %f1, %f0
+      #|  %f0 = FAddD %f0, %f2
       #|  Ret %f0
       #|}
       #|

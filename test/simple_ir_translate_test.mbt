@@ -281,13 +281,13 @@ test "Simple IRTranslate - cond branch" {
     #|func cond_branch(%v0, %v1, %v2, %v3) {
     #|entry:
     #|  Bgt %v0, %v1, then, else
-    #|then:
+    #|then:                       ; preds: entry
     #|  %v4 = Movq %v2
     #|  Jmp merge
-    #|else:
+    #|else:                       ; preds: entry
     #|  %v4 = Movq %v3
     #|  Jmp merge
-    #|merge:
+    #|merge:                       ; preds: then, else
     #|  Ret %v4
     #|}
     #|
@@ -656,14 +656,9 @@ test "Simple IRTranslate - alloca load store" {
     mir_func,
     content=(
       #|func alloca_load_store_test() {
-      #|  sp = Addq sp, -16
-      #|  Storeq (sp + 4), fp
-      #|  fp = Addq sp, 16
       #|entry:
-      #|  Storel (sp + 0), 42
-      #|  %v0 = Loadl (sp + 0)
-      #|  fp = Loadq (sp + 4)
-      #|  sp = Addq sp, 16
+      #|  Storel (fp' - 4), 42
+      #|  %v0 = Loadl (fp' - 4)
       #|  Ret %v0
       #|}
       #|
@@ -932,13 +927,13 @@ test "Simple IRTranslate - simple phi" {
       #|func simple_phi(%v0, %v1, %v2) {
       #|entry:
       #|  Bne %v0, 0, then, else
-      #|then:
+      #|then:                       ; preds: entry
       #|  %v3 = Movq %v1
       #|  Jmp merge
-      #|else:
+      #|else:                       ; preds: entry
       #|  %v3 = Movq %v2
       #|  Jmp merge
-      #|merge:
+      #|merge:                       ; preds: then, else
       #|  Ret %v3
       #|}
       #|
@@ -1116,14 +1111,9 @@ test "Simple IRTranslate - constant array access" {
     mir_func,
     content=(
       #|func constant_array_test() {
-      #|  sp = Addq sp, -16
-      #|  Storeq (sp + 4), fp
-      #|  fp = Addq sp, 16
       #|entry:
-      #|  Storel (sp + 0), 1
-      #|  %v0 = Loadl (sp + 0)
-      #|  fp = Loadq (sp + 4)
-      #|  sp = Addq sp, 16
+      #|  Storel (fp' - 4), 1
+      #|  %v0 = Loadl (fp' - 4)
       #|  Ret %v0
       #|}
       #|
@@ -1274,14 +1264,9 @@ test "Simple IRTranslate - constants zero" {
     mir_func,
     content=(
       #|func zero_constants() {
-      #|  sp = Addq sp, -16
-      #|  Storeq (sp + 8), fp
-      #|  fp = Addq sp, 16
       #|entry:
-      #|  Storel (sp + 0), 0
-      #|  Storel (sp + 4), 0
-      #|  fp = Loadq (sp + 8)
-      #|  sp = Addq sp, 16
+      #|  Storel (fp' - 4), 0
+      #|  Storel (fp' - 8), 0
       #|  Ret 
       #|}
       #|
@@ -1380,14 +1365,9 @@ test "Simple IRTranslate - constant array access" {
     mir_func,
     content=(
       #|func constant_array_test() {
-      #|  sp = Addq sp, -16
-      #|  Storeq (sp + 4), fp
-      #|  fp = Addq sp, 16
       #|entry:
-      #|  Storel (sp + 0), 1
-      #|  %v0 = Loadl (sp + 0)
-      #|  fp = Loadq (sp + 4)
-      #|  sp = Addq sp, 16
+      #|  Storel (fp' - 4), 1
+      #|  %v0 = Loadl (fp' - 4)
       #|  Ret %v0
       #|}
       #|

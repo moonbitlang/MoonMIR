@@ -93,9 +93,13 @@ pub fn BasicBlock::run_ir_translation(
 ///|
 pub impl Show for BasicBlock with output(self, logger) {
   logger.write_string(self.label)
-  logger.write_string(":                 ")
-  let pred_labels = self.preds.map(b => b.label).join(", ")
-  logger.write_string("  ; preds: \{pred_labels}\n")
+  logger.write_string(":")
+  if !self.preds.is_empty() {
+    let pred_labels = self.preds.map(b => b.label).join(", ")
+    logger.write_string("                       ")
+    logger.write_string("; preds: \{pred_labels}")
+  }
+  logger.write_string("\n")
   for inst in self.insts {
     logger.write_string("  ")
     logger.write_string(inst.to_string())
