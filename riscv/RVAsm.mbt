@@ -171,6 +171,11 @@ pub(all) enum RvAsm {
   Quad(UInt64)
   Zero(UInt)
 
+  // Speicial inst
+  // Load Address
+  LuiHi(Reg, String) // lui %r, %hi(label)
+  AddiLo(Reg, Reg, String) // addi %r, %r, %lo(label)
+
   // reg-reg arith
   Add(Reg, Reg, Reg)
   Sub(Reg, Reg, Reg)
@@ -343,6 +348,8 @@ pub impl Show for RvAsm with output(self, logger) {
     _ => ()
   }
   let s = match self {
+    LuiHi(rd, label) => "lui \{rd}, %hi(\{label})"
+    AddiLo(rd, rs, label) => "addi \{rd}, \{rs}, %lo(\{label})"
     Add(dst, src1, src2) => "add \{dst}, \{src1}, \{src2}"
     Sub(dst, src1, src2) => "sub \{dst}, \{src1}, \{src2}"
     Xor(dst, src1, src2) => "xor \{dst}, \{src1}, \{src2}"

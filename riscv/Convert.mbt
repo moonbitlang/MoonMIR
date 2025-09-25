@@ -226,6 +226,10 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src2 = Reg::from_mir_operand(src2)
       [Mul(dst, src1, src2)]
     }
+    { opcode: Movq, defs: [dst], uses: [Label(addr)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      [LuiHi(dst, addr), AddiLo(dst, dst, addr)]
+    }
     { opcode: Movq, defs: [dst], uses: [Imm(i)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       [Li(dst, i.to_string())]
