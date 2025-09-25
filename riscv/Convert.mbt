@@ -188,6 +188,44 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src2 = Reg::from_mir_operand(src2)
       [Sub(dst, src1, src2)]
     }
+    { opcode: Mull, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError(
+            "No free register available for Mull immediate",
+          )
+        })
+      [Li(temp_reg, src2.to_string()), Mulw(dst, src1, temp_reg)]
+    }
+    { opcode: Mull, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Mulw(dst, src1, src2)]
+    }
+    { opcode: Mulq, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError(
+            "No free register available for Mulq immediate",
+          )
+        })
+      [Li(temp_reg, src2.to_string()), Mul(dst, src1, temp_reg)]
+    }
+    { opcode: Mulq, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Mul(dst, src1, src2)]
+    }
     { opcode: Movq, defs: [dst], uses: [Imm(i)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       [Li(dst, i.to_string())]
@@ -304,12 +342,42 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
     {
       opcode: Bgt,
       defs: [],
+      uses: [src1, Imm(imm), Label(label1), Label(label2)],
+      ..,
+    } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Bgt immediate")
+        })
+      [Li(temp_reg, imm.to_string()), Bgt(src1, temp_reg, label1), J(label2)]
+    }
+    {
+      opcode: Bgt,
+      defs: [],
       uses: [src1, src2, Label(label1), Label(label2)],
       ..,
     } => {
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
       [Bgt(src1, src2, label1), J(label2)]
+    }
+    {
+      opcode: Blt,
+      defs: [],
+      uses: [src1, Imm(imm), Label(label1), Label(label2)],
+      ..,
+    } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Blt immediate")
+        })
+      [Li(temp_reg, imm.to_string()), Blt(src1, temp_reg, label1), J(label2)]
     }
     {
       opcode: Blt,
@@ -321,6 +389,7 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src2 = Reg::from_mir_operand(src2)
       [Blt(src1, src2, label1), J(label2)]
     }
+    { opcode: Jmp, defs: [], uses: [Label(label)], .. } => [J(label)]
     _ => raise GMIRToRvAsmError("UnImplemented GMIR instruction: \{inst}")
   }
 }

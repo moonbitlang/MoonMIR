@@ -46,56 +46,112 @@ pub fn live_analysis(func : Function) -> (Graph[Int], Graph[Int]) {
 }
 
 ///|
-/// TODO: Problematic
+/// Fixed liveness analysis that handles loops correctly by iterating until fixed point
 fn live_analysis_for_basic_blocks(
   bb_queue : Deque[BasicBlock],
-  visited_bb_labels : Set[String],
+  _visited_bb_labels : Set[String],
   vreg_graph : Graph[Int],
   vfreg_graph : Graph[Int],
 ) -> Unit {
+  // First pass: visit all basic blocks to ensure all vregs are in the graph
+  let all_bbs : Array[BasicBlock] = Array::new()
+  let bb_set : Set[String] = Set::new()
+
+  // Collect all basic blocks from the queue
   while !bb_queue.is_empty() {
-    let head_bb = bb_queue.pop_front().unwrap()
-    if head_bb.insts.last() is Some(last_inst) {
-      last_inst.liveout.each(o => head_bb.liveout.add(o))
+    let bb = bb_queue.pop_front().unwrap()
+    if !bb_set.contains(bb.label) {
+      all_bbs.push(bb)
+      bb_set.add(bb.label)
+
+      // Add all defined registers to the graph early
+      for inst in bb.insts {
+        for def in inst.defs {
+          match def {
+            VReg(v) => vreg_graph.add_node(v)
+            VFReg(v) => vfreg_graph.add_node(v)
+            _ => ()
+          }
+        }
+      }
+
+      // Add predecessors to queue
+      for pred in bb.preds {
+        if !bb_set.contains(pred.label) {
+          bb_queue.push_back(pred)
+        }
+      }
     }
+  }
 
-    // Process instructions from back to front
-    // The liveout of instruction i is the livein of instruction i+1
-    let mut next_livein : Set[Operand] = head_bb.liveout.copy()
-    for inst in head_bb.insts.rev_iter() {
-      // Set this instruction's liveout to be the next instruction's livein
-      inst.liveout.clear()
-      next_livein.each(o => inst.liveout.add(o))
+  // Iterate until fixed point
+  let mut changed = true
+  let max_iterations = 100 // Prevent infinite loops
+  let mut iteration = 0
+  while changed && iteration < max_iterations {
+    changed = false
+    iteration += 1
 
-      // Compute this instruction's livein
-      live_analysis_for_instruction(inst)
+    // Process all basic blocks in reverse order (from end to start)
+    for i = all_bbs.length() - 1; i >= 0; i = i - 1 {
+      let bb = all_bbs[i]
 
-      // Build conflict graph based on livein
+      // Save old livein to detect changes
+      let old_livein_size = bb.livein.size()
+
+      // Recompute liveout from successors' livein
+      bb.liveout.clear()
+      for succ_label in bb.successors_label() {
+        // Find successor block
+        for other_bb in all_bbs {
+          if other_bb.label == succ_label {
+            other_bb.livein.each(o => bb.liveout.add(o))
+            break
+          }
+        }
+      }
+
+      // Process instructions from back to front
+      let mut next_livein : Set[Operand] = bb.liveout.copy()
+      for inst in bb.insts.rev_iter() {
+        // Set this instruction's liveout to be the next instruction's livein
+        inst.liveout.clear()
+        next_livein.each(o => inst.liveout.add(o))
+
+        // Compute this instruction's livein
+        live_analysis_for_instruction(inst)
+
+        // Update next_livein for the previous instruction
+        next_livein = inst.livein.copy()
+      }
+
+      // Update basic block's livein
+      bb.livein.clear()
+      if bb.insts.length() > 0 {
+        bb.insts[0].livein.each(o => bb.livein.add(o))
+      }
+
+      // Check if livein changed
+      if bb.livein.size() != old_livein_size {
+        changed = true
+      }
+    }
+  }
+
+  // Build conflict graph from final liveness information
+  for bb in all_bbs {
+    for inst in bb.insts {
       let (live_vreg_set, live_fvreg_set) = spilt_vreg_and_vfreg(inst.livein)
       update_graph(vreg_graph, live_vreg_set)
       update_graph(vfreg_graph, live_fvreg_set)
 
-      // Also add defined registers to the graph
-      // This ensures that all registers that are defined get allocated
-      for def in inst.defs {
-        match def {
+      // Also ensure all used registers are in the graph
+      for used_op in inst.uses {
+        match used_op {
           VReg(v) => vreg_graph.add_node(v)
           VFReg(v) => vfreg_graph.add_node(v)
           _ => ()
         }
-      }
-
-      // Update next_livein for the previous instruction
-      next_livein = inst.livein.copy()
-    }
-    for pred in head_bb.preds {
-      head_bb.livein.each(i => pred.liveout.add(i))
-    }
-    visited_bb_labels.add(head_bb.label)
-    for pred in head_bb.preds {
-      if pred.successors_label().iter().all(s => visited_bb_labels.contains(s)) &&
-        !visited_bb_labels.contains(pred.label) {
-        bb_queue.push_back(pred)
       }
     }
   }
