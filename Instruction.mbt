@@ -404,7 +404,7 @@ pub fn Instruction::new(
       match (defs, uses) {
         ([def], [src]) if is_int_register(def) =>
           match src {
-            s if is_int_register(s) || s is Imm(_) || s is Mem(_, _) =>
+            s if is_int_register(s) || s is (Imm(_) | Mem(_, _) | Label(_)) =>
               Instruction::{
                 opcode,
                 defs,

@@ -10,6 +10,8 @@ fn from_gmir_bb(@GMIR.BasicBlock, Int) -> Array[RvAsm] raise
 
 fn from_gmir_func(@GMIR.Function) -> Array[RvAsm] raise
 
+fn from_gmir_global(@GMIR.GlobalValue) -> Array[RvAsm]
+
 fn from_gmir_inst(@GMIR.Instruction) -> Array[RvAsm] raise
 
 fn from_gmir_module(@GMIR.Module) -> Array[RvAsm] raise

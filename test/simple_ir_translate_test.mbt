@@ -1374,3 +1374,59 @@ test "Simple IRTranslate - constant array access" {
     ),
   )
 }
+
+///|
+/// 
+/// void print_string(const char* s);
+///
+/// int main() {
+///   print_string("Hello, World!\n");
+///   return 0;
+/// }
+/// }
+test "Simple IRTranslate - global string" {
+  let ctx = @IR.Context::new()
+  let mod = ctx.addModule("demo")
+  let i32ty = ctx.getInt32Ty()
+  let ptr_ty = ctx.getPtrTy()
+  let void_ty = ctx.getVoidTy()
+
+  // Declare external function
+  let print_fty = ctx.getFunctionType(void_ty, [ptr_ty])
+  let print_func = mod.addFunction(print_fty, "print_string")
+
+  // Create main function
+  let main_fty = ctx.getFunctionType(i32ty, [])
+  let main_func = mod.addFunction(main_fty, "main")
+  let main_bb = main_func.addBasicBlock(name="entry")
+  let builder = ctx.createBuilder()
+  builder.setInsertPoint(main_bb)
+
+  // Create global string
+  let global_str = mod.addGlobalString("Hello, World!\n")
+  global_str.setLinkage(Private)
+  global_str.setUnnamedAddr(Local)
+
+  // Call print_string
+  let _ = builder.createCall(print_func, [global_str])
+
+  // Return 0
+  let zero = ctx.getConstInt32(0)
+  let _ = builder.createRet(zero)
+  let mod = @GMIR.Module::new(mod, rv64_config)
+  mod.run_ir_translation()
+  let expected =
+    #|global gstr1 {
+    #|  "Hello, World!\n"
+    #|}
+    #|
+    #|func main() {
+    #|entry:
+    #|  %v0 = Movq gstr1
+    #|  Call print_string, %v0
+    #|  Ret 0
+    #|}
+    #|
+    #|
+  inspect(mod, content=expected)
+}

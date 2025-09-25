@@ -492,7 +492,7 @@ pub impl Show for RvAsm with output(self, logger) {
     Zero(n) => ".zero \{n}"
     _ => ""
   }
-  logger.write_string("  " + s)
+  logger.write_string("    " + s)
 }
 
 //pub struct RvAsmBlock {

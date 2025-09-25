@@ -9,7 +9,7 @@ pub(all) struct GlobalValue {
 ///|
 pub(all) enum GlobalValueContent {
   String(String)
-  Zero(Int) // size in bytes
+  Zero(UInt) // size in bytes
   Data(Array[GlobalValueData])
 }
 
@@ -31,7 +31,9 @@ pub fn GlobalValue::new(
   let data_layout = llvm_mod.getDataLayout()
   match llvm_gv.asGlobalValueEnum() {
     GlobalVariable({ initializer: None, initializerTy, .. }) => {
-      let size = data_layout.getTypeAllocSize(initializerTy)
+      let size = data_layout
+        .getTypeAllocSize(initializerTy)
+        .reinterpret_as_uint()
       GlobalValue::{ label, content: Zero(size), mod, llvm_gv }
     }
     GlobalVariable({ initializer: Some(initializer), .. }) => {
@@ -102,7 +104,21 @@ pub fn GlobalValue::new(
               )
           }
         ConstantPointerNull(_) => Data([Quad(0)])
-        ConstantString({ data, .. }) => String(data)
+        ConstantString({ data, .. }) => {
+          let str_builder = StringBuilder::new()
+          for c in data {
+            match c {
+              '\n' => str_builder.write_string("\\n")
+              '\r' => str_builder.write_string("\\r")
+              '\t' => str_builder.write_string("\\r")
+              '\"' => str_builder.write_string("\\\"")
+              '\\' => str_builder.write_string("\\\\")
+              c => str_builder.write_char(c)
+            }
+          }
+          let s = str_builder.to_string()
+          String("\{s}")
+        }
         ConstantArray(_) =>
           raise IRTranslateError(
             "ConstantArray in global constant is not supported yet.",
@@ -127,17 +143,17 @@ pub fn GlobalValue::new(
 
 ///|
 pub impl Show for GlobalValue with output(self, logger) {
-  logger.write_string("global \{self.label} {")
+  logger.write_string("global \{self.label} {\n")
   match self.content {
-    String(s) => logger.write_string("  \"\{s}\"")
-    Zero(size) => logger.write_string("  .zero \{size}")
+    String(s) => logger.write_string("  \"\{s}\"\n")
+    Zero(size) => logger.write_string("  .zero \{size}\n")
     Data(data) =>
       for d in data {
         match d {
-          Quad(q) => logger.write_string("  .quad \{q}")
-          Word(w) => logger.write_string("  .word \{w}")
-          Half(h) => logger.write_string("  .half \{h}")
-          Byte(b) => logger.write_string("  .byte \{b}")
+          Quad(q) => logger.write_string("  .quad \{q}\n")
+          Word(w) => logger.write_string("  .word \{w}\n")
+          Half(h) => logger.write_string("  .half \{h}\n")
+          Byte(b) => logger.write_string("  .byte \{b}\n")
         }
       }
   }

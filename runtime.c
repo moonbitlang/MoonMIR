@@ -8,3 +8,7 @@ void print_int(int val) {
 void newline() {
   printf("\n");
 }
+
+void print_string(const char *str) {
+  printf("%s", str);
+}

@@ -149,13 +149,6 @@ fn main {
       return
     }
   }
-  fn print_asm(inst : @riscv.RvAsm) {
-    match inst {
-      Label(_) as l => println(l)
-      inst => println("  \{inst}")
-    }
-  }
-
   if args.contains("-o") &&
     args.search("-o") is Some(idx) &&
     idx + 1 < args.length() {
@@ -174,5 +167,5 @@ fn main {
     }
     return
   }
-  riscv_asm.each(line => print_asm(line))
+  riscv_asm.each(line => println(line))
 }

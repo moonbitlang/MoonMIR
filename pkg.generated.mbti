@@ -91,7 +91,7 @@ impl Show for GlobalValue
 
 pub(all) enum GlobalValueContent {
   String(String)
-  Zero(Int)
+  Zero(UInt)
   Data(Array[GlobalValueData])
 }
 

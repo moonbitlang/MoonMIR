@@ -422,10 +422,34 @@ pub fn from_gmir_func(func : @GMIR.Function) -> Array[RvAsm] raise {
 }
 
 ///|
+pub fn from_gmir_global(gv : @GMIR.GlobalValue) -> Array[RvAsm] {
+  let insts : Array[RvAsm] = Array::new()
+  insts.push(Label(gv.label))
+  match gv.content {
+    String(s) => insts.push(Asciz(s))
+    Zero(size) => insts.push(Zero(size))
+    Data(data) =>
+      for d in data {
+        match d {
+          Quad(v) => insts.push(Quad(v))
+          Word(v) => insts.push(Word(v))
+          Half(v) => insts.push(Half(v))
+          Byte(v) => insts.push(Byte(v))
+        }
+      }
+  }
+  insts
+}
+
+///|
 pub fn from_gmir_module(mod : @GMIR.Module) -> Array[RvAsm] raise {
   let insts : Array[RvAsm] = Array::new()
   // collect all global functions
   mod.functions.filter(f => f.is_external).each(f => insts.push(Global(f.name)))
+  mod.global_values.each(gv => {
+    let gv_insts = from_gmir_global(gv)
+    insts.append(gv_insts)
+  })
   mod.functions.each(func => {
     let func_insts = from_gmir_func(func)
     insts.append(func_insts)

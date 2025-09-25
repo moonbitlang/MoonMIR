@@ -233,7 +233,14 @@ fn Function::get_operand_from_llvm_value(
   self : Self,
   val : &LLVMValue,
 ) -> Operand? {
-  self.value_map.get(val)
+  match self.value_map.get(val) {
+    Some(op) => Some(op)
+    None =>
+      match val.tryAsGlobalValue() {
+        Some(gv) => gv.getName().unwrap() |> Label |> Some
+        None => None
+      }
+  }
 }
 
 ///|

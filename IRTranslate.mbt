@@ -864,9 +864,32 @@ fn Instruction::from_llvm_inst(
                 func.extend_var_stack(8, 8)
                 vfreg_arg_cnt += 1
               }
-              _ =>
+              Label(_) as l if vreg_arg_cnt < num_arg_regs => {
+                let vreg = func.add_vreg()
+                let load_addr = Instruction::new(Movq, [vreg], [l], bb~)
+                insts.push(load_addr)
+                uses.push(vreg)
+                vreg_arg_cnt += 1
+              }
+              Label(_) as l => {
+                let offset = (vreg_arg_cnt - num_arg_regs) * 8
+                let memloc = Mem(StackPtr, offset.to_int64())
+                let vreg = func.add_vreg()
+                let load_addr = Instruction::new(Movq, [vreg], [l], bb~)
+                let store_addr = Instruction::new(
+                  Storeq,
+                  [],
+                  [memloc, vreg],
+                  bb~,
+                )
+                insts.push(load_addr)
+                insts.push(store_addr)
+                func.extend_var_stack(8, 8)
+                vreg_arg_cnt += 1
+              }
+              op =>
                 raise IRTranslateError(
-                  "CallInst: unsupported argument operand type",
+                  "CallInst: unsupported argument operand type, \{op}",
                 )
             }
           }
