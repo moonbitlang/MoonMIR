@@ -149,40 +149,24 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
 
 ///|
 fn group_call_registers(self : Function) -> Unit {
+  // This function should not try to rename Call instruction arguments
+  // That will be handled by call_inst_transform
+  // We only handle return values here
+
   let (free_regs, free_fregs) = self.collect_free_regs()
-  let free_regs = Set::from_array(free_regs.iter().collect())
-  let free_fregs = Set::from_array(free_fregs.iter().collect())
   let replace_map : Map[Operand, Operand] = Map::new()
-  let call_insts = self.collect_insts_by_opcode(Call)
-  for inst in call_insts {
-    for i, arg in inst.uses[1:] {
-      match arg {
-        Reg(_) as r if !replace_map.contains(r) && free_regs.contains(AReg(i)) => {
-          replace_map.set(r, AReg(i))
-          free_regs.remove(AReg(i))
-        }
-        FReg(_) as fr if !replace_map.contains(fr) &&
-          free_fregs.contains(FAReg(i)) => {
-          replace_map.set(fr, FAReg(i))
-          free_fregs.remove(FAReg(i))
-        }
-        _ => ()
-      }
-    }
-  }
+
+  // Only handle return instructions
   let ret_insts = self.collect_insts_by_opcode(Ret)
   for inst in ret_insts {
     if inst is { defs: [v], .. } {
       match v {
-        Reg(_) as r if !replace_map.contains(r) && free_regs.contains(AReg(0)) => {
+        Reg(_) as r if !replace_map.contains(r) &&
+          free_regs.iter().any(fn(x) { x == AReg(0) }) =>
           replace_map.set(r, AReg(0))
-          free_regs.remove(AReg(0))
-        }
         FReg(_) as fr if !replace_map.contains(fr) &&
-          free_fregs.contains(FAReg(0)) => {
+          free_fregs.iter().any(fn(x) { x == FAReg(0) }) =>
           replace_map.set(fr, FAReg(0))
-          free_fregs.remove(FAReg(0))
-        }
         _ => ()
       }
     }
@@ -419,133 +403,95 @@ fn Function::call_inst_transform(self : Function) -> Unit {
 
           // Build dependency graph for integer arguments
           let mut pending_moves : Array[(Operand, Operand)] = []
-          let mut completed : Set[Int] = Set::new()
           for pair in int_args {
             let (idx, src) = pair
             let target = AReg(idx)
+            // Skip if source is already in the right place
+            if target == src {
+              continue
+            }
             pending_moves.push((target, src))
           }
 
-          // Process moves that don't have dependencies first
-          let mut progress = true
-          while progress && !pending_moves.is_empty() {
-            progress = false
-            let mut remaining : Array[(Operand, Operand)] = []
-            for move_pair in pending_moves {
-              let (target, src) = move_pair
-
-              // Check if this move can be done now
-              let can_move = match (target, src) {
-                (AReg(t_idx), AReg(s_idx)) =>
-                  if t_idx == s_idx {
-                    // No move needed
-                    true
-                  } else {
-                    // Check if any pending move needs AReg(t_idx) as source
-                    let mut blocked = false
-                    for other_move in pending_moves {
-                      let (_, other_src) = other_move
-                      match other_src {
-                        AReg(other_s_idx) if other_s_idx == t_idx => {
-                          // This target is needed as source elsewhere
-                          blocked = true
-                          break
-                        }
-                        _ => ()
-                      }
-                    }
-                    !blocked
-                  }
-                (AReg(_), _) => true // Non-AReg sources can always be moved
-                _ => true
-              }
-              if can_move {
-                match (target, src) {
-                  (AReg(t_idx), AReg(s_idx)) if t_idx == s_idx => {
-                    // No move needed
-                    completed.add(t_idx)
-                    progress = true
-                  }
-                  _ => {
-                    moves_before.push(
-                      Instruction::new(Movq, [target], [src], bb=Some(bb)),
-                    )
-                    match target {
-                      AReg(idx) => completed.add(idx)
-                      _ => ()
-                    }
-                    progress = true
-                  }
+          // Sort moves to handle dependencies correctly
+          // First, do moves that won't overwrite needed sources
+          let mut completed_moves : Array[(Operand, Operand)] = []
+          let mut remaining_moves = pending_moves
+          let mut made_progress = true
+          while made_progress && !remaining_moves.is_empty() {
+            made_progress = false
+            let mut next_remaining : Array[(Operand, Operand)] = []
+            for mv in remaining_moves {
+              let (target, _) = mv
+              // Check if this target would overwrite a source we still need
+              let mut would_overwrite = false
+              for other_move in remaining_moves {
+                let (other_target, other_src) = other_move
+                if target != other_target && target == other_src {
+                  // This move would overwrite a source needed by another move
+                  would_overwrite = true
+                  break
                 }
+              }
+              if !would_overwrite {
+                // Safe to do this move now
+                completed_moves.push(mv)
+                made_progress = true
               } else {
-                remaining.push(move_pair)
+                next_remaining.push(mv)
               }
             }
-            pending_moves = remaining
+            remaining_moves = next_remaining
           }
 
-          // Handle any remaining circular dependencies
-          if !pending_moves.is_empty() {
+          // Handle any remaining moves that form cycles
+          if !remaining_moves.is_empty() {
+            // These moves form a dependency cycle, need to use a temporary
+            // For simplicity, break the cycle by saving one of the sources first
             let (free_regs, _) = self.collect_free_regs()
-            for move_pair in pending_moves {
-              let (target, src) = move_pair
-              match (target, src) {
-                (AReg(t_idx), AReg(s_idx)) if t_idx == s_idx => () // No move needed
-                _ =>
-                  match free_regs.pop_front() {
-                    Some(temp_reg) => {
-                      // Use free register for swap
-                      moves_before.push(
-                        Instruction::new(Movq, [temp_reg], [src], bb=Some(bb)),
-                      )
-                      moves_before.push(
-                        Instruction::new(
-                          Movq,
-                          [target],
-                          [temp_reg],
-                          bb=Some(bb),
-                        ),
-                      )
-                    }
-                    None => {
-                      // No free register, use stack
-                      let old_stack_size = self.reg_stack_size
-                      self.extend_reg_stack(8, 8)
-                      let stack_offset = self.reg_stack_size - 8
 
-                      // Store to stack
-                      moves_before.push(
-                        Instruction::new(
-                          Storeq,
-                          [],
-                          [Mem(FramePtr, -stack_offset), src],
-                          bb=Some(bb),
-                        ),
-                      )
-                      // Load from stack
-                      moves_before.push(
-                        Instruction::new(
-                          Loadq,
-                          [target],
-                          [Mem(FramePtr, -stack_offset)],
-                          bb=Some(bb),
-                        ),
-                      )
+            // Pick the first move and save its source
+            if !remaining_moves.is_empty() {
+              let (first_target, first_src) = remaining_moves[0]
+              let saved_src = if free_regs.pop_front() is Some(temp_reg) {
+                // Save the source to a temporary register
+                moves_before.push(
+                  Instruction::new(Movq, [temp_reg], [first_src], bb=Some(bb)),
+                )
+                temp_reg
+              } else {
+                // No free register, use stack
+                self.extend_reg_stack(8, 8)
+                let stack_offset = self.reg_stack_size - 8
+                let stack_loc = Mem(FramePtr, -stack_offset)
+                // Save source to stack
+                moves_before.push(
+                  Instruction::new(
+                    Storeq,
+                    [],
+                    [stack_loc, first_src],
+                    bb=Some(bb),
+                  ),
+                )
+                stack_loc
+              }
 
-                      // Adjust stack argument offsets if stack was extended
-                      if self.reg_stack_size != old_stack_size {
-                        for i, arg in stack_args {
-                          match arg {
-                            Mem(FramePtr, offset) =>
-                              stack_args[i] = Mem(FramePtr, offset + 8)
-                            _ => ()
-                          }
-                        }
-                      }
-                    }
-                  }
+              // Replace the first move's source with the saved location
+              remaining_moves[0] = (first_target, saved_src)
+
+              // Now all moves can be done in order
+              for mv in remaining_moves {
+                completed_moves.push(mv)
               }
             }
+          }
+
+          // Now generate the actual move instructions
+          for mv in completed_moves {
+            let (target, src) = mv
+            moves_before.push(
+              Instruction::new(Movq, [target], [src], bb=Some(bb)),
+            )
           }
 
           // Handle floating-point arguments similarly
