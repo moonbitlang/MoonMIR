@@ -1,83 +1,8 @@
 ///|
 traitalias @IR.Value as LLVMValue
 
-//
-//traitalias @IR.Instruction as LLVMInstruction
-
 ///|
 pub suberror IRTranslateError String derive(Show)
-
-/////|
-//pub fn Module::from_llvm_module(llvm_mod : @IR.Module) -> Module raise {
-//  let functions : Array[Function] = Array::new()
-//  for func in llvm_mod.functions.values() {
-//    let f = Function::from_llvm_function(func)
-//    functions.push(f)
-//  }
-//  Module::{ functions, }
-//}
-
-///|
-//pub fn Function::from_llvm_function(func : LLVMFunction) -> Function raise {
-//  let value_map = ValueMap::new()
-//  let stack_size : Ref[Int] = Ref::new(0)
-//  let params : Array[Operand] = Array::new()
-//  for arg in func.arguments {
-//    if arg.getType().isIEEELikeFPTy() {
-//      let op = value_map.bind_llvmvalue_to_vfreg(arg)
-//      params.push(op)
-//    } else {
-//      let op = value_map.bind_llvmvalue_to_vreg(arg)
-//      params.push(op)
-//    }
-//  }
-//
-//  // Get BasicBlocks labels
-//  let name = func.getName().unwrap_or("unnamed")
-//  for i, llvm_bb in func.basicBlocks {
-//    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
-//    value_map.map[llvm_bb] = Label(label)
-//  }
-//  // First create all basic blocks and add them to bbmap
-//  let body : Array[BasicBlock] = Array::new()
-//  for i, llvm_bb in func.basicBlocks {
-//    let label = if llvm_bb.getName() is Some(n) { n } else { "L\{i}" }
-//    let bb = BasicBlock::new(label)
-//    value_map.bbmap[label] = bb
-//    body.push(bb)
-//  }
-//
-//  // Then process instructions for each basic block
-//  for i, llvm_bb in func.basicBlocks {
-//    let bb = body[i]
-//    for inst in llvm_bb.instIter() {
-//      let minsts = Instruction::from_llvm_inst(inst, value_map, stack_size) catch {
-//        e => {
-//          println("Error converting instruction in BB \{bb.label}:")
-//          println("  Instruction: \{inst}")
-//          raise e
-//        }
-//      }
-//      minsts.each(m => bb.insts.push(m))
-//    }
-//  }
-//
-//  // Finally set up predecessors
-//  for i, llvm_bb in func.basicBlocks {
-//    let bb = body[i]
-//    for pred in llvm_bb.preds {
-//      guard value_map.get(pred) is Some(Label(bb_label))
-//      bb.preds.push(value_map.bbmap[bb_label])
-//    }
-//  }
-//  let stack_size = stack_size.val
-//  let f = Function::{ name, params, body, stack_size }
-//  f.phi_elimination()
-//  if f.stack_size > 0 {
-//    f.prologue_epilogue_insertion()
-//  }
-//  f
-//}
 
 ///|
 fn Instruction::from_llvm_inst(

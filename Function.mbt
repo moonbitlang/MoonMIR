@@ -265,11 +265,6 @@ fn Function::has_inst_with_opcode(self : Self, opcode : OpCode) -> Bool {
 }
 
 ///|
-//pub fn Function::new(name : String) -> Function {
-//  Function::{ name, params: [], body: [], stack_size: 0 }
-//}
-
-///|
 pub impl Show for Function with output(self, logger) {
   logger.write_string("func \{self.name}(")
   let pstr = self.params.map(p => p.to_string()).join(", ")
@@ -310,7 +305,6 @@ fn Function::phi_elimination(self : Self) -> Unit {
     }
   }
   self.delete_phi_instructions()
-  //self.prologue_epilogue_insertion()
 }
 
 ///|
