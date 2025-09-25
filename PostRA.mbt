@@ -153,20 +153,82 @@ fn group_call_registers(self : Function) -> Unit {
   // That will be handled by call_inst_transform
   // We only handle return values here
 
-  let (free_regs, free_fregs) = self.collect_free_regs()
-  let replace_map : Map[Operand, Operand] = Map::new()
+  //let (free_regs, free_fregs) = self.collect_free_regs()
+  //let replace_map : Map[Operand, Operand] = Map::new()
+  //
+  //// Only handle return instructions
+  //let ret_insts = self.collect_insts_by_opcode(Ret)
+  //for inst in ret_insts {
+  //  if inst is { defs: [v], .. } {
+  //    match v {
+  //      Reg(_) as r if !replace_map.contains(r) &&
+  //        free_regs.iter().any(fn(x) { x == AReg(0) }) =>
+  //        replace_map.set(r, AReg(0))
+  //      FReg(_) as fr if !replace_map.contains(fr) &&
+  //        free_fregs.iter().any(fn(x) { x == FAReg(0) }) =>
+  //        replace_map.set(fr, FAReg(0))
+  //      _ => ()
+  //    }
+  //  }
+  //}
+  //replace_operand_in_function(self, replace_map)
 
-  // Only handle return instructions
+  let (free_regs, free_fregs) = self.collect_free_regs()
+  let free_regs = Set::from_array(free_regs.iter().collect())
+  let free_fregs = Set::from_array(free_fregs.iter().collect())
+  let replace_map : Map[Operand, Operand] = Map::new()
+  let call_insts = self.collect_insts_by_opcode(Call)
+  for inst in call_insts {
+    let mut reg_cnt = 0
+    let mut freg_cnt = 0
+    for ret in inst.defs {
+      match ret {
+        Reg(_) as r if !replace_map.contains(r) && free_regs.contains(AReg(reg_cnt)) => {
+          replace_map.set(r, AReg(reg_cnt))
+          free_regs.remove(AReg(reg_cnt))
+          reg_cnt += 1
+        }
+        FReg(_) as fr if !replace_map.contains(fr) &&
+          free_fregs.contains(FAReg(freg_cnt)) => {
+          replace_map.set(fr, FAReg(freg_cnt))
+          free_fregs.remove(FAReg(freg_cnt))
+          freg_cnt += 1
+        }
+        _ => ()
+      }
+    }
+    let mut reg_cnt = 0
+    let mut freg_cnt = 0
+    for arg in inst.uses[1:] {
+      match arg {
+        Reg(_) as r if !replace_map.contains(r) && free_regs.contains(AReg(reg_cnt)) => {
+          replace_map.set(r, AReg(reg_cnt))
+          free_regs.remove(AReg(reg_cnt))
+          reg_cnt += 1
+        }
+        FReg(_) as fr if !replace_map.contains(fr) &&
+          free_fregs.contains(FAReg(freg_cnt)) => {
+          replace_map.set(fr, FAReg(freg_cnt))
+          free_fregs.remove(FAReg(freg_cnt))
+          freg_cnt += 1
+        }
+        _ => ()
+      }
+    }
+  }
   let ret_insts = self.collect_insts_by_opcode(Ret)
   for inst in ret_insts {
-    if inst is { defs: [v], .. } {
+    if inst is { uses: [v], .. } {
       match v {
-        Reg(_) as r if !replace_map.contains(r) &&
-          free_regs.iter().any(fn(x) { x == AReg(0) }) =>
+        Reg(_) as r if !replace_map.contains(r) && free_regs.contains(AReg(0)) => {
           replace_map.set(r, AReg(0))
+          free_regs.remove(AReg(0))
+        }
         FReg(_) as fr if !replace_map.contains(fr) &&
-          free_fregs.iter().any(fn(x) { x == FAReg(0) }) =>
+          free_fregs.contains(FAReg(0)) => {
           replace_map.set(fr, FAReg(0))
+          free_fregs.remove(FAReg(0))
+        }
         _ => ()
       }
     }
