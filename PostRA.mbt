@@ -622,27 +622,25 @@ fn Function::call_inst_transform(self : Function) -> Unit {
 fn Function::adjust_mem_operands(self : Function) -> Unit {
   let { var_stack_size, reg_stack_size, .. } = self
   let total_stack_size = var_stack_size + reg_stack_size
-  for bb in self.body {
-    for inst in bb.insts {
-      for i, use_op in inst.uses {
-        match use_op {
-          Mem(StackPtr, offset) => inst.uses[i] = Mem(StackPtr, offset)
-          Mem(FramePtr, offset) =>
-            inst.uses[i] = Mem(StackPtr, offset + total_stack_size)
-          Mem(FramePtrPrim, offset) =>
-            inst.uses[i] = Mem(StackPtr, offset + var_stack_size)
-          _ => ()
-        }
+  for inst in self.instIter() {
+    for i, use_op in inst.uses {
+      match use_op {
+        Mem(StackPtr, offset) => inst.uses[i] = Mem(StackPtr, offset)
+        Mem(FramePtr, offset) =>
+          inst.uses[i] = Mem(StackPtr, offset + total_stack_size)
+        Mem(FramePtrPrim, offset) =>
+          inst.uses[i] = Mem(StackPtr, offset + var_stack_size)
+        _ => ()
       }
-      for i, def_op in inst.defs {
-        match def_op {
-          Mem(StackPtr, offset) => inst.defs[i] = Mem(StackPtr, offset)
-          Mem(FramePtr, offset) =>
-            inst.defs[i] = Mem(StackPtr, offset + total_stack_size)
-          Mem(FramePtrPrim, offset) =>
-            inst.defs[i] = Mem(StackPtr, offset + var_stack_size)
-          _ => ()
-        }
+    }
+    for i, def_op in inst.defs {
+      match def_op {
+        Mem(StackPtr, offset) => inst.defs[i] = Mem(StackPtr, offset)
+        Mem(FramePtr, offset) =>
+          inst.defs[i] = Mem(StackPtr, offset + total_stack_size)
+        Mem(FramePtrPrim, offset) =>
+          inst.defs[i] = Mem(StackPtr, offset + var_stack_size)
+        _ => ()
       }
     }
   }

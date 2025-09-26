@@ -49,9 +49,9 @@
                 #f)))) ; Failure
       (lambda () ; After thunk: Clean up generated files
         (printf "  Cleaning up generated files...\n")
-        ;; (let ([s-file (format "~a.s" file)])
-        ;;   (when (file-exists? s-file) (delete-file s-file)))
-        ;; (when (file-exists? file) (delete-file file))
+        (let ([s-file (format "~a.s" file)])
+          (when (file-exists? s-file) (delete-file s-file)))
+        (when (file-exists? file) (delete-file file))
         (printf "\n")))))
 
 ;; --- Main Logic ---

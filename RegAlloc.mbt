@@ -116,19 +116,17 @@ fn assign_vfreg_color_to_operand(
 }
 
 ///|
-#callsite(autofill(loc))
 pub fn rewrite_instruction(
   inst : Instruction,
   vreg_operand_map~ : Map[Int, Operand],
   vfreg_operand_map~ : Map[Int, Operand],
-  loc~ : SourceLoc,
 ) -> Unit raise RegAllocError {
   let { defs, uses, livein, liveout, .. } = inst
   for i, op in defs {
     match op {
       VReg(v) => {
         guard vreg_operand_map.get(v) is Some(operand) else {
-          raise RegAllocError("No operand found for vreg \{v}, loc: \{loc}")
+          raise RegAllocError("No operand found for vreg \{v}")
         }
         defs[i] = operand
       }

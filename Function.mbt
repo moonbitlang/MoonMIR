@@ -68,6 +68,31 @@ pub fn Function::getArchConfig(self : Self) -> ArchConfig {
   self.mod.arch_config
 }
 
+pub fn Function::instIter(self: Self) -> Iter[Instruction] {
+  letrec f = yield_ => {
+    for bb in self.body {
+      for inst in bb.insts {
+        guard yield_(inst) is IterContinue else { return IterEnd }
+      }
+    }
+    IterContinue
+  }
+  Iter::new(f)
+}
+
+///|
+fn Function::collect_insts_by_opcode(
+  self : Self,
+  opcode : OpCode,
+) -> Array[Instruction] {
+  self.instIter().filter(i => i.opcode == opcode).collect()
+}
+
+///|
+fn Function::has_inst_with_opcode(self : Self, opcode : OpCode) -> Bool {
+  self.instIter().any(i => i.opcode == opcode)
+}
+
 ///|
 /// For Quick Debugging
 pub fn Function::from_llvm_function(
@@ -241,34 +266,6 @@ fn Function::get_operand_from_llvm_value(
         None => None
       }
   }
-}
-
-///|
-fn Function::collect_insts_by_opcode(
-  self : Self,
-  opcode : OpCode,
-) -> Array[Instruction] {
-  let insts : Array[Instruction] = Array::new()
-  for bb in self.body {
-    for inst in bb.insts {
-      if inst.opcode == opcode {
-        insts.push(inst)
-      }
-    }
-  }
-  insts
-}
-
-///|
-fn Function::has_inst_with_opcode(self : Self, opcode : OpCode) -> Bool {
-  for bb in self.body {
-    for inst in bb.insts {
-      if inst.opcode == opcode {
-        return true
-      }
-    }
-  }
-  false
 }
 
 ///|

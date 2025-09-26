@@ -8,6 +8,53 @@ pub(all) struct Instruction {
   mut liveout : Set[Operand]
 }
 
+pub(all) enum InstIterControl {
+  DefUse
+  UseDef
+  All
+}
+
+pub fn Instruction::op_iter(self: Self, ctrl: InstIterControl) -> Iter[Operand] {
+  letrec def_use_f = yield_ => {
+    for op in self.defs {
+      guard yield_(op) is IterContinue else { return IterEnd }
+    }
+    for op in self.uses {
+      guard yield_(op) is IterContinue else { return IterEnd }
+    }
+    IterContinue
+  }
+  letrec use_def_f = yield_ => {
+    for op in self.uses {
+      guard yield_(op) is IterContinue else { return IterEnd }
+    }
+    for op in self.defs {
+      guard yield_(op) is IterContinue else { return IterEnd }
+    }
+    IterContinue
+  }
+  letrec all_f = yield_ => {
+    for op in self.defs {
+      guard yield_(op) is IterContinue else { return IterEnd }
+    }
+    for op in self.uses {
+      guard yield_(op) is IterContinue else { return IterEnd }
+    }
+    for op in self.livein {
+      guard yield_(op) is IterContinue else { return IterEnd }
+    }
+    for op in self.liveout {
+      guard yield_(op) is IterContinue else { return IterEnd }
+    }
+    IterContinue
+  }
+  match ctrl {
+    DefUse => Iter::new(def_use_f)
+    UseDef => Iter::new(use_def_f)
+    All => Iter::new(all_f)
+  }
+}
+
 ///|
 pub impl Show for Instruction with output(self, logger) {
   if self.defs.length() > 0 {
