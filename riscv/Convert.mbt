@@ -282,6 +282,21 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       insts.push(Sw(free_reg, Mem::{ base, offset }))
       insts
     }
+    // Handle Storel with register as address and immediate value
+    { opcode: Storel, defs: [], uses: [addr_reg, Imm(i)], .. } => {
+      // Register contains the address
+      let addr = Reg::from_mir_operand(addr_reg)
+      let free_regs = get_free_reg(inst)
+      let free_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available")
+        })
+      let insts : Array[RvAsm] = Array::new()
+      insts.push(Li(free_reg, i.to_string()))
+      insts.push(Sw(free_reg, Mem::{ base: addr, offset: 0 }))
+      insts
+    }
     {
       opcode: Storel,
       defs: [],
@@ -302,20 +317,41 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       insts.push(Sw(free_reg, Mem::{ base: base1, offset: offset1 }))
       insts
     }
-    { opcode: Storel, defs: [], uses: [Mem(base, offset), src], .. } => {
-      let base = Reg::from_mir_operand(base)
-      let src = Reg::from_mir_operand(src)
-      [Sw(src, Mem::{ base, offset })]
-    }
+    // Handle Storel with register as address and register value
+    { opcode: Storel, defs: [], uses: [addr_reg, src], .. } =>
+      match addr_reg {
+        @GMIR.Mem(base, offset) => {
+          // Standard memory store
+          let base = Reg::from_mir_operand(base)
+          let src = Reg::from_mir_operand(src)
+          [Sw(src, Mem::{ base, offset })]
+        }
+        _ => {
+          // Register contains the address
+          let addr = Reg::from_mir_operand(addr_reg)
+          let src = Reg::from_mir_operand(src)
+          [Sw(src, Mem::{ base: addr, offset: 0 })]
+        }
+      }
     { opcode: Loadw, defs: [dst], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let base = Reg::from_mir_operand(base)
       [Lh(dst, Mem::{ base, offset })]
     }
-    { opcode: Loadl, defs: [dst], uses: [Mem(base, offset)], .. } => {
+    { opcode: Loadl, defs: [dst], uses: [src], .. } => {
       let dst = Reg::from_mir_operand(dst)
-      let base = Reg::from_mir_operand(base)
-      [Lw(dst, Mem::{ base, offset })]
+      match src {
+        @GMIR.Mem(base, offset) => {
+          // Standard memory load
+          let base = Reg::from_mir_operand(base)
+          [Lw(dst, Mem::{ base, offset })]
+        }
+        _ => {
+          // Register contains the address
+          let addr = Reg::from_mir_operand(src)
+          [Lw(dst, Mem::{ base: addr, offset: 0 })]
+        }
+      }
     }
     { opcode: Storeq, defs: [], uses: [Mem(base, offset), Imm(i)], .. } => {
       // riscv doesn't support store immediate, need to use a temp register
@@ -393,7 +429,12 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src2 = Reg::from_mir_operand(src2)
       [Blt(src1, src2, label1), J(label2)]
     }
-    { opcode: Bge, defs: [], uses: [src1, Imm(imm), Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Bge,
+      defs: [],
+      uses: [src1, Imm(imm), Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let free_regs = get_free_reg(inst)
       let temp_reg = free_regs
@@ -403,12 +444,22 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
         })
       [Li(temp_reg, imm.to_string()), Bge(src1, temp_reg, label1), J(label2)]
     }
-    { opcode: Bge, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Bge,
+      defs: [],
+      uses: [src1, src2, Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
       [Bge(src1, src2, label1), J(label2)]
     }
-    { opcode: Ble, defs: [], uses: [src1, Imm(imm), Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Ble,
+      defs: [],
+      uses: [src1, Imm(imm), Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let free_regs = get_free_reg(inst)
       let temp_reg = free_regs
@@ -418,12 +469,22 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
         })
       [Li(temp_reg, imm.to_string()), Ble(src1, temp_reg, label1), J(label2)]
     }
-    { opcode: Ble, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Ble,
+      defs: [],
+      uses: [src1, src2, Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
       [Ble(src1, src2, label1), J(label2)]
     }
-    { opcode: Beq, defs: [], uses: [src1, Imm(imm), Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Beq,
+      defs: [],
+      uses: [src1, Imm(imm), Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let free_regs = get_free_reg(inst)
       let temp_reg = free_regs
@@ -433,12 +494,22 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
         })
       [Li(temp_reg, imm.to_string()), Beq(src1, temp_reg, label1), J(label2)]
     }
-    { opcode: Beq, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Beq,
+      defs: [],
+      uses: [src1, src2, Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
       [Beq(src1, src2, label1), J(label2)]
     }
-    { opcode: Bne, defs: [], uses: [src1, Imm(imm), Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Bne,
+      defs: [],
+      uses: [src1, Imm(imm), Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let free_regs = get_free_reg(inst)
       let temp_reg = free_regs
@@ -448,7 +519,12 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
         })
       [Li(temp_reg, imm.to_string()), Bne(src1, temp_reg, label1), J(label2)]
     }
-    { opcode: Bne, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+    {
+      opcode: Bne,
+      defs: [],
+      uses: [src1, src2, Label(label1), Label(label2)],
+      ..,
+    } => {
       let src1 = Reg::from_mir_operand(src1)
       let src2 = Reg::from_mir_operand(src2)
       [Bne(src1, src2, label1), J(label2)]

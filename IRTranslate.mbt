@@ -482,8 +482,73 @@ fn Instruction::from_llvm_inst(
       let insts : Array[Instruction] = Array::new()
       let indices = indices.map(i => i.asValueEnum())
 
+      // Special handling for stack-allocated objects with constant indices
+      match ptr_op {
+        Mem(FramePtrPrim, base_offset) => {
+          // This is a stack-allocated object - try to compute the total offset
+          let mut total_offset = 0L
+          let mut current_type = pointeeType.asTypeEnum()
+          let mut all_constant = true
+
+          // Process all indices to compute the final offset
+          for idx in indices {
+            match (current_type, idx) {
+              (ArrayType(arrTy), ConstantInt(c)) => {
+                let elem_ty = arrTy.getElementType()
+                let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
+                total_offset += elem_size * c.getValueAsInt64()
+                current_type = elem_ty.asTypeEnum()
+              }
+              (StructType(structTy), ConstantInt(c)) => {
+                let i = c.getValueAsInt64().to_int()
+                total_offset += data_layout
+                  .getStructTypeOffset(structTy, i)
+                  .to_int64()
+                current_type = structTy.elements[i].asTypeEnum()
+              }
+              _ => {
+                // Non-constant index - we can't compute at compile time
+                all_constant = false
+                break
+              }
+            }
+          }
+
+          // If all indices were constants, create a new Mem operand directly
+          if all_constant && indices.length() > 0 {
+            let final_offset = base_offset + total_offset
+            func.value_map[inst] = Mem(FramePtrPrim, final_offset)
+            return []
+          }
+          // Otherwise fall through to generate runtime computation
+        }
+        _ => ()
+      }
+
+      // General case: ptr_op is a register or needs runtime computation
+      // If ptr_op is a memory location with FramePtrPrim, we need to materialize it first
+      let initial_ptr = match ptr_op {
+        Mem(FramePtrPrim, offset) => {
+          // Create a virtual register to hold the address
+          // This will be resolved in PostRA
+          let addr_reg = func.add_vreg()
+          // For now, we need to create a placeholder instruction
+          // that will be handled in PostRA
+          // We use Movq with a special pattern that PostRA can recognize
+          let mov_inst = Instruction::new(
+            Addq,
+            [addr_reg],
+            [FramePtr, Imm(offset)],
+            bb~,
+          )
+          insts.push(mov_inst)
+          addr_reg
+        }
+        _ => ptr_op
+      }
+
       // Current pointer operand, may be updated as we process indices
-      let current_ptr = ptr_op
+      let current_ptr = initial_ptr
       loop (pointeeType.asTypeEnum(), indices[:], current_ptr) {
         // Handle cases based on the current type and remaining indices
         (ArrayType(arrTy), [ConstantInt(c), .. rest], ptr) => {
@@ -491,9 +556,46 @@ fn Instruction::from_llvm_inst(
           let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
           let offset = elem_size * c.getValueAsInt64()
           if offset != 0 {
+            // Ensure ptr is in a register before arithmetic
+            let ptr_reg = match ptr {
+              Mem(FramePtrPrim, off) => {
+                // Handle FramePtrPrim specially
+                let temp = func.add_vreg()
+                let add = Instruction::new(
+                  Addq,
+                  [temp],
+                  [FramePtr, Imm(off)],
+                  bb~,
+                )
+                insts.push(add)
+                temp
+              }
+              Mem(base, off) => {
+                let temp = func.add_vreg()
+                if off != 0 {
+                  let add = Instruction::new(
+                    Addq,
+                    [temp],
+                    [base, Imm(off)],
+                    bb~,
+                  )
+                  insts.push(add)
+                } else {
+                  let mov = Instruction::new(Movq, [temp], [base], bb~)
+                  insts.push(mov)
+                }
+                temp
+              }
+              _ => ptr
+            }
             let offset_op = Imm(offset)
             let new_ptr = func.add_vreg()
-            let minst = Instruction::new(Addq, [new_ptr], [ptr, offset_op], bb~)
+            let minst = Instruction::new(
+              Addq,
+              [new_ptr],
+              [ptr_reg, offset_op],
+              bb~,
+            )
             insts.push(minst)
             continue (elem_ty.asTypeEnum(), rest, new_ptr)
           } else {
@@ -507,10 +609,42 @@ fn Instruction::from_llvm_inst(
           let idx_op = func
             .get_operand_from_llvm_value(idx.asValueClass())
             .unwrap()
+          // Ensure ptr is in a register before arithmetic
+          let ptr_reg = match ptr {
+            Mem(FramePtrPrim, off) => {
+              // Handle FramePtrPrim specially
+              let temp = func.add_vreg()
+              let add = Instruction::new(
+                Addq,
+                [temp],
+                [FramePtr, Imm(off)],
+                bb~,
+              )
+              insts.push(add)
+              temp
+            }
+            Mem(base, off) => {
+              let temp = func.add_vreg()
+              if off != 0 {
+                let add = Instruction::new(Addq, [temp], [base, Imm(off)], bb~)
+                insts.push(add)
+              } else {
+                let mov = Instruction::new(Movq, [temp], [base], bb~)
+                insts.push(mov)
+              }
+              temp
+            }
+            _ => ptr
+          }
           if elem_size == 1 {
             // For byte arrays, no need to scale
             let new_ptr = func.add_vreg()
-            let minst = Instruction::new(Addq, [new_ptr], [ptr, idx_op], bb~)
+            let minst = Instruction::new(
+              Addq,
+              [new_ptr],
+              [ptr_reg, idx_op],
+              bb~,
+            )
             insts.push(minst)
             continue (elem_ty.asTypeEnum(), rest, new_ptr)
           } else {
@@ -527,7 +661,7 @@ fn Instruction::from_llvm_inst(
             let add_inst = Instruction::new(
               Addq,
               [new_ptr],
-              [ptr, offset_op],
+              [ptr_reg, offset_op],
               bb~,
             )
             insts.push(add_inst)
@@ -538,9 +672,46 @@ fn Instruction::from_llvm_inst(
           let i = c.getValueAsInt64().to_int()
           let offset = data_layout.getStructTypeOffset(structTy, i).to_int64()
           if offset != 0 {
+            // Ensure ptr is in a register before arithmetic
+            let ptr_reg = match ptr {
+              Mem(FramePtrPrim, off) => {
+                // Handle FramePtrPrim specially
+                let temp = func.add_vreg()
+                let add = Instruction::new(
+                  Addq,
+                  [temp],
+                  [FramePtr, Imm(off)],
+                  bb~,
+                )
+                insts.push(add)
+                temp
+              }
+              Mem(base, off) => {
+                let temp = func.add_vreg()
+                if off != 0 {
+                  let add = Instruction::new(
+                    Addq,
+                    [temp],
+                    [base, Imm(off)],
+                    bb~,
+                  )
+                  insts.push(add)
+                } else {
+                  let mov = Instruction::new(Movq, [temp], [base], bb~)
+                  insts.push(mov)
+                }
+                temp
+              }
+              _ => ptr
+            }
             let offset_op = Imm(offset)
             let new_ptr = func.add_vreg()
-            let minst = Instruction::new(Addq, [new_ptr], [ptr, offset_op], bb~)
+            let minst = Instruction::new(
+              Addq,
+              [new_ptr],
+              [ptr_reg, offset_op],
+              bb~,
+            )
             insts.push(minst)
             let elem_ty = structTy.elements[i]
             continue (elem_ty.asTypeEnum(), rest, new_ptr)
@@ -565,12 +736,44 @@ fn Instruction::from_llvm_inst(
           let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() *
             c.getValueAsInt64()
           if offset != 0 {
+            // Ensure ptr is in a register before arithmetic
+            let ptr_reg = match ptr {
+              Mem(FramePtrPrim, off) => {
+                // Handle FramePtrPrim specially
+                let temp = func.add_vreg()
+                let add = Instruction::new(
+                  Addq,
+                  [temp],
+                  [FramePtr, Imm(off)],
+                  bb~,
+                )
+                insts.push(add)
+                temp
+              }
+              Mem(base, off) => {
+                let temp = func.add_vreg()
+                if off != 0 {
+                  let add = Instruction::new(
+                    Addq,
+                    [temp],
+                    [base, Imm(off)],
+                    bb~,
+                  )
+                  insts.push(add)
+                } else {
+                  let mov = Instruction::new(Movq, [temp], [base], bb~)
+                  insts.push(mov)
+                }
+                temp
+              }
+              _ => ptr
+            }
             let offset_op = Imm(offset)
             let final_ptr = func.bind_llvm_value_to_vreg(inst)
             let minst = Instruction::new(
               Addq,
               [final_ptr],
-              [ptr, offset_op],
+              [ptr_reg, offset_op],
               bb~,
             )
             insts.push(minst)
@@ -585,11 +788,43 @@ fn Instruction::from_llvm_inst(
           let idx_op = func
             .get_operand_from_llvm_value(idx.asValueClass())
             .unwrap()
+          // Ensure ptr is in a register before arithmetic
+          let ptr_reg = match ptr {
+            Mem(FramePtrPrim, off) => {
+              // Handle FramePtrPrim specially
+              let temp = func.add_vreg()
+              let add = Instruction::new(
+                Addq,
+                [temp],
+                [FramePtr, Imm(off)],
+                bb~,
+              )
+              insts.push(add)
+              temp
+            }
+            Mem(base, off) => {
+              let temp = func.add_vreg()
+              if off != 0 {
+                let add = Instruction::new(Addq, [temp], [base, Imm(off)], bb~)
+                insts.push(add)
+              } else {
+                let mov = Instruction::new(Movq, [temp], [base], bb~)
+                insts.push(mov)
+              }
+              temp
+            }
+            _ => ptr
+          }
           let elem_size = data_layout.getTypeAllocSize(pointeeType).to_int64()
           if elem_size == 1 {
             // For byte pointers, no need to scale
             let final_ptr = func.bind_llvm_value_to_vreg(inst)
-            let minst = Instruction::new(Addq, [final_ptr], [ptr, idx_op], bb~)
+            let minst = Instruction::new(
+              Addq,
+              [final_ptr],
+              [ptr_reg, idx_op],
+              bb~,
+            )
             insts.push(minst)
           } else {
             // Scale the index
@@ -605,7 +840,7 @@ fn Instruction::from_llvm_inst(
             let add_inst = Instruction::new(
               Addq,
               [final_ptr],
-              [ptr, offset_op],
+              [ptr_reg, offset_op],
               bb~,
             )
             insts.push(add_inst)
