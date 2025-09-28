@@ -416,6 +416,11 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src = Reg::from_mir_operand(src)
       [Mv(dst, src)]
     }
+    { opcode: BitCast, defs: [dst], uses: [Imm(i)], .. } => {
+      // BitCast with immediate - load the immediate value
+      let dst = Reg::from_mir_operand(dst)
+      [Li(dst, i.to_string())]
+    }
     { opcode: BitCast, defs: [dst], uses: [src], .. } => {
       // BitCast is a no-op at assembly level, just move the value
       let dst = Reg::from_mir_operand(dst)

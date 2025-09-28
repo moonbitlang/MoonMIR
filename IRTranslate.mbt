@@ -385,10 +385,20 @@ fn Instruction::from_llvm_inst(
     }
     CastInst({ to_ty, from_val, opcode: cast_op, .. }) => {
       let from_ty = from_val.getType()
-      guard func.get_operand_from_llvm_value(from_val) is Some(from_op) else {
-        raise IRTranslateError(
-          "CastInst: from_val operand not found in value map",
-        )
+      // Handle constants first, then check value map
+      let from_op = match from_val.tryAsConstantEnum() {
+        Some(ConstantInt(c)) => Imm(c.value)
+        Some(ConstantFP(f)) => FImm(f.value)
+        Some(ConstantPointerNull(_)) => Imm(0) // null pointer is 0
+        None => {
+          guard func.get_operand_from_llvm_value(from_val) is Some(op) else {
+            raise IRTranslateError(
+              "CastInst: from_val operand not found in value map",
+            )
+          }
+          op
+        }
+        _ => raise IRTranslateError("CastInst: unsupported from_val type")
       }
       //let to_ty = to_ty.asTypeEnum()
       let opcode = match cast_op {
@@ -578,6 +588,60 @@ fn Instruction::from_llvm_inst(
           first_index_processed,
         ) {
         // Handle cases based on the current type and remaining indices
+        // Handle first index for struct types (array indexing into structs)
+        (StructType(structTy), [ConstantInt(c), .. rest], ptr, false) => {
+          // First index with struct type: treats struct as array element
+          let struct_size = data_layout.getTypeAllocSize(pointeeType).to_int64()
+          let offset = struct_size * c.getValueAsInt64()
+          if offset != 0 {
+            // Ensure ptr is in a register before arithmetic
+            let ptr_reg = match ptr {
+              Mem(FramePtrPrim, off) => {
+                // Handle FramePtrPrim specially
+                let temp = func.add_vreg()
+                let add = Instruction::new(
+                  Addq,
+                  [temp],
+                  [FramePtrPrim, Imm(off)],
+                  bb~,
+                )
+                insts.push(add)
+                temp
+              }
+              Mem(base, off) => {
+                let temp = func.add_vreg()
+                if off != 0 {
+                  let add = Instruction::new(
+                    Addq,
+                    [temp],
+                    [base, Imm(off)],
+                    bb~,
+                  )
+                  insts.push(add)
+                } else {
+                  let mov = Instruction::new(Movq, [temp], [base], bb~)
+                  insts.push(mov)
+                }
+                temp
+              }
+              _ => ptr
+            }
+            let offset_op = Imm(offset)
+            let new_ptr = func.add_vreg()
+            let minst = Instruction::new(
+              Addq,
+              [new_ptr],
+              [ptr_reg, offset_op],
+              bb~,
+            )
+            insts.push(minst)
+            // Continue with the same struct type for field indexing
+            continue (pointeeType.asTypeEnum(), rest, new_ptr, true)
+          } else {
+            // offset is 0, just continue with same pointer and type
+            continue (pointeeType.asTypeEnum(), rest, ptr, true)
+          }
+        }
         (ArrayType(arrTy), [ConstantInt(c), .. rest], ptr, is_first_processed) => {
           // Determine the size based on whether this is the first index
           let (offset, next_type) = if not(is_first_processed) {
