@@ -72,7 +72,9 @@
      ;; Compare LLVM output with clang output
      (if (equal? llvm-output clang-output)
          (printf "~a.c Test Result: Failed, Problem happened in MoonMIR\n" file)
-         (printf "~a.c Test Result: Failed, Problem happened in mbtcc\n" file))]))
+         (printf "~a.c Test Result: Failed, Problem happened in mbtcc\n" file))])
+     ; delete .s, .ll, and executable files
+     (run-command (format "rm -f ~a.s ~a.ll ~a" file file file)))
 
 ;; Main entry point
 (define (main)
