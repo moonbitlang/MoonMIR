@@ -226,6 +226,179 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src2 = Reg::from_mir_operand(src2)
       [Mul(dst, src1, src2)]
     }
+    { opcode: Divl, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError(
+            "No free register available for Divl immediate",
+          )
+        })
+      [Li(temp_reg, src2.to_string()), Divw(dst, src1, temp_reg)]
+    }
+    { opcode: Divl, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Divw(dst, src1, src2)]
+    }
+    { opcode: Divq, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError(
+            "No free register available for Divq immediate",
+          )
+        })
+      [Li(temp_reg, src2.to_string()), Div(dst, src1, temp_reg)]
+    }
+    { opcode: Divq, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Div(dst, src1, src2)]
+    }
+    { opcode: Reml, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError(
+            "No free register available for Reml immediate",
+          )
+        })
+      [Li(temp_reg, src2.to_string()), Remw(dst, src1, temp_reg)]
+    }
+    { opcode: Reml, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Remw(dst, src1, src2)]
+    }
+    { opcode: Remq, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError(
+            "No free register available for Remq immediate",
+          )
+        })
+      [Li(temp_reg, src2.to_string()), Rem(dst, src1, temp_reg)]
+    }
+    { opcode: Remq, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Rem(dst, src1, src2)]
+    }
+    { opcode: And, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      [Andi(dst, src1, src2.to_int())]
+    }
+    { opcode: And, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [And(dst, src1, src2)]
+    }
+    { opcode: Or, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      [Ori(dst, src1, src2.to_int())]
+    }
+    { opcode: Or, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Or(dst, src1, src2)]
+    }
+    { opcode: Xor, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      [Xori(dst, src1, src2.to_int())]
+    }
+    { opcode: Xor, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Xor(dst, src1, src2)]
+    }
+    { opcode: Shl, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      // For 32-bit values, use sllw and mask the immediate to 5 bits
+      // For now, we'll use sllw for consistency with other 32-bit operations
+      [Slli(dst, src1, src2.to_int() & 0x3F), SextW(dst, dst)]
+    }
+    { opcode: Shl, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Sllw(dst, src1, src2)]
+    }
+    { opcode: LShr, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      // Logical shift right (zero-fill)
+      [Srli(dst, src1, src2.to_int() & 0x3F), SextW(dst, dst)]
+    }
+    { opcode: LShr, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Srlw(dst, src1, src2)]
+    }
+    { opcode: AShr, defs: [dst], uses: [src1, Imm(src2)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      // Arithmetic shift right (sign-fill)
+      [Srai(dst, src1, src2.to_int() & 0x3F), SextW(dst, dst)]
+    }
+    { opcode: AShr, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Sraw(dst, src1, src2)]
+    }
+    { opcode: Trunc, defs: [dst], uses: [src], .. } => {
+      // Truncate i64 to i32: just move and sign-extend to maintain 32-bit semantics
+      let dst = Reg::from_mir_operand(dst)
+      let src = Reg::from_mir_operand(src)
+      [Mv(dst, src), SextW(dst, dst)]
+    }
+    { opcode: ZExt, defs: [dst], uses: [src], .. } => {
+      // Zero-extend i32 to i64: mask upper 32 bits
+      let dst = Reg::from_mir_operand(dst)
+      let src = Reg::from_mir_operand(src)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError(
+            "No free register available for ZExt",
+          )
+        })
+      // Load mask for 32-bit value (0xFFFFFFFF)
+      [Li(temp_reg, "0xffffffff"), And(dst, src, temp_reg)]
+    }
+    { opcode: SExt, defs: [dst], uses: [src], .. } => {
+      // Sign-extend i32 to i64
+      let dst = Reg::from_mir_operand(dst)
+      let src = Reg::from_mir_operand(src)
+      [SextW(dst, src)]
+    }
     { opcode: Movq, defs: [dst], uses: [Label(addr)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       [LuiHi(dst, addr), AddiLo(dst, dst, addr)]
