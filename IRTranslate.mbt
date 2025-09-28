@@ -589,7 +589,7 @@ fn Instruction::from_llvm_inst(
         ) {
         // Handle cases based on the current type and remaining indices
         // Handle first index for struct types (array indexing into structs)
-        (StructType(structTy), [ConstantInt(c), .. rest], ptr, false) => {
+        (StructType(_structTy), [ConstantInt(c), .. rest], ptr, false) => {
           // First index with struct type: treats struct as array element
           let struct_size = data_layout.getTypeAllocSize(pointeeType).to_int64()
           let offset = struct_size * c.getValueAsInt64()
@@ -833,9 +833,78 @@ fn Instruction::from_llvm_inst(
             continue (elem_ty.asTypeEnum(), rest, ptr, true)
           }
         }
-        (StructType(_), [_, ..], _, _) =>
+        // Handle non-constant index for array of structs (first index)
+        (StructType(_structTy), [idx, .. rest], ptr, false) => {
+          // First index with struct type and non-constant index: treats struct as array element
+          let struct_size = data_layout.getTypeAllocSize(pointeeType).to_int64()
+          let idx_op = func
+            .get_operand_from_llvm_value(idx.asValueClass())
+            .unwrap()
+          
+          // Ensure ptr is in a register before arithmetic
+          let ptr_reg = match ptr {
+            Mem(FramePtrPrim, off) => {
+              // Handle FramePtrPrim specially
+              let temp = func.add_vreg()
+              let add = Instruction::new(
+                Addq,
+                [temp],
+                [FramePtrPrim, Imm(off)],
+                bb~,
+              )
+              insts.push(add)
+              temp
+            }
+            Mem(base, off) => {
+              let temp = func.add_vreg()
+              if off != 0 {
+                let add = Instruction::new(Addq, [temp], [base, Imm(off)], bb~)
+                insts.push(add)
+              } else {
+                let mov = Instruction::new(Movq, [temp], [base], bb~)
+                insts.push(mov)
+              }
+              temp
+            }
+            _ => ptr
+          }
+          
+          if struct_size == 1 {
+            // For byte-sized structs, no need to scale
+            let new_ptr = func.add_vreg()
+            let minst = Instruction::new(
+              Addq,
+              [new_ptr],
+              [ptr_reg, idx_op],
+              bb~,
+            )
+            insts.push(minst)
+            continue (pointeeType.asTypeEnum(), rest, new_ptr, true)
+          } else {
+            // Scale the index
+            let offset_op = func.add_vreg()
+            let scale_inst = Instruction::new(
+              Mulq,
+              [offset_op],
+              [idx_op, Imm(struct_size)],
+              bb~,
+            )
+            insts.push(scale_inst)
+            let new_ptr = func.add_vreg()
+            let add_inst = Instruction::new(
+              Addq,
+              [new_ptr],
+              [ptr_reg, offset_op],
+              bb~,
+            )
+            insts.push(add_inst)
+            continue (pointeeType.asTypeEnum(), rest, new_ptr, true)
+          }
+        }
+        // For non-first index with struct, it must be constant (field access)
+        (StructType(_), [_, ..], _, true) =>
           raise IRTranslateError(
-            "GetElementPtrInst with non-constant struct index is impossible",
+            "GetElementPtrInst with non-constant struct field index is impossible",
           )
         (
           _,
