@@ -68,7 +68,8 @@ pub fn Function::getArchConfig(self : Self) -> ArchConfig {
   self.mod.arch_config
 }
 
-pub fn Function::instIter(self: Self) -> Iter[Instruction] {
+///|
+pub fn Function::instIter(self : Self) -> Iter[Instruction] {
   letrec f = yield_ => {
     for bb in self.body {
       for inst in bb.insts {
@@ -77,6 +78,7 @@ pub fn Function::instIter(self: Self) -> Iter[Instruction] {
     }
     IterContinue
   }
+
   Iter::new(f)
 }
 

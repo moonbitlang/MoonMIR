@@ -110,7 +110,7 @@ pub fn GlobalValue::new(
             match c {
               '\n' => str_builder.write_string("\\n")
               '\r' => str_builder.write_string("\\r")
-              '\t' => str_builder.write_string("\\r")
+              '\t' => str_builder.write_string("\\t")
               '\"' => str_builder.write_string("\\\"")
               '\\' => str_builder.write_string("\\\\")
               c => str_builder.write_char(c)

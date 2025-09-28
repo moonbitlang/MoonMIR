@@ -9,15 +9,11 @@ import(
 // Values
 fn live_analysis(Function) -> (Graph[Int], Graph[Int])
 
-#callsite(autofill(loc))
-fn rewrite_instruction(Instruction, vreg_operand_map~ : Map[Int, Operand], vfreg_operand_map~ : Map[Int, Operand], loc~ : SourceLoc) -> Unit raise RegAllocError
+fn rewrite_instruction(Instruction, vreg_operand_map~ : Map[Int, Operand], vfreg_operand_map~ : Map[Int, Operand]) -> Unit raise RegAllocError
 
 // Errors
 pub suberror IRTranslateError String
 impl Show for IRTranslateError
-
-pub suberror LegalizeError String
-impl Show for LegalizeError
 
 pub suberror PostRAError String
 impl Show for PostRAError
@@ -50,7 +46,7 @@ pub(all) struct BasicBlock {
   liveout : @set.Set[Operand]
 }
 fn BasicBlock::add_inst_before_terminator(Self, Instruction) -> Unit
-fn BasicBlock::legalize(Self) -> Unit raise LegalizeError
+fn BasicBlock::legalize(Self) -> Unit
 fn BasicBlock::run_ir_translation(Self) -> Unit raise IRTranslateError
 impl Show for BasicBlock
 
@@ -76,7 +72,8 @@ pub(all) struct Function {
 fn Function::alloc_register(Self) -> Unit raise RegAllocError
 fn Function::from_llvm_function(@IR.Function, ArchConfig) -> Self raise IRTranslateError
 fn Function::getArchConfig(Self) -> ArchConfig
-fn Function::legalize(Self) -> Unit raise LegalizeError
+fn Function::instIter(Self) -> Iter[Instruction]
+fn Function::legalize(Self) -> Unit
 fn Function::run_ir_translation(Self) -> Unit raise IRTranslateError
 impl Show for Function
 
@@ -112,6 +109,12 @@ fn[T : Hash + Eq] Graph::coloring(Self[T]) -> (Map[T, Int], Int)
 fn[T] Graph::new() -> Self[T]
 impl[T : Show] Show for Graph[T]
 
+pub(all) enum InstIterControl {
+  DefUse
+  UseDef
+  All
+}
+
 pub(all) struct Instruction {
   opcode : OpCode
   defs : Array[Operand]
@@ -120,8 +123,9 @@ pub(all) struct Instruction {
   mut livein : @set.Set[Operand]
   mut liveout : @set.Set[Operand]
 }
-fn Instruction::legalize(Self) -> Array[Self] raise LegalizeError
+fn Instruction::legalize(Self) -> Array[Self]
 fn Instruction::new(OpCode, Array[Operand], Array[Operand], bb? : BasicBlock?) -> Self
+fn Instruction::op_iter(Self, InstIterControl) -> Iter[Operand]
 impl Show for Instruction
 
 pub(all) struct Module {
@@ -136,7 +140,7 @@ pub(all) struct Module {
   mut reg_allocated : Bool
 }
 fn Module::alloc_register(Self) -> Self raise RegAllocError
-fn Module::legalize(Self) -> Unit raise LegalizeError
+fn Module::legalize(Self) -> Unit
 fn Module::new(@IR.Module, ArchConfig) -> Self
 fn Module::peephole_optimizations(Self) -> Self
 fn Module::post_ra(Self) -> Self raise PostRAError

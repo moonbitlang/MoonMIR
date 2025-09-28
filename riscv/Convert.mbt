@@ -432,6 +432,31 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       [Mv(dst, src)]
     }
     { opcode: Ret, defs: [], uses: [], .. } => [Ret]
+    { opcode: Storeb, defs: [], uses: [Mem(base, offset), Imm(i)], .. } => {
+      // riscv doesn't support store immediate, need to use a temp register
+      let base = Reg::from_mir_operand(base)
+      let free_regs = get_free_reg(inst)
+      let free_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available")
+        })
+      let insts : Array[RvAsm] = Array::new()
+      insts.push(Li(free_reg, i.to_string()))
+      insts.push(Sb(free_reg, Mem::{ base, offset }))
+      insts
+    }
+    { opcode: Storeb, defs: [], uses: [Mem(base, offset), src], .. } => {
+      let base = Reg::from_mir_operand(base)
+      let src = Reg::from_mir_operand(src)
+      [Sb(src, Mem::{ base, offset })]
+    }
+    { opcode: Storeb, defs: [], uses: [addr, src], .. } => {
+      // Store byte to address in register
+      let addr = Reg::from_mir_operand(addr)
+      let src = Reg::from_mir_operand(src)
+      [Sb(src, Mem::{ base: addr, offset: 0 })]
+    }
     { opcode: Storew, defs: [], uses: [Mem(base, offset), Imm(i)], .. } => {
       // riscv doesn't support store immediate, need to use a temp register
       let base = Reg::from_mir_operand(base)
@@ -516,6 +541,26 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
           [Sw(src, Mem::{ base: addr, offset: 0 })]
         }
       }
+    { opcode: Loadb, defs: [dst], uses: [Mem(base, offset)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let base = Reg::from_mir_operand(base)
+      [Lb(dst, Mem::{ base, offset })]
+    }
+    { opcode: Loadb, defs: [dst], uses: [src], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      match src {
+        @GMIR.Mem(base, offset) => {
+          // Standard memory load
+          let base = Reg::from_mir_operand(base)
+          [Lb(dst, Mem::{ base, offset })]
+        }
+        _ => {
+          // Register contains the address
+          let addr = Reg::from_mir_operand(src)
+          [Lb(dst, Mem::{ base: addr, offset: 0 })]
+        }
+      }
+    }
     { opcode: Loadw, defs: [dst], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let base = Reg::from_mir_operand(base)
@@ -741,6 +786,152 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       [Bne(src1, src2, label1), J(label2)]
     }
     { opcode: Jmp, defs: [], uses: [Label(label)], .. } => [J(label)]
+    // Comparison operations - set dst to 1 if condition is true, 0 if false
+    { opcode: Eq, defs: [dst], uses: [src1, Imm(0)], .. } => {
+      // Special case for comparing with 0
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      [Seqz(dst, src1)]
+    }
+    { opcode: Eq, defs: [dst], uses: [src1, Imm(imm)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Eq immediate")
+        })
+      // Load immediate, subtract, and check if result is zero
+      [
+        Li(temp_reg, imm.to_string()),
+        Sub(temp_reg, src1, temp_reg),
+        Seqz(dst, temp_reg),
+      ]
+    }
+    { opcode: Eq, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Eq")
+        })
+      // XOR the two values and check if result is zero
+      [Xor(temp_reg, src1, src2), Seqz(dst, temp_reg)]
+    }
+    { opcode: Ne, defs: [dst], uses: [src1, Imm(0)], .. } => {
+      // Special case for comparing with 0
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      [Snez(dst, src1)]
+    }
+    { opcode: Ne, defs: [dst], uses: [src1, Imm(imm)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Ne immediate")
+        })
+      // Load immediate, subtract, and check if result is non-zero
+      [
+        Li(temp_reg, imm.to_string()),
+        Sub(temp_reg, src1, temp_reg),
+        Snez(dst, temp_reg),
+      ]
+    }
+    { opcode: Ne, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Ne")
+        })
+      // XOR the two values and check if result is non-zero
+      [Xor(temp_reg, src1, src2), Snez(dst, temp_reg)]
+    }
+    { opcode: Lt, defs: [dst], uses: [src1, Imm(imm)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      [Slti(dst, src1, imm.to_int())]
+    }
+    { opcode: Lt, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Slt(dst, src1, src2)]
+    }
+    { opcode: Le, defs: [dst], uses: [src1, Imm(imm)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      // a <= b is equivalent to !(a > b) = !(b < a)
+      // For immediate, we can use a <= imm as a < (imm + 1)
+      [Slti(dst, src1, imm.to_int() + 1)]
+    }
+    { opcode: Le, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      // a <= b is equivalent to !(b < a)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Le")
+        })
+      [Slt(temp_reg, src2, src1), Xori(dst, temp_reg, 1)]
+    }
+    { opcode: Gt, defs: [dst], uses: [src1, Imm(imm)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Gt immediate")
+        })
+      // a > b is equivalent to b < a
+      [Li(temp_reg, imm.to_string()), Slt(dst, temp_reg, src1)]
+    }
+    { opcode: Gt, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      // a > b is equivalent to b < a
+      [Slt(dst, src2, src1)]
+    }
+    { opcode: Ge, defs: [dst], uses: [src1, Imm(imm)], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      // a >= b is equivalent to !(a < b)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Ge immediate")
+        })
+      [Slti(temp_reg, src1, imm.to_int()), Xori(dst, temp_reg, 1)]
+    }
+    { opcode: Ge, defs: [dst], uses: [src1, src2], .. } => {
+      let dst = Reg::from_mir_operand(dst)
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      // a >= b is equivalent to !(a < b)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Ge")
+        })
+      [Slt(temp_reg, src1, src2), Xori(dst, temp_reg, 1)]
+    }
     _ => raise GMIRToRvAsmError("UnImplemented GMIR instruction: \{inst}")
   }
 }
