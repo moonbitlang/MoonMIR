@@ -226,6 +226,12 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src2 = Reg::from_mir_operand(src2)
       [Mul(dst, src1, src2)]
     }
+    { opcode: Divl, defs: [dst], uses: [Imm(src1), Imm(src2)], .. } => {
+      // Handle division of two immediates - compute at compile time
+      let dst = Reg::from_mir_operand(dst)
+      let result = src1.to_int() / src2.to_int()
+      [Li(dst, result.to_string())]
+    }
     { opcode: Divl, defs: [dst], uses: [src1, Imm(src2)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let src1 = Reg::from_mir_operand(src1)
@@ -386,9 +392,7 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let temp_reg = free_regs
         .get(0)
         .unwrap_or_else(fn() raise {
-          raise GMIRToRvAsmError(
-            "No free register available for ZExt",
-          )
+          raise GMIRToRvAsmError("No free register available for ZExt")
         })
       // Load mask for 32-bit value (0xFFFFFFFF)
       [Li(temp_reg, "0xffffffff"), And(dst, src, temp_reg)]
