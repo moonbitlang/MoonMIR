@@ -90,12 +90,7 @@ fn main {
     println("==================== GMIR ================")
     println(gmir)
   }
-  gmir.legalize() catch {
-    e => {
-      println("Error during GMIR legalization: \{e}")
-      return
-    }
-  }
+  gmir.legalize()
   if args.contains("--stop-after=Legalize") {
     println(gmir)
     return
