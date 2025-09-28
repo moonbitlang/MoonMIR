@@ -438,7 +438,26 @@ fn Function::call_inst_transform(self : Function) -> Unit {
   let { num_arg_regs, num_arg_fregs, .. } = arch_config
   for bb in self.body {
     let new_insts : Array[Instruction] = Array::new()
+    // Track saved registers for this basic block
+    let mut saved_registers : Map[Operand, Operand] = Map::new()
     for inst in bb.insts {
+      // Apply any saved register substitutions from earlier calls in this block
+      if !saved_registers.is_empty() {
+        // Update uses
+        for i, use_op in inst.uses {
+          match saved_registers.get(use_op) {
+            Some(new_op) => inst.uses[i] = new_op
+            None => ()
+          }
+        }
+        // Update defs if necessary
+        for i, def_op in inst.defs {
+          match saved_registers.get(def_op) {
+            Some(new_op) => inst.defs[i] = new_op
+            None => ()
+          }
+        }
+      }
       match inst {
         { opcode: Call, defs, uses: [func_label, .. args], livein, liveout, .. } => {
 
@@ -460,6 +479,49 @@ fn Function::call_inst_transform(self : Function) -> Unit {
                 } else {
                   stack_args.push(arg)
                 }
+            }
+          }
+
+          // Check if any argument registers that we need to use are currently live
+          // If so, we need to move them to temporary registers first
+          let mut saved_values : Map[Operand, Operand] = Map::new()
+          let (free_regs, _) = self.collect_free_regs()
+          let mut free_reg_idx = 0
+          for pair in int_args {
+            let (idx, _) = pair
+            let areg = AReg(idx)
+            // Check if this argument register contains a live value that needs to be preserved
+            // It must be live before the call (in livein) AND live after the call (in liveout)
+            if livein.iter().any(fn(op) { op == areg }) &&
+              liveout.iter().any(fn(op) { op == areg }) {
+              // Find a free temporary register to save the value
+              let mut temp_reg : Operand? = None
+              // Prefer T registers for temporaries
+              for i = free_reg_idx; i < free_regs.length(); i = i + 1 {
+                let candidate = free_regs[i]
+                match candidate {
+                  TReg(_) => {
+                    temp_reg = Some(candidate)
+                    free_reg_idx = i + 1
+                    break
+                  }
+                  _ => ()
+                }
+              }
+              // If no T register available, use any free register
+              if temp_reg is None && free_reg_idx < free_regs.length() {
+                temp_reg = Some(free_regs[free_reg_idx])
+                free_reg_idx += 1
+              }
+              if temp_reg is Some(tr) {
+                // Save the mapping so we can update references later
+                saved_values[areg] = tr
+                saved_registers[areg] = tr // Update the block-level map
+                // Move the value to the temporary register
+                new_insts.push(
+                  Instruction::new(Movq, [tr], [areg], bb=Some(bb)),
+                )
+              }
             }
           }
 

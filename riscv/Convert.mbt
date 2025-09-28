@@ -602,8 +602,30 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
     }
     { opcode: Storeq, defs: [], uses: [Mem(base, offset), src], .. } => {
       let base = Reg::from_mir_operand(base)
-      let src = Reg::from_mir_operand(src)
-      [Sd(src, Mem::{ base, offset })]
+      match src {
+        Label(addr) => {
+          // Need to load the label address into a temporary register first
+          let free_regs = get_free_reg(inst)
+          let temp_reg = free_regs
+            .get(0)
+            .unwrap_or_else(fn() raise {
+              raise GMIRToRvAsmError(
+                "No free register available for storing label",
+              )
+            })
+          let insts : Array[RvAsm] = Array::new()
+          // Load the address of the label into temp_reg
+          insts.push(LuiHi(temp_reg, addr))
+          insts.push(AddiLo(temp_reg, temp_reg, addr))
+          // Store the address to memory
+          insts.push(Sd(temp_reg, Mem::{ base, offset }))
+          insts
+        }
+        _ => {
+          let src = Reg::from_mir_operand(src)
+          [Sd(src, Mem::{ base, offset })]
+        }
+      }
     }
     { opcode: Storeq, defs: [], uses: [addr, Imm(i)], .. } => {
       // Store immediate to address in register
