@@ -40,7 +40,7 @@ void delete_list(Node** head_ref) {
 }
 
 void sum_list(Node* head, int* sum) {
-  *sum = NULL;
+  *sum = 0;
   Node* current = head;
   while (current != NULL) {
     *sum += current->data;

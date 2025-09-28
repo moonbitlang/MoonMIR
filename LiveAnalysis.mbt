@@ -5,7 +5,17 @@ typealias @deque.Deque
 pub fn live_analysis(func : Function) -> (Graph[Int], Graph[Int]) {
   let vreg_graph = Graph::new()
   let vfreg_graph = Graph::new()
-  // add param regs to graph
+  
+  // Add all vregs and vfregs that have been created to the graph
+  // This ensures no vreg is missing from the graph
+  for i = 0; i < func.vreg_cnt; i = i + 1 {
+    vreg_graph.add_node(i)
+  }
+  for i = 0; i < func.vfreg_cnt; i = i + 1 {
+    vfreg_graph.add_node(i)
+  }
+  
+  // add param regs to graph (they will already be added but this is harmless)
   for param in func.params {
     if param is VReg(p) {
       vreg_graph.add_node(p)

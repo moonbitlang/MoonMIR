@@ -13,8 +13,10 @@ pub fn[T] Graph::new() -> Graph[T] {
 
 ///|
 pub fn[T : Hash + Eq] Graph::add_node(self : Graph[T], node : T) -> Unit {
-  if !self.edges.contains(node) {
+  if !self.nodes.contains(node) {
     self.nodes.add(node)
+  }
+  if !self.edges.contains(node) {
     self.edges[node] = Set::new()
   }
 }

@@ -412,6 +412,12 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src = Reg::from_mir_operand(src)
       [Mv(dst, src)]
     }
+    { opcode: BitCast, defs: [dst], uses: [src], .. } => {
+      // BitCast is a no-op at assembly level, just move the value
+      let dst = Reg::from_mir_operand(dst)
+      let src = Reg::from_mir_operand(src)
+      [Mv(dst, src)]
+    }
     { opcode: Movl, defs: [dst], uses: [Imm(i)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       [Li(dst, i.to_string())]
@@ -545,10 +551,38 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src = Reg::from_mir_operand(src)
       [Sd(src, Mem::{ base, offset })]
     }
+    { opcode: Storeq, defs: [], uses: [addr, Imm(i)], .. } => {
+      // Store immediate to address in register
+      // addr is a register containing the address
+      let addr = Reg::from_mir_operand(addr)
+      let free_regs = get_free_reg(inst)
+      let free_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available")
+        })
+      let insts : Array[RvAsm] = Array::new()
+      insts.push(Li(free_reg, i.to_string()))
+      insts.push(Sd(free_reg, Mem::{ base: addr, offset: 0 }))
+      insts
+    }
+    { opcode: Storeq, defs: [], uses: [addr, src], .. } => {
+      // Store register to address in register
+      // addr is a register containing the address
+      let addr = Reg::from_mir_operand(addr)
+      let src = Reg::from_mir_operand(src)
+      [Sd(src, Mem::{ base: addr, offset: 0 })]
+    }
     { opcode: Loadq, defs: [dst], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_operand(dst)
       let base = Reg::from_mir_operand(base)
       [Ld(dst, Mem::{ base, offset })]
+    }
+    { opcode: Loadq, defs: [dst], uses: [src], .. } => {
+      // Load from address in register
+      let dst = Reg::from_mir_operand(dst)
+      let src = Reg::from_mir_operand(src)
+      [Ld(dst, Mem::{ base: src, offset: 0 })]
     }
     { opcode: Call, defs: [], uses: [Label(func_name)], .. } =>
       [Call(func_name)]

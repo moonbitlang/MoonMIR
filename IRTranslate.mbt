@@ -48,6 +48,7 @@ fn Instruction::from_llvm_inst(
       let value_op = match value.tryAsConstantEnum() {
         Some(ConstantInt(c)) => Imm(c.value)
         Some(ConstantFP(f)) => FImm(f.value)
+        Some(ConstantPointerNull(_)) => Imm(0) // null pointer is 0
         None => {
           guard func.get_operand_from_llvm_value(value) is Some(op) else {
             raise IRTranslateError(
@@ -353,6 +354,7 @@ fn Instruction::from_llvm_inst(
         let op = match value.tryAsConstantEnum() {
           Some(ConstantInt(c)) => Imm(c.value)
           Some(ConstantFP(f)) => FImm(f.value)
+          Some(ConstantPointerNull(_)) => Imm(0) // null pointer is 0
           None =>
             // If the value is not in the map, it might be a forward reference
             // We need to allocate a register for it now
@@ -924,6 +926,7 @@ fn Instruction::from_llvm_inst(
       let true_op = match trueValue.tryAsConstantEnum() {
         Some(ConstantInt(c)) => Imm(c.value)
         Some(ConstantFP(f)) => FImm(f.value)
+        Some(ConstantPointerNull(_)) => Imm(0) // null pointer is 0
         None => {
           guard func.get_operand_from_llvm_value(trueValue) is Some(op) else {
             raise IRTranslateError(
@@ -937,6 +940,7 @@ fn Instruction::from_llvm_inst(
       let false_op = match falseValue.tryAsConstantEnum() {
         Some(ConstantInt(c)) => Imm(c.value)
         Some(ConstantFP(f)) => FImm(f.value)
+        Some(ConstantPointerNull(_)) => Imm(0) // null pointer is 0
         None => {
           guard func.get_operand_from_llvm_value(falseValue) is Some(op) else {
             raise IRTranslateError(
@@ -965,6 +969,7 @@ fn Instruction::from_llvm_inst(
         let ret_op = match retVal.tryAsConstantEnum() {
           Some(ConstantInt(c)) => Imm(c.value)
           Some(ConstantFP(f)) => FImm(f.value)
+          Some(ConstantPointerNull(_)) => Imm(0) // null pointer is 0
           None => {
             guard func.get_operand_from_llvm_value(retVal) is Some(op) else {
               raise IRTranslateError(
