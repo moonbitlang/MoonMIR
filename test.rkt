@@ -2,7 +2,10 @@
 #lang racket
 
 ;; List of tests to run
-(define tests '(simple_ret simple_add many_args if while while2 order_args for array struct heap_arr ptr bin_int linked_list bubble_sort quick_sort heap_sort binary_search dijkstra bfs lcs))
+(define tests 
+  '(simple_ret simple_add many_args if while while2 order_args for array struct
+              heap_arr ptr bin_int linked_list bubble_sort quick_sort heap_sort
+              merge_sort matrix binary_search dijkstra bfs lcs))
 
 ;; Executes a command and captures its standard output by redirecting to a temporary file.
 (define (run-and-get-output cmd)
