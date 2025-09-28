@@ -183,7 +183,8 @@ fn group_call_registers(self : Function) -> Unit {
     let mut freg_cnt = 0
     for ret in inst.defs {
       match ret {
-        Reg(_) as r if !replace_map.contains(r) && free_regs.contains(AReg(reg_cnt)) => {
+        Reg(_) as r if !replace_map.contains(r) &&
+          free_regs.contains(AReg(reg_cnt)) => {
           replace_map.set(r, AReg(reg_cnt))
           free_regs.remove(AReg(reg_cnt))
           reg_cnt += 1
@@ -201,7 +202,8 @@ fn group_call_registers(self : Function) -> Unit {
     let mut freg_cnt = 0
     for arg in inst.uses[1:] {
       match arg {
-        Reg(_) as r if !replace_map.contains(r) && free_regs.contains(AReg(reg_cnt)) => {
+        Reg(_) as r if !replace_map.contains(r) &&
+          free_regs.contains(AReg(reg_cnt)) => {
           replace_map.set(r, AReg(reg_cnt))
           free_regs.remove(AReg(reg_cnt))
           reg_cnt += 1
@@ -622,27 +624,54 @@ fn Function::call_inst_transform(self : Function) -> Unit {
 fn Function::adjust_mem_operands(self : Function) -> Unit {
   let { var_stack_size, reg_stack_size, .. } = self
   let total_stack_size = var_stack_size + reg_stack_size
-  for inst in self.instIter() {
-    for i, use_op in inst.uses {
-      match use_op {
-        Mem(StackPtr, offset) => inst.uses[i] = Mem(StackPtr, offset)
-        Mem(FramePtr, offset) =>
-          inst.uses[i] = Mem(StackPtr, offset + total_stack_size)
-        Mem(FramePtrPrim, offset) =>
-          inst.uses[i] = Mem(StackPtr, offset + var_stack_size)
-        _ => ()
+  for bb in self.body {
+    let mut new_insts : Array[Instruction] = Array::new()
+    for inst in bb.insts {
+      // Check if instruction uses FramePtrPrim as a standalone operand
+      // If so, we need to replace the entire instruction
+      if inst.opcode == Addq && inst.uses.length() == 2 {
+        match (inst.uses[0], inst.uses[1]) {
+          (FramePtrPrim, Imm(offset)) => {
+            // Replace Addq fp', offset with Addq sp, (offset + var_stack_size)
+            let new_inst = Instruction::new(
+              Addq,
+              inst.defs,
+              [StackPtr, Imm(offset + var_stack_size)],
+              bb=inst.bb,
+            )
+            new_insts.push(new_inst)
+            continue
+          }
+          _ => ()
+        }
       }
-    }
-    for i, def_op in inst.defs {
-      match def_op {
-        Mem(StackPtr, offset) => inst.defs[i] = Mem(StackPtr, offset)
-        Mem(FramePtr, offset) =>
-          inst.defs[i] = Mem(StackPtr, offset + total_stack_size)
-        Mem(FramePtrPrim, offset) =>
-          inst.defs[i] = Mem(StackPtr, offset + var_stack_size)
-        _ => ()
+
+      // Adjust memory operands as before
+      for i, use_op in inst.uses {
+        match use_op {
+          Mem(StackPtr, offset) => inst.uses[i] = Mem(StackPtr, offset)
+          Mem(FramePtr, offset) =>
+            inst.uses[i] = Mem(StackPtr, offset + total_stack_size)
+          Mem(FramePtrPrim, offset) =>
+            inst.uses[i] = Mem(StackPtr, offset + var_stack_size)
+          _ => ()
+        }
       }
+      for i, def_op in inst.defs {
+        match def_op {
+          Mem(StackPtr, offset) => inst.defs[i] = Mem(StackPtr, offset)
+          Mem(FramePtr, offset) =>
+            inst.defs[i] = Mem(StackPtr, offset + total_stack_size)
+          Mem(FramePtrPrim, offset) =>
+            inst.defs[i] = Mem(StackPtr, offset + var_stack_size)
+          _ => ()
+        }
+      }
+      // Add the (possibly modified) instruction to new_insts
+      new_insts.push(inst)
     }
+    // Replace the basic block's instructions with the new ones
+    bb.insts = new_insts
   }
 }
 

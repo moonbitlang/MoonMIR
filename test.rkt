@@ -2,7 +2,7 @@
 #lang racket
 
 ;; List of tests to run
-(define tests '(simple_ret simple_add many_args if while while2 order_args for struct))
+(define tests '(simple_ret simple_add many_args if while while2 order_args for array struct heap_arr ptr))
 
 ;; Executes a command and captures its standard output by redirecting to a temporary file.
 (define (run-and-get-output cmd)

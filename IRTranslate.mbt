@@ -491,14 +491,31 @@ fn Instruction::from_llvm_inst(
           let mut all_constant = true
 
           // Process all indices to compute the final offset
+          let mut first_index_processed = false
           for idx in indices {
             match (current_type, idx) {
-              (ArrayType(arrTy), ConstantInt(c)) => {
-                let elem_ty = arrTy.getElementType()
-                let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
-                total_offset += elem_size * c.getValueAsInt64()
-                current_type = elem_ty.asTypeEnum()
-              }
+              (ArrayType(arrTy), ConstantInt(c)) =>
+                // GEP semantics: the first index indexes the pointed-to type
+                // For arrays, if we haven't processed the first index yet,
+                // we're indexing arrays of the pointed-to type
+                if not(first_index_processed) {
+                  // First index: indexes arrays of the pointed-to type
+                  // The size is the size of the entire pointed-to type
+                  let array_size = data_layout
+                    .getTypeAllocSize(pointeeType)
+                    .to_int64()
+                  total_offset += array_size * c.getValueAsInt64()
+                  // Type remains the same array type for the next index
+                  // current_type stays as ArrayType(arrTy)
+                } else {
+                  // Subsequent indices: index into elements of the array
+                  let elem_ty = arrTy.getElementType()
+                  let elem_size = data_layout
+                    .getTypeAllocSize(elem_ty)
+                    .to_int64()
+                  total_offset += elem_size * c.getValueAsInt64()
+                  current_type = elem_ty.asTypeEnum()
+                }
               (StructType(structTy), ConstantInt(c)) => {
                 let i = c.getValueAsInt64().to_int()
                 total_offset += data_layout
@@ -512,6 +529,7 @@ fn Instruction::from_llvm_inst(
                 break
               }
             }
+            first_index_processed = true
           }
 
           // If all indices were constants, create a new Mem operand directly
@@ -538,7 +556,7 @@ fn Instruction::from_llvm_inst(
           let mov_inst = Instruction::new(
             Addq,
             [addr_reg],
-            [FramePtr, Imm(offset)],
+            [FramePtrPrim, Imm(offset)],
             bb~,
           )
           insts.push(mov_inst)
@@ -549,12 +567,29 @@ fn Instruction::from_llvm_inst(
 
       // Current pointer operand, may be updated as we process indices
       let current_ptr = initial_ptr
-      loop (pointeeType.asTypeEnum(), indices[:], current_ptr) {
+      let mut first_index_processed = false
+      loop
+        (
+          pointeeType.asTypeEnum(),
+          indices[:],
+          current_ptr,
+          first_index_processed,
+        ) {
         // Handle cases based on the current type and remaining indices
-        (ArrayType(arrTy), [ConstantInt(c), .. rest], ptr) => {
-          let elem_ty = arrTy.getElementType()
-          let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
-          let offset = elem_size * c.getValueAsInt64()
+        (ArrayType(arrTy), [ConstantInt(c), .. rest], ptr, is_first_processed) => {
+          // Determine the size based on whether this is the first index
+          let (offset, next_type) = if not(is_first_processed) {
+            // First index: indexes arrays of the pointed-to type
+            let array_size = data_layout
+              .getTypeAllocSize(pointeeType)
+              .to_int64()
+            (array_size * c.getValueAsInt64(), pointeeType.asTypeEnum())
+          } else {
+            // Subsequent indices: index into elements of the array
+            let elem_ty = arrTy.getElementType()
+            let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
+            (elem_size * c.getValueAsInt64(), elem_ty.asTypeEnum())
+          }
           if offset != 0 {
             // Ensure ptr is in a register before arithmetic
             let ptr_reg = match ptr {
@@ -564,7 +599,7 @@ fn Instruction::from_llvm_inst(
                 let add = Instruction::new(
                   Addq,
                   [temp],
-                  [FramePtr, Imm(off)],
+                  [FramePtrPrim, Imm(off)],
                   bb~,
                 )
                 insts.push(add)
@@ -597,15 +632,26 @@ fn Instruction::from_llvm_inst(
               bb~,
             )
             insts.push(minst)
-            continue (elem_ty.asTypeEnum(), rest, new_ptr)
+            continue (next_type, rest, new_ptr, true)
           } else {
             // offset is 0, just continue with same pointer
-            continue (elem_ty.asTypeEnum(), rest, ptr)
+            continue (next_type, rest, ptr, true)
           }
         }
-        (ArrayType(arrTy), [idx, .. rest], ptr) => {
-          let elem_ty = arrTy.getElementType()
-          let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
+        (ArrayType(arrTy), [idx, .. rest], ptr, is_first_processed) => {
+          // Determine size and next type based on whether this is the first index
+          let (elem_size, next_type) = if not(is_first_processed) {
+            // First index: use array size
+            let array_size = data_layout
+              .getTypeAllocSize(pointeeType)
+              .to_int64()
+            (array_size, pointeeType.asTypeEnum())
+          } else {
+            // Subsequent index: use element size
+            let elem_ty = arrTy.getElementType()
+            let elem_size = data_layout.getTypeAllocSize(elem_ty).to_int64()
+            (elem_size, elem_ty.asTypeEnum())
+          }
           let idx_op = func
             .get_operand_from_llvm_value(idx.asValueClass())
             .unwrap()
@@ -646,7 +692,7 @@ fn Instruction::from_llvm_inst(
               bb~,
             )
             insts.push(minst)
-            continue (elem_ty.asTypeEnum(), rest, new_ptr)
+            continue (next_type, rest, new_ptr, true)
           } else {
             // Scale the index
             let offset_op = func.add_vreg()
@@ -665,10 +711,10 @@ fn Instruction::from_llvm_inst(
               bb~,
             )
             insts.push(add_inst)
-            continue (elem_ty.asTypeEnum(), rest, new_ptr)
+            continue (next_type, rest, new_ptr, true)
           }
         }
-        (StructType(structTy), [ConstantInt(c), .. rest], ptr) => {
+        (StructType(structTy), [ConstantInt(c), .. rest], ptr, _) => {
           let i = c.getValueAsInt64().to_int()
           let offset = data_layout.getStructTypeOffset(structTy, i).to_int64()
           if offset != 0 {
@@ -714,14 +760,14 @@ fn Instruction::from_llvm_inst(
             )
             insts.push(minst)
             let elem_ty = structTy.elements[i]
-            continue (elem_ty.asTypeEnum(), rest, new_ptr)
+            continue (elem_ty.asTypeEnum(), rest, new_ptr, true)
           } else {
             // offset is 0, just continue with same pointer
             let elem_ty = structTy.elements[i]
-            continue (elem_ty.asTypeEnum(), rest, ptr)
+            continue (elem_ty.asTypeEnum(), rest, ptr, true)
           }
         }
-        (StructType(_), [_, ..], _) =>
+        (StructType(_), [_, ..], _, _) =>
           raise IRTranslateError(
             "GetElementPtrInst with non-constant struct index is impossible",
           )
@@ -732,6 +778,7 @@ fn Instruction::from_llvm_inst(
             ConstantInt(c),
           ],
           ptr,
+          _,
         ) => {
           let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() *
             c.getValueAsInt64()
@@ -784,7 +831,7 @@ fn Instruction::from_llvm_inst(
           // We're done
           break
         }
-        (_, [idx], ptr) => {
+        (_, [idx], ptr, _) => {
           let idx_op = func
             .get_operand_from_llvm_value(idx.asValueClass())
             .unwrap()
@@ -849,7 +896,7 @@ fn Instruction::from_llvm_inst(
           break
         }
         // Base case: no more indices
-        (_, [], ptr) => {
+        (_, [], ptr, _) => {
           // Just bind the final pointer
           func.value_map[inst] = ptr
           break
@@ -1045,6 +1092,21 @@ fn Instruction::from_llvm_inst(
                 func.extend_var_stack(8, 8)
                 vfreg_arg_cnt += 1
               }
+              Mem(FramePtrPrim, offset) if !arg.getType().isIEEELikeFPTy() &&
+                vreg_arg_cnt < num_arg_regs => {
+                // For FramePtrPrim, this is a stack-allocated object
+                // We need to compute its address, not load from it
+                let vreg = func.add_vreg()
+                let addr_inst = Instruction::new(
+                  Addq,
+                  [vreg],
+                  [FramePtrPrim, Imm(offset)],
+                  bb~,
+                )
+                insts.push(addr_inst)
+                uses.push(vreg)
+                vreg_arg_cnt += 1
+              }
               Mem(r, offset) if !arg.getType().isIEEELikeFPTy() &&
                 vreg_arg_cnt < num_arg_regs => {
                 let vreg = func.add_vreg()
@@ -1070,6 +1132,24 @@ fn Instruction::from_llvm_inst(
                 insts.push(loadi)
                 uses.push(vfreg)
                 vfreg_arg_cnt += 1
+              }
+              Mem(FramePtrPrim, offset) if !arg.getType().isIEEELikeFPTy() => {
+                // For FramePtrPrim, compute the address first
+                let vreg = func.add_vreg()
+                let addr_inst = Instruction::new(
+                  Addq,
+                  [vreg],
+                  [FramePtr, Imm(offset)],
+                  bb~,
+                )
+                insts.push(addr_inst)
+                let stack_offset = (vreg_arg_cnt - num_arg_regs) * 8
+                let memloc = Mem(StackPtr, stack_offset.to_int64())
+                let storei = Instruction::new(Storeq, [], [memloc, vreg], bb~)
+                insts.push(storei)
+                uses.push(memloc)
+                func.extend_var_stack(8, 8)
+                vreg_arg_cnt += 1
               }
               Mem(r, offset) if !arg.getType().isIEEELikeFPTy() => {
                 let stack_offset = (vreg_arg_cnt - num_arg_regs) * 8
