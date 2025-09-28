@@ -393,6 +393,66 @@ pub fn from_gmir_inst(inst : @GMIR.Instruction) -> Array[RvAsm] raise {
       let src2 = Reg::from_mir_operand(src2)
       [Blt(src1, src2, label1), J(label2)]
     }
+    { opcode: Bge, defs: [], uses: [src1, Imm(imm), Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Bge immediate")
+        })
+      [Li(temp_reg, imm.to_string()), Bge(src1, temp_reg, label1), J(label2)]
+    }
+    { opcode: Bge, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Bge(src1, src2, label1), J(label2)]
+    }
+    { opcode: Ble, defs: [], uses: [src1, Imm(imm), Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Ble immediate")
+        })
+      [Li(temp_reg, imm.to_string()), Ble(src1, temp_reg, label1), J(label2)]
+    }
+    { opcode: Ble, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Ble(src1, src2, label1), J(label2)]
+    }
+    { opcode: Beq, defs: [], uses: [src1, Imm(imm), Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Beq immediate")
+        })
+      [Li(temp_reg, imm.to_string()), Beq(src1, temp_reg, label1), J(label2)]
+    }
+    { opcode: Beq, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Beq(src1, src2, label1), J(label2)]
+    }
+    { opcode: Bne, defs: [], uses: [src1, Imm(imm), Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let free_regs = get_free_reg(inst)
+      let temp_reg = free_regs
+        .get(0)
+        .unwrap_or_else(fn() raise {
+          raise GMIRToRvAsmError("No free register available for Bne immediate")
+        })
+      [Li(temp_reg, imm.to_string()), Bne(src1, temp_reg, label1), J(label2)]
+    }
+    { opcode: Bne, defs: [], uses: [src1, src2, Label(label1), Label(label2)], .. } => {
+      let src1 = Reg::from_mir_operand(src1)
+      let src2 = Reg::from_mir_operand(src2)
+      [Bne(src1, src2, label1), J(label2)]
+    }
     { opcode: Jmp, defs: [], uses: [Label(label)], .. } => [J(label)]
     _ => raise GMIRToRvAsmError("UnImplemented GMIR instruction: \{inst}")
   }
