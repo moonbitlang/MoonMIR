@@ -986,6 +986,7 @@ fn Instruction::from_llvm_inst(
         [ret_inst]
       } else {
         let minst = Instruction::new(Ret, [], [], bb~)
+        func.terminal_basic_blocks.push(bb.unwrap())
         [minst]
       }
     CallInst({ callee, args, .. }) => {

@@ -441,6 +441,7 @@ fn Function::call_inst_transform(self : Function) -> Unit {
     for inst in bb.insts {
       match inst {
         { opcode: Call, defs, uses: [func_label, .. args], livein, liveout, .. } => {
+
           // Separate integer and floating-point arguments
           let mut int_args : Array[(Int, Operand)] = []
           let mut fp_args : Array[(Int, Operand)] = []
@@ -511,16 +512,21 @@ fn Function::call_inst_transform(self : Function) -> Unit {
           // Handle any remaining moves that form cycles
           if !remaining_moves.is_empty() {
             // These moves form a dependency cycle, need to use a temporary
-            // For simplicity, break the cycle by saving one of the sources first
+            // We need to save one of the registers that will be overwritten
             let (free_regs, _) = self.collect_free_regs()
 
-            // Pick the first move and save its source
+            // Pick the first move and save the TARGET (which will be overwritten)
             if !remaining_moves.is_empty() {
-              let (first_target, first_src) = remaining_moves[0]
-              let saved_src = if free_regs.pop_front() is Some(temp_reg) {
-                // Save the source to a temporary register
+              let (first_target, _) = remaining_moves[0]
+              let saved_target = if free_regs.pop_front() is Some(temp_reg) {
+                // Save the target register to a temporary register before it gets overwritten
                 moves_before.push(
-                  Instruction::new(Movq, [temp_reg], [first_src], bb=Some(bb)),
+                  Instruction::new(
+                    Movq,
+                    [temp_reg],
+                    [first_target],
+                    bb=Some(bb),
+                  ),
                 )
                 temp_reg
               } else {
@@ -528,20 +534,31 @@ fn Function::call_inst_transform(self : Function) -> Unit {
                 self.extend_reg_stack(8, 8)
                 let stack_offset = self.reg_stack_size - 8
                 let stack_loc = Mem(FramePtr, -stack_offset)
-                // Save source to stack
+                // Save target to stack before it gets overwritten
                 moves_before.push(
                   Instruction::new(
                     Storeq,
                     [],
-                    [stack_loc, first_src],
+                    [stack_loc, first_target],
                     bb=Some(bb),
                   ),
                 )
                 stack_loc
               }
 
-              // Replace the first move's source with the saved location
-              remaining_moves[0] = (first_target, saved_src)
+              // Now we can do the first move without losing the target's value
+              // The first move can proceed as normal
+
+              // Update any other moves that reference the target we saved
+              // Since first_target's value is now in saved_target, update references
+              for i = 1; i < remaining_moves.length(); i = i + 1 {
+                let (target, src) = remaining_moves[i]
+                if src == first_target {
+                  // This move depends on first_target which will be overwritten
+                  // It should now use the saved value instead
+                  remaining_moves[i] = (target, saved_target)
+                }
+              }
 
               // Now all moves can be done in order
               for mv in remaining_moves {

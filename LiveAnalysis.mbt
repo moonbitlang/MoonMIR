@@ -5,7 +5,7 @@ typealias @deque.Deque
 pub fn live_analysis(func : Function) -> (Graph[Int], Graph[Int]) {
   let vreg_graph = Graph::new()
   let vfreg_graph = Graph::new()
-  
+
   // Add all vregs and vfregs that have been created to the graph
   // This ensures no vreg is missing from the graph
   for i = 0; i < func.vreg_cnt; i = i + 1 {
@@ -14,7 +14,7 @@ pub fn live_analysis(func : Function) -> (Graph[Int], Graph[Int]) {
   for i = 0; i < func.vfreg_cnt; i = i + 1 {
     vfreg_graph.add_node(i)
   }
-  
+
   // add param regs to graph (they will already be added but this is harmless)
   for param in func.params {
     if param is VReg(p) {
@@ -155,11 +155,84 @@ fn live_analysis_for_basic_blocks(
       update_graph(vreg_graph, live_vreg_set)
       update_graph(vfreg_graph, live_fvreg_set)
 
+      // Add conflict edges between defined registers and livein registers
+      // A register being defined cannot use the same physical register as any register that is live at that point
+      for def_op in inst.defs {
+        match def_op {
+          VReg(v) => {
+            vreg_graph.add_node(v)
+            // Add edge between defined vreg and all livein vregs
+            for livein_vreg in live_vreg_set {
+              vreg_graph.add_edge(v, livein_vreg)
+            }
+          }
+          VFReg(v) => {
+            vfreg_graph.add_node(v)
+            // Add edge between defined vfreg and all livein vfregs
+            for livein_vfreg in live_fvreg_set {
+              vfreg_graph.add_edge(v, livein_vfreg)
+            }
+          }
+          _ => ()
+        }
+      }
+
       // Also ensure all used registers are in the graph
       for used_op in inst.uses {
         match used_op {
           VReg(v) => vreg_graph.add_node(v)
           VFReg(v) => vfreg_graph.add_node(v)
+          _ => ()
+        }
+      }
+
+      // Add conflict edges between all uses of an instruction
+      // This is crucial for instructions like Store that use multiple registers simultaneously
+      let used_vregs : Array[Int] = Array::new()
+      let used_vfregs : Array[Int] = Array::new()
+      for used_op in inst.uses {
+        match used_op {
+          VReg(v) => used_vregs.push(v)
+          VFReg(v) => used_vfregs.push(v)
+          _ => ()
+        }
+      }
+
+      // Add edges between all pairs of used vregs
+      for i = 0; i < used_vregs.length(); i = i + 1 {
+        for j = i + 1; j < used_vregs.length(); j = j + 1 {
+          vreg_graph.add_edge(used_vregs[i], used_vregs[j])
+        }
+      }
+      // Add edges between all pairs of used vfregs
+      for i = 0; i < used_vfregs.length(); i = i + 1 {
+        for j = i + 1; j < used_vfregs.length(); j = j + 1 {
+          vfreg_graph.add_edge(used_vfregs[i], used_vfregs[j])
+        }
+      }
+
+      // Add conflict edges between defined registers and liveout registers
+      // This ensures that a defined register cannot be allocated the same color
+      // as any register that is live after the instruction
+      let (liveout_vreg_set, liveout_vfreg_set) = spilt_vreg_and_vfreg(
+        inst.liveout,
+      )
+      for def_op in inst.defs {
+        match def_op {
+          VReg(v) => {
+            vreg_graph.add_node(v)
+            // Add edge between defined vreg and all liveout vregs
+            for liveout_vreg in liveout_vreg_set {
+              vreg_graph.add_edge(v, liveout_vreg)
+            }
+          }
+          VFReg(v) => {
+            vfreg_graph.add_node(v)
+            // Add edge between defined vfreg and all liveout vfregs
+            for liveout_vfreg in liveout_vfreg_set {
+              vfreg_graph.add_edge(v, liveout_vfreg)
+            }
+          }
           _ => ()
         }
       }
@@ -184,8 +257,11 @@ fn spilt_vreg_and_vfreg(opset : Set[Operand]) -> (Set[Int], Set[Int]) {
 ///|
 fn live_analysis_for_instruction(inst : Instruction) -> Unit {
   let { defs, uses, livein, liveout, .. } = inst
+  // Start with liveout
   liveout.each(o => livein.add(o))
+  // Remove defs (registers defined by this instruction are not live before it)
   defs.each(d => if d is (VReg(_) | VFReg(_)) { livein.remove(d) })
+  // Add uses (registers used by this instruction must be live before it)
   uses.each(u => if u is (VReg(_) | VFReg(_)) { livein.add(u) })
 }
 
