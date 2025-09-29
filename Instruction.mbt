@@ -77,10 +77,10 @@ pub impl Show for Instruction with output(self, logger) {
     logger.write_string(ustr)
   }
   // for debug, show livein and liveout
-  let livein_str = self.livein.iter().map(op => op.to_string()).join(", ")
-  logger.write_string(" [livein: {\{livein_str}}]")
-  let liveout_str = self.liveout.iter().map(op => op.to_string()).join(", ")
-  logger.write_string(" [liveout: {\{liveout_str}}]")
+  // let livein_str = self.livein.iter().map(op => op.to_string()).join(", ")
+  // logger.write_string(" [livein: {\{livein_str}}]")
+  // let liveout_str = self.liveout.iter().map(op => op.to_string()).join(", ")
+  // logger.write_string(" [liveout: {\{liveout_str}}]")
 }
 
 ///|

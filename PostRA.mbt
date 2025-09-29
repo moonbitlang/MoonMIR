@@ -41,8 +41,10 @@ fn Function::post_ra(self : Function) -> Unit raise PostRAError {
 ///|
 fn Function::group_registers(self : Function) -> Unit raise PostRAError {
   self.group_arg_registers()
-  self.group_call_registers()
+  // Run callee_saved BEFORE call registers so that values needing preservation
+  // across calls get priority for saved registers
   self.group_callee_saved_registers()
+  self.group_call_registers()
   self.group_normal_registers()
 }
 
@@ -98,17 +100,76 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
   let reg_usage : Map[Operand, Int] = Map::new()
   let freg_usage : Map[Operand, Int] = Map::new()
   let call_insts = self.collect_insts_by_opcode(Call)
+
+  // Collect which registers are defined by calls
+  let call_results : Set[Operand] = Set::new()
+  for inst in call_insts {
+    for def in inst.defs {
+      match def {
+        Reg(_) as r => call_results.add(r)
+        FReg(_) as fr => call_results.add(fr)
+        _ => ()
+      }
+    }
+  }
   for inst in call_insts {
     for op in inst.liveout {
       match op {
-        Reg(_) as r => {
-          let count = reg_usage.get(r).unwrap_or(0)
-          reg_usage.set(r, count + 1)
-        }
-        FReg(_) as fr => {
-          let count = freg_usage.get(fr).unwrap_or(0)
-          freg_usage.set(fr, count + 1)
-        }
+        Reg(_) as r =>
+          // Only count registers that are not call results
+          // Call results should use temporary registers unless they're
+          // live across subsequent calls
+          if !call_results.contains(r) {
+            let count = reg_usage.get(r).unwrap_or(0)
+            reg_usage.set(r, count + 1)
+          }
+        FReg(_) as fr =>
+          if !call_results.contains(fr) {
+            let count = freg_usage.get(fr).unwrap_or(0)
+            freg_usage.set(fr, count + 1)
+          }
+        _ => ()
+      }
+    }
+  }
+
+  // Special case: if a call result is live across ANOTHER call,
+  // then it should be saved
+  // Build a map of which registers are defined by which calls
+  let call_def_map : Map[Operand, Int] = Map::new()
+  for i, inst in call_insts {
+    for def in inst.defs {
+      match def {
+        Reg(_) as r => call_def_map[r] = i
+        FReg(_) as fr => call_def_map[fr] = i
+        _ => ()
+      }
+    }
+  }
+
+  // Now check if any register defined by a call is live across a LATER call
+  for j, later_inst in call_insts {
+    for r in later_inst.liveout {
+      match r {
+        Reg(_) as reg =>
+          // Check if this register was defined by an earlier call
+          match call_def_map.get(reg) {
+            Some(i) if i < j => {
+              // This register was defined by call i and is live across call j
+              // It needs a saved register
+              let count = reg_usage.get(reg).unwrap_or(0)
+              reg_usage.set(reg, count + 100)
+            }
+            _ => ()
+          }
+        FReg(_) as freg =>
+          match call_def_map.get(freg) {
+            Some(i) if i < j => {
+              let count = freg_usage.get(freg).unwrap_or(0)
+              freg_usage.set(freg, count + 100)
+            }
+            _ => ()
+          }
         _ => ()
       }
     }
