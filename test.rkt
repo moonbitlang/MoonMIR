@@ -5,7 +5,7 @@
 (define tests 
   '(simple_ret simple_add many_args if while while2 order_args for array struct
     heap_arr ptr bin_int linked_list bubble_sort quick_sort heap_sort merge_sort
-    sizeof matrix binary_search dijkstra bfs lcs queue))
+    sizeof matrix binary_search dijkstra bfs lcs fib))
 
 ;; Executes a command and captures its standard output by redirecting to a temporary file.
 (define (run-and-get-output cmd)

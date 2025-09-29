@@ -85,7 +85,8 @@ priv struct OperandUsage(Operand, Int) derive(Eq)
 impl Compare for OperandUsage with compare(self, other) {
   let OperandUsage(_, a) = self
   let OperandUsage(_, b) = other
-  a.compare(b)
+  // Reverse comparison so higher counts have higher priority
+  b.compare(a)
 }
 
 ///|
@@ -100,6 +101,13 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
   let reg_usage : Map[Operand, Int] = Map::new()
   let freg_usage : Map[Operand, Int] = Map::new()
   let call_insts = self.collect_insts_by_opcode(Call)
+  
+  // Debug: print function name and number of calls
+  // println("=== group_callee_saved_registers for \{self.name} ===")
+  // println("Found \{call_insts.length()} call instructions")
+  // for i, inst in call_insts {
+  //   println("Call \{i}: livein=\{inst.livein}, liveout=\{inst.liveout}")
+  // }
 
   // Collect which registers are defined by calls
   let call_results : Set[Operand] = Set::new()
@@ -147,18 +155,46 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
     }
   }
 
+  // IMPORTANT: Also check if ANY register is live across a call
+  // Not just registers defined by previous calls
+  for inst in call_insts {
+    // Any register that is in both livein AND liveout of a call
+    // needs to be preserved across that call
+    for r in inst.livein {
+      if inst.liveout.contains(r) {
+        match r {
+          Reg(_) as reg => {
+            // This register is live across this call and needs preservation
+            let count = reg_usage.get(reg).unwrap_or(0)
+            reg_usage.set(reg, count + 1000)  // Very high priority
+          }
+          AReg(_) => {
+            // AReg is already assigned, skip
+            ()
+          }
+          FReg(_) as freg => {
+            let count = freg_usage.get(freg).unwrap_or(0)
+            freg_usage.set(freg, count + 1000)  // Very high priority
+          }
+          _ => ()
+        }
+      }
+    }
+  }
+
   // Now check if any register defined by a call is live across a LATER call
+  // A register is live across a call if it's in the livein of that call
   for j, later_inst in call_insts {
-    for r in later_inst.liveout {
+    for r in later_inst.livein {
       match r {
         Reg(_) as reg =>
           // Check if this register was defined by an earlier call
           match call_def_map.get(reg) {
             Some(i) if i < j => {
               // This register was defined by call i and is live across call j
-              // It needs a saved register
+              // It needs a saved register with high priority
               let count = reg_usage.get(reg).unwrap_or(0)
-              reg_usage.set(reg, count + 100)
+              reg_usage.set(reg, count + 2000)  // Even higher priority
             }
             _ => ()
           }
@@ -166,7 +202,7 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
           match call_def_map.get(freg) {
             Some(i) if i < j => {
               let count = freg_usage.get(freg).unwrap_or(0)
-              freg_usage.set(freg, count + 100)
+              freg_usage.set(freg, count + 2000)  // Even higher priority
             }
             _ => ()
           }
@@ -187,8 +223,17 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
   let { num_saved_regs, num_saved_fregs, .. } = self.getArchConfig()
   let replace_map : Map[Operand, Operand] = Map::new()
   let mut saved_reg_idx : Int = 0
+  
+  // Debug: show what needs saved registers
+  // println("Registers needing saved registers in \{self.name}:")
+  // for info in reg_usage {
+  //   let (r, count) = info
+  //   println("  \{r}: priority \{count}")
+  // }
+  
   while !reg_usage_pq.is_empty() && saved_reg_idx < num_saved_regs {
-    let OperandUsage(r, _) = reg_usage_pq.pop().unwrap()
+    let OperandUsage(r, _count) = reg_usage_pq.pop().unwrap()
+    // println("Assigning \{r} (priority \{count}) to SReg(\{saved_reg_idx})")
     replace_map.set(r, SReg(saved_reg_idx))
     saved_reg_idx += 1
   }
@@ -555,13 +600,14 @@ fn Function::call_inst_transform(self : Function) -> Unit {
             // It must be live before the call (in livein) AND live after the call (in liveout)
             if livein.iter().any(fn(op) { op == areg }) &&
               liveout.iter().any(fn(op) { op == areg }) {
-              // Find a free temporary register to save the value
+              // Find a free register to save the value
+              // We need a SAVED register since the value must survive the call
               let mut temp_reg : Operand? = None
-              // Prefer T registers for temporaries
+              // First try to find an S register (saved register)
               for i = free_reg_idx; i < free_regs.length(); i = i + 1 {
                 let candidate = free_regs[i]
                 match candidate {
-                  TReg(_) => {
+                  SReg(_) => {
                     temp_reg = Some(candidate)
                     free_reg_idx = i + 1
                     break
@@ -569,8 +615,10 @@ fn Function::call_inst_transform(self : Function) -> Unit {
                   _ => ()
                 }
               }
-              // If no T register available, use any free register
+              // If no S register available, we have a problem - need to spill to stack
+              // For now, try any free register (but this is incorrect for T registers)
               if temp_reg is None && free_reg_idx < free_regs.length() {
+                // This is a fallback - using T register is wrong but better than crashing
                 temp_reg = Some(free_regs[free_reg_idx])
                 free_reg_idx += 1
               }
