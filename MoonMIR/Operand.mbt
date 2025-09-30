@@ -7,7 +7,7 @@ pub(all) enum IRegister {
   SReg(Int) // Saved Register (after grouping)
   StackPtr // Stack Pointer
   FramePtr // Frame Pointer
-  FrmaePtrPrim // Fake Frame Pointer used in prologue/epilogue
+  FramePtrPrim // Fake Frame Pointer used in prologue/epilogue
   ReturnAddr // Return Address
 }
 
@@ -21,7 +21,7 @@ pub impl Show for IRegister with output(self, logger) {
     SReg(n) => "s\{n}"
     StackPtr => "sp"
     FramePtr => "fp"
-    FrmaePtrPrim => "fp'"
+    FramePtrPrim => "fp'"
     ReturnAddr => "ra"
   }
   logger.write_string(s)

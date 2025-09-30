@@ -29,7 +29,6 @@ fn Instruction::new(
 
 ///|
 pub impl Show for Instruction with output(self, logger) {
-  logger.write_string("  ")
   match self.defs {
     [] => ()
     [d] => logger.write_string("\{d} = ")
@@ -39,6 +38,8 @@ pub impl Show for Instruction with output(self, logger) {
     }
   }
   logger.write_object(self.opcode)
-  let uses_str = self.uses.map(u => "\{u}").join(", ")
-  logger.write_string(" \{uses_str}")
+  if self.uses.length() > 0 {
+    let uses_str = self.uses.map(u => "\{u}").join(", ")
+    logger.write_string(" \{uses_str}")
+  }
 }

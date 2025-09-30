@@ -1,20 +1,17 @@
 ///|
-pub suberror LegalizeError String derive(Show)
-
-///|
-pub fn Module::legalize(self : Self) -> Unit raise LegalizeError {
+pub fn Module::legalize(self : Self) -> Unit raise MIRError {
   self.functions.each(f => f.legalize())
 }
 
 ///|
-pub fn Function::legalize(func : Function) -> Unit raise LegalizeError {
+pub fn Function::legalize(func : Function) -> Unit raise MIRError {
   for bb in func.body {
     bb.legalize()
   }
 }
 
 ///|
-pub fn BasicBlock::legalize(self : BasicBlock) -> Unit raise LegalizeError {
+pub fn BasicBlock::legalize(self : BasicBlock) -> Unit raise MIRError {
   let new_insts : Array[Instruction] = Array::new()
   for inst in self.insts {
     inst.legalize().each(new_inst => new_insts.push(new_inst))
@@ -25,7 +22,7 @@ pub fn BasicBlock::legalize(self : BasicBlock) -> Unit raise LegalizeError {
 ///|
 pub fn Instruction::legalize(
   self : Instruction,
-) -> Array[Instruction] raise LegalizeError {
+) -> Array[Instruction] raise MIRError {
   let { bb, func, .. } = self
   let builder = IRBuilder::new(func, bb)
   match self {

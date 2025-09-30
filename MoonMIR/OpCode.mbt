@@ -100,6 +100,7 @@ pub(all) enum OpCode {
   FMove(Int) // Int is the bit width (32, 64)
   FMoveI(Int) // Int is the float bit width (32, 64), move from int to float register
   IMoveF(Int) // Int is the float bit width (32, 64), move from float to int register
+  LoadAddr    // Load address of a variable
   Trunc(from~ : Int, to~ : Int)
   ZExt(from~ : Int, to~ : Int)
   SExt(from~ : Int, to~ : Int)
@@ -197,6 +198,7 @@ pub impl Show for OpCode with output(self, logger) {
     FMove(bits) => "move.f\{bits}"
     FMoveI(bits) => "fmovei.f\{bits}"
     IMoveF(bits) => "imovef.f\{bits}"
+    LoadAddr => "loadaddr"
     Trunc(from~, to~) => "trunc.i\{from}_to_i\{to}"
     ZExt(from~, to~) => "zext.i\{from}_to_i\{to}"
     SExt(from~, to~) => "sext.i\{from}_to_i\{to}"

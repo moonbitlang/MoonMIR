@@ -50,6 +50,82 @@ pub fn Function::new(mod: Module, name: String) -> Function {
   }
 }
 
+pub fn Function::clear(self: Self) -> Unit {
+  self.params.clear()
+  self.body.clear()
+  self.var_stack_size = 0
+  self.reg_stack_size = 0
+  //self.terminal_basic_blocks.clear()
+  self.llvm_func = None
+  self.value_map.clear()
+  self.bbmap.clear()
+  self.vreg_cnt = 0
+  self.vfreg_cnt = 0
+}
+
+///|
+fn Function::set_params_by_patterns(self: Self, arg_patterns: Array[ArgPattern]) -> Unit {
+  self.params.clear()
+  let { num_arg_regs, num_arg_fregs, ..} = self.mod.arch_config
+  let mut areg_cnt = 0
+  let mut fareg_cnt = 0
+  let mut spill_cnt = 0L
+  letrec push_param : (Operand) -> Unit = p => self.params.push(p)
+  for arg_pat in arg_patterns {
+    match arg_pat {
+      I if areg_cnt < num_arg_regs => {
+        IRegister(AReg(areg_cnt)) |> push_param
+        areg_cnt += 1
+      }
+      I => {
+        let fp_offset = spill_cnt * 8
+        Mem(FramePtr, fp_offset) |> push_param
+        spill_cnt += 1
+      }
+      F if fareg_cnt < num_arg_fregs => {
+        FRegister(FAReg(fareg_cnt)) |> push_param
+        fareg_cnt += 1
+      }
+      F => {
+        let fp_offset = spill_cnt * 8
+        Mem(FramePtr, fp_offset) |> push_param
+        spill_cnt += 1
+      }
+    }
+  }
+}
+
+
+#callsite(autofill(loc))
+pub fn Function::append_basic_block(self: Self, label: String, loc~: SourceLoc) -> BasicBlock {
+  if self.bbmap.contains(label) {
+    let msg = 
+      $|Fatal Errpr happened in \{loc}
+      #|Duplicate basic block label: \{label} in function \{self.name}
+    println(msg)
+    panic()
+  }
+  let bb = BasicBlock::new(self, label)
+  self.body.push(bb)
+  bb
+}
+
+pub fn Function::get_param(self: Self, idx: Int) -> Operand? {
+  self.params.get(idx)
+}
+
+///|
+fn Function::extend_var_stack(self : Self, size : Int64, align : Int64) -> Int64 {
+  self.var_stack_size = (self.var_stack_size + size + align - 1) / align * align
+  self.var_stack_size
+}
+
+///|
+fn Function::extend_reg_stack(self : Self, size : Int64, align : Int64) -> Int64 {
+  self.reg_stack_size = (self.reg_stack_size + size + align - 1) / align * align
+  self.reg_stack_size
+}
+
 ///|
 pub fn Function::new_virtual_reg(self : Self) -> IRegister {
   let vreg = IRegister::VReg(self.vreg_cnt)
@@ -62,4 +138,48 @@ pub fn Function::new_virtual_freg(self : Self) -> FRegister {
   let vfreg = FRegister::VFReg(self.vfreg_cnt)
   self.vfreg_cnt += 1
   vfreg
+}
+
+pub fn Function::bind_llvm_value_to_register(
+  self: Self,
+  val: &@IR.Value,
+  reg: IRegister
+) -> Unit {
+  self.value_map.set(val, Operand::IRegister(reg))
+}
+
+pub fn Function::bind_llvm_value_to_fregister(
+  self: Self,
+  val: &@IR.Value,
+  freg: FRegister
+) -> Unit {
+  self.value_map.set(val, Operand::FRegister(freg))
+}
+
+pub fn Function::bind_llvm_value_to_mem(
+  self: Self,
+  val: &@IR.Value,
+  base: IRegister,
+  offset: Int64
+) -> Unit {
+  self.value_map.set(val, Operand::Mem(base, offset))
+}
+
+pub fn Function::get_operand_from_llvm_value(
+  self: Self,
+  val: &@IR.Value,
+) -> Operand? {
+  self.value_map.get(val)
+}
+
+///|
+pub impl Show for Function with output(self, logger) {
+  logger.write_string("func \{self.name}(")
+  let pstr = self.params.map(p => "\{p}").join(", ")
+  logger.write_string(pstr)
+  logger.write_string(") {\n")
+  for bb in self.body {
+    logger.write_object(bb)
+  }
+  logger.write_string("}\n")
 }

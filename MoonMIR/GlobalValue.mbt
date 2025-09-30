@@ -3,7 +3,7 @@ pub(all) struct GlobalValue {
   label : String
   content : GlobalValueContent
   mod : Module
-  llvm_gv : &@IR.GlobalValue
+  mut llvm_gv : &@IR.GlobalValue?
 }
 
 ///|
@@ -33,7 +33,7 @@ pub impl Show for GlobalValue with output(self, logger) {
           Quad(q) => logger.write_string("  .quad \{q}\n")
           Word(w) => logger.write_string("  .word \{w}\n")
           Half(h) => logger.write_string("  .half \{h}\n")
-          Byte(b) => logger.write_string("  .byte \{b}\n")
+          Byte(b) => logger.write_string("  .byte \{b.to_int()}\n")
         }
       }
   }

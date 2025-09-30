@@ -1,6 +1,6 @@
 ///|
 pub(all) struct BasicBlock {
-  llvm_bb : @IR.BasicBlock
+  mut llvm_bb : @IR.BasicBlock?
   label : String
   mut insts : Array[Instruction]
   parent : Function
@@ -12,11 +12,10 @@ pub(all) struct BasicBlock {
 ///|
 pub fn BasicBlock::new(
   func : Function,
-  llvm_bb : @IR.BasicBlock,
   label : String,
 ) -> BasicBlock {
   BasicBlock::{
-    llvm_bb,
+    llvm_bb: None,
     label,
     insts: Array::new(),
     parent: func,
@@ -26,16 +25,37 @@ pub fn BasicBlock::new(
   }
 }
 
+pub fn BasicBlock::clear(self: Self) -> Unit {
+  self.insts.clear()
+  self.preds.clear()
+  self.livein.clear()
+  self.liveout.clear()
+}
+
 ///|
-pub fn BasicBlock::push_inst(
+pub fn BasicBlock::push(
   self : Self,
-  opcode : OpCode,
-  defs : Array[Operand],
-  uses : Array[Operand],
-) -> Instruction {
-  let inst = Instruction::new(opcode, defs, uses, self)
+  inst: Instruction,
+) -> Unit {
   self.insts.push(inst)
-  inst
 }
 
 // pub fn BasicBlock::insert_inst_before_terminator(self: Self, opcode: OpCode, defs: Array[Operand>, uses: Array[Operand>) -> Instruction {
+
+
+///|
+pub impl Show for BasicBlock with output(self, logger) {
+  logger.write_string(self.label)
+  logger.write_string(":")
+  if !self.preds.is_empty() {
+    let pred_labels = self.preds.map(b => b.label).join(", ")
+    logger.write_string("                       ")
+    logger.write_string("; preds: \{pred_labels}")
+  }
+  logger.write_string("\n")
+  for inst in self.insts {
+    logger.write_string("  ")
+    logger.write_string(inst.to_string())
+    logger.write_string("\n")
+  }
+}
