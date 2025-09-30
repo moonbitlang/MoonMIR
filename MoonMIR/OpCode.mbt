@@ -35,8 +35,6 @@ pub(all) enum ICmpOpCode {
   Ge
   Lt
   Le
-  Equ
-  Neu
   Gtu
   Geu
   Ltu
@@ -51,12 +49,11 @@ pub(all) enum BranchOpCode {
   Bge
   Blt
   Ble
-  Bequ
-  Bneu
   Bgtu
   Bgeu
   Bltu
   Bleu
+  Jmp
 }
 
 ///|
@@ -66,6 +63,13 @@ pub(all) enum FBinaryOpCode {
   FMul
   FDiv
   FRem
+}
+
+pub fn FBinaryOpCode::is_commutative(self : Self) -> Bool {
+  match self {
+    FAdd | FMul => true
+    FSub | FDiv | FRem => false
+  }
 }
 
 ///|
@@ -100,7 +104,7 @@ pub(all) enum OpCode {
   FMove(Int) // Int is the bit width (32, 64)
   FMoveI(Int) // Int is the float bit width (32, 64), move from int to float register
   IMoveF(Int) // Int is the float bit width (32, 64), move from float to int register
-  LoadAddr    // Load address of a variable
+  LoadAddr // Load address of a variable
   Trunc(from~ : Int, to~ : Int)
   ZExt(from~ : Int, to~ : Int)
   SExt(from~ : Int, to~ : Int)
@@ -147,8 +151,6 @@ pub impl Show for OpCode with output(self, logger) {
         Ge => "ge.i\{bits}"
         Lt => "lt.i\{bits}"
         Le => "le.i\{bits}"
-        Equ => "equ.i\{bits}"
-        Neu => "neu.i\{bits}"
         Gtu => "gtu.i\{bits}"
         Geu => "geu.i\{bits}"
         Ltu => "ltu.i\{bits}"
@@ -165,12 +167,11 @@ pub impl Show for OpCode with output(self, logger) {
         Bge => "bge"
         Blt => "blt"
         Ble => "ble"
-        Bequ => "bequ"
-        Bneu => "bneu"
         Bgtu => "bgtu"
         Bgeu => "bgeu"
         Bltu => "bltu"
         Bleu => "bleu"
+        Jmp => "jmp"
       }
     FBinary(op, bits) =>
       match op {

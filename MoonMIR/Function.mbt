@@ -32,7 +32,8 @@ pub(all) struct Function {
   mut vfreg_cnt : Int
 }
 
-pub fn Function::new(mod: Module, name: String) -> Function {
+///|
+pub fn Function::new(mod : Module, name : String) -> Function {
   Function::{
     mod,
     name,
@@ -50,7 +51,8 @@ pub fn Function::new(mod: Module, name: String) -> Function {
   }
 }
 
-pub fn Function::clear(self: Self) -> Unit {
+///|
+pub fn Function::clear(self : Self) -> Unit {
   self.params.clear()
   self.body.clear()
   self.var_stack_size = 0
@@ -64,13 +66,17 @@ pub fn Function::clear(self: Self) -> Unit {
 }
 
 ///|
-fn Function::set_params_by_patterns(self: Self, arg_patterns: Array[ArgPattern]) -> Unit {
+fn Function::set_params_by_patterns(
+  self : Self,
+  arg_patterns : Array[ArgPattern],
+) -> Unit {
   self.params.clear()
-  let { num_arg_regs, num_arg_fregs, ..} = self.mod.arch_config
+  let { num_arg_regs, num_arg_fregs, .. } = self.mod.arch_config
   let mut areg_cnt = 0
   let mut fareg_cnt = 0
   let mut spill_cnt = 0L
-  letrec push_param : (Operand) -> Unit = p => self.params.push(p)
+  letrec push_param: (Operand) -> Unit = p => self.params.push(p)
+
   for arg_pat in arg_patterns {
     match arg_pat {
       I if areg_cnt < num_arg_regs => {
@@ -95,11 +101,15 @@ fn Function::set_params_by_patterns(self: Self, arg_patterns: Array[ArgPattern])
   }
 }
 
-
+///|
 #callsite(autofill(loc))
-pub fn Function::append_basic_block(self: Self, label: String, loc~: SourceLoc) -> BasicBlock {
+pub fn Function::append_basic_block(
+  self : Self,
+  label : String,
+  loc~ : SourceLoc,
+) -> BasicBlock {
   if self.bbmap.contains(label) {
-    let msg = 
+    let msg =
       $|Fatal Errpr happened in \{loc}
       #|Duplicate basic block label: \{label} in function \{self.name}
     println(msg)
@@ -110,21 +120,30 @@ pub fn Function::append_basic_block(self: Self, label: String, loc~: SourceLoc) 
   bb
 }
 
-pub fn Function::get_param(self: Self, idx: Int) -> Operand? {
+///|
+pub fn Function::get_param(self : Self, idx : Int) -> Operand? {
   self.params.get(idx)
 }
 
 ///|
-fn Function::extend_var_stack(self : Self, size : Int64, align : Int64) -> Int64 {
+fn Function::extend_var_stack(
+  self : Self,
+  size : Int64,
+  align : Int64,
+) -> Int64 {
   self.var_stack_size = (self.var_stack_size + size + align - 1) / align * align
   self.var_stack_size
 }
 
 ///|
-fn Function::extend_reg_stack(self : Self, size : Int64, align : Int64) -> Int64 {
-  self.reg_stack_size = (self.reg_stack_size + size + align - 1) / align * align
-  self.reg_stack_size
-}
+//fn Function::extend_reg_stack(
+//  self : Self,
+//  size : Int64,
+//  align : Int64,
+//) -> Int64 {
+//  self.reg_stack_size = (self.reg_stack_size + size + align - 1) / align * align
+//  self.reg_stack_size
+//}
 
 ///|
 pub fn Function::new_virtual_reg(self : Self) -> IRegister {
@@ -140,34 +159,38 @@ pub fn Function::new_virtual_freg(self : Self) -> FRegister {
   vfreg
 }
 
+///|
 pub fn Function::bind_llvm_value_to_register(
-  self: Self,
-  val: &@IR.Value,
-  reg: IRegister
+  self : Self,
+  val : &@IR.Value,
+  reg : IRegister,
 ) -> Unit {
   self.value_map.set(val, Operand::IRegister(reg))
 }
 
+///|
 pub fn Function::bind_llvm_value_to_fregister(
-  self: Self,
-  val: &@IR.Value,
-  freg: FRegister
+  self : Self,
+  val : &@IR.Value,
+  freg : FRegister,
 ) -> Unit {
   self.value_map.set(val, Operand::FRegister(freg))
 }
 
+///|
 pub fn Function::bind_llvm_value_to_mem(
-  self: Self,
-  val: &@IR.Value,
-  base: IRegister,
-  offset: Int64
+  self : Self,
+  val : &@IR.Value,
+  base : IRegister,
+  offset : Int64,
 ) -> Unit {
   self.value_map.set(val, Operand::Mem(base, offset))
 }
 
+///|
 pub fn Function::get_operand_from_llvm_value(
-  self: Self,
-  val: &@IR.Value,
+  self : Self,
+  val : &@IR.Value,
 ) -> Operand? {
   self.value_map.get(val)
 }

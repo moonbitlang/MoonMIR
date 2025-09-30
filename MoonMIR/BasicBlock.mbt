@@ -10,10 +10,7 @@ pub(all) struct BasicBlock {
 }
 
 ///|
-pub fn BasicBlock::new(
-  func : Function,
-  label : String,
-) -> BasicBlock {
+pub fn BasicBlock::new(func : Function, label : String) -> BasicBlock {
   BasicBlock::{
     llvm_bb: None,
     label,
@@ -25,7 +22,8 @@ pub fn BasicBlock::new(
   }
 }
 
-pub fn BasicBlock::clear(self: Self) -> Unit {
+///|
+pub fn BasicBlock::clear(self : Self) -> Unit {
   self.insts.clear()
   self.preds.clear()
   self.livein.clear()
@@ -33,15 +31,11 @@ pub fn BasicBlock::clear(self: Self) -> Unit {
 }
 
 ///|
-pub fn BasicBlock::push(
-  self : Self,
-  inst: Instruction,
-) -> Unit {
+pub fn BasicBlock::push(self : Self, inst : Instruction) -> Unit {
   self.insts.push(inst)
 }
 
 // pub fn BasicBlock::insert_inst_before_terminator(self: Self, opcode: OpCode, defs: Array[Operand>, uses: Array[Operand>) -> Instruction {
-
 
 ///|
 pub impl Show for BasicBlock with output(self, logger) {

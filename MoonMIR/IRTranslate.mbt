@@ -1,10 +1,9 @@
-
+///|
 pub fn Module::translate_llvm_module(
-  self: Self,
-  llvm_mod: @IR.Module,
+  self : Self,
+  llvm_mod : @IR.Module,
 ) -> Unit raise MIRError {
   self.clear()
-
   self.llvm_mod = Some(llvm_mod)
 
   // Step 1: Translate global values
@@ -21,7 +20,11 @@ pub fn Module::translate_llvm_module(
   }
 }
 
-pub fn Function::translate_llvm_function(self: Self, llvm_func: @IR.Function) -> Unit raise MIRError {
+///|
+pub fn Function::translate_llvm_function(
+  self : Self,
+  llvm_func : @IR.Function,
+) -> Unit raise MIRError {
   self.clear()
   self.llvm_func = Some(llvm_func)
 
@@ -46,35 +49,42 @@ pub fn Function::translate_llvm_function(self: Self, llvm_func: @IR.Function) ->
 
 ///|
 #callsite(autofill(loc))
-pub fn Function::translate_params(self: Self, loc~: SourceLoc) -> Unit {
+pub fn Function::translate_params(self : Self, loc~ : SourceLoc) -> Unit {
   guard self.llvm_func is Some(llvm_func) else {
-    let msg = 
+    let msg =
       $|Fatal Error happened in \{loc}
       #|LLVM function is not set for Function \{self.name}
     println(msg)
     panic()
   }
-  let arg_patterns = llvm_func.arguments.map(
-    arg => if arg.getType().isIEEELikeFPTy() { F } else { I }
-  )
+  fn pattern_of_llvm_arg(arg: @IR.Argument) {
+    match arg.getType().isIEEELikeFPTy() {
+      true => F
+      false => I
+    }
+  }
+  let arg_patterns = llvm_func.arguments.map(pattern_of_llvm_arg)
   self.set_params_by_patterns(arg_patterns)
-
-  llvm_func.arguments.zip_to_iter2(self.params).each(
-    (arg, param) => self.value_map.set(arg, param)
-  )
+  llvm_func.arguments
+  .zip_to_iter2(self.params)
+  .each((arg, param) => self.value_map.set(arg, param))
 }
 
+///|
 #callsite(autofill(loc))
-pub fn Function::traverse_llvm_basic_blocks(self: Self, loc~: SourceLoc) -> Array[(@IR.BasicBlock, BasicBlock)] {
+pub fn Function::traverse_llvm_basic_blocks(
+  self : Self,
+  loc~ : SourceLoc,
+) -> Array[(@IR.BasicBlock, BasicBlock)] {
   guard self.llvm_func is Some(llvm_func) else {
-    let msg = 
+    let msg =
       $|Fatal Error happened in \{loc}
       #|LLVM function is not set for Function \{self.name}
     println(msg)
     panic()
   }
   let sorted_bbs = sort_llvm_basick_block(llvm_func)
-  let llvm_machine_bbs: Array[(@IR.BasicBlock, BasicBlock)] = Array::new()
+  let llvm_machine_bbs : Array[(@IR.BasicBlock, BasicBlock)] = Array::new()
   for llvm_bb in sorted_bbs {
     let label = match llvm_bb.getName() {
       Some(n) => n
@@ -89,7 +99,8 @@ pub fn Function::traverse_llvm_basic_blocks(self: Self, loc~: SourceLoc) -> Arra
   llvm_machine_bbs
 }
 
-fn sort_llvm_basick_block(llvm_func: @IR.Function) -> Array[@IR.BasicBlock] {
+///|
+fn sort_llvm_basick_block(llvm_func : @IR.Function) -> Array[@IR.BasicBlock] {
   let basic_blocks : Array[@IR.BasicBlock] = Array::new()
   let entry_bb = llvm_func.getEntryBlock().unwrap()
   fn dfs(bb : @IR.BasicBlock, visited : Set[@IR.BasicBlock]) -> Unit {
@@ -107,12 +118,16 @@ fn sort_llvm_basick_block(llvm_func: @IR.Function) -> Array[@IR.BasicBlock] {
   basic_blocks.rev()
 }
 
-pub fn Function::traverse_llvm_instructions(self: Self, llvm_func: @IR.Function) -> Unit raise MIRError {
+///|
+pub fn Function::traverse_llvm_instructions(
+  self : Self,
+  llvm_func : @IR.Function,
+) -> Unit raise MIRError {
   let llvm_mod = llvm_func.getModule()
   let data_layout = llvm_mod.getDataLayout()
   for llvm_inst in llvm_func.instIter() {
     match llvm_inst.asInstEnum() {
-      AllocaInst({ data_ty, align, ..}) => {
+      AllocaInst({ data_ty, align, .. }) => {
         let data_size = data_layout.getTypeAllocSize(data_ty).to_int64()
         let align = align.to_int64()
         let var_stack_loc = self.extend_var_stack(data_size, align)
@@ -121,9 +136,12 @@ pub fn Function::traverse_llvm_instructions(self: Self, llvm_func: @IR.Function)
       _ => {
         let llvm_ty = llvm_inst.getType()
         match llvm_ty.asTypeEnum() {
-          Int1Type(_) | Int8Type(_) |
-          Int16Type(_) | Int32Type(_) |
-          Int64Type(_) | PointerType(_) => {
+          Int1Type(_)
+          | Int8Type(_)
+          | Int16Type(_)
+          | Int32Type(_)
+          | Int64Type(_)
+          | PointerType(_) => {
             let dst = self.new_virtual_reg()
             self.bind_llvm_value_to_register(llvm_inst, dst)
           }
@@ -132,17 +150,20 @@ pub fn Function::traverse_llvm_instructions(self: Self, llvm_func: @IR.Function)
             self.bind_llvm_value_to_fregister(llvm_inst, dst)
           }
           VoidType(_) => ()
-          _ => {
-            raise IRTranslateError("Cannot bind LLVM instruction type \{llvm_ty} to a register")
-          }
+          _ =>
+            raise IRTranslateError(
+              "Cannot bind LLVM instruction type \{llvm_ty} to a register",
+            )
         }
       }
     }
   }
 }
 
+///|
 pub fn BasicBlock::translate_llvm_basic_block(
-  self: Self, llvm_bb: @IR.BasicBlock
+  self : Self,
+  llvm_bb : @IR.BasicBlock,
 ) -> Unit raise MIRError {
   self.clear()
   let func = self.parent
@@ -153,9 +174,10 @@ pub fn BasicBlock::translate_llvm_basic_block(
   }
 }
 
+///|
 pub fn translate_llvm_inst(
-  llvm_inst: &@IR.Instruction,
-  builder: IRBuilder
+  llvm_inst : &@IR.Instruction,
+  builder : IRBuilder,
 ) -> Array[Instruction] raise MIRError {
   let func = builder.func
   let llvm_mod = llvm_inst.getModule()
@@ -163,36 +185,87 @@ pub fn translate_llvm_inst(
   match llvm_inst.asInstEnum() {
     // AllocaInst has been handled in traverse_llvm_instructions
     AllocaInst(_) => []
-    LoadInst(load_inst) => translate_llvm_load_inst(load_inst, builder, func, data_layout)
-    StoreInst(store_inst) => translate_llvm_store_inst(store_inst, builder, func, data_layout)
-    _ => raise IRTranslateError("Translation for LLVM instruction \{llvm_inst} is not implemented")
+    LoadInst(load_inst) =>
+      translate_llvm_load_inst(load_inst, builder, func, data_layout)
+    StoreInst(store_inst) =>
+      translate_llvm_store_inst(store_inst, builder, func, data_layout)
+    BinaryInst(binary_inst) =>
+      translate_llvm_binary_inst(binary_inst, builder, func, data_layout)
+    ICmpInst(icmp_inst) =>
+      translate_llvm_icmp_inst(icmp_inst, builder, func, data_layout)
+    FCmpInst(fcmp_inst) =>
+      translate_llvm_fcmp_inst(fcmp_inst, builder, func, data_layout)
+    BranchInst(branch_inst) =>
+      translate_llvm_branch_inst(branch_inst, builder, func, data_layout)
+    SwitchInst(switch_inst) =>
+      translate_llvm_switch_inst(switch_inst, builder, func, data_layout)
+    CastInst(cast_inst) =>
+      translate_llvm_cast_inst(cast_inst, builder, func, data_layout)
+    GetElementPtrInst(gep_inst) =>
+      translate_llvm_gep_inst(gep_inst, builder, func, data_layout)
+    SelectInst(select_inst) =>
+      translate_llvm_select_inst(select_inst, builder, func, data_layout)
+    ReturnInst(ret_inst) =>
+      translate_llvm_return_inst(ret_inst, builder, func, data_layout)
+    CallInst(call_inst) =>
+      translate_llvm_call_inst(call_inst, builder, func, data_layout)
+    PHINode(phi_node) =>
+      translate_llvm_phi_node(phi_node, builder, func, data_layout)
+    ExtractValueInst(_) =>
+      raise IRTranslateError(
+        "Translation for LLVM instruction \{llvm_inst} is not implemented",
+      )
+    InsertValueInst(_) =>
+      raise IRTranslateError(
+        "Translation for LLVM instruction \{llvm_inst} is not implemented",
+      )
   }
 }
 
-pub fn translate_llvm_load_inst(llvm_inst: @IR.LoadInst, builder: IRBuilder, func: Function, data_layout: @IR.DataLayout) -> Array[Instruction] raise MIRError {
-  let { vty, ptr, ..} = llvm_inst
+///|
+pub fn translate_llvm_load_inst(
+  llvm_inst : @IR.LoadInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  let { vty, ptr, .. } = llvm_inst
   guard func.get_operand_from_llvm_value(ptr) is Some(ptr_op) else {
     raise IRTranslateError("LoadInst: pointer operand not found in value_map")
   }
   let (base, offset) = match ptr_op {
     Mem(base, offset) => (base, offset)
     IRegister(r) => (r, 0L)
-    _ => raise IRTranslateError("LoadInst: pointer operand is not a memory address or integer register")
+    _ =>
+      raise IRTranslateError(
+        "LoadInst: pointer operand is not a memory address or integer register",
+      )
   }
   let data_size = data_layout.getTypeAllocSizeInBits(vty)
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError("LoadInst: destination operand not found in value_map")
+    raise IRTranslateError(
+      "LoadInst: destination operand not found in value_map",
+    )
   }
   let minst = match dst_op {
     IRegister(dst) => builder.build_loadi(data_size, dst~, base~, offset~)
     FRegister(dst) => builder.build_loadf(data_size, dst~, base~, offset~)
-    _ => raise IRTranslateError("LoadInst: destination operand is not an integer or floating-point register")
+    _ =>
+      raise IRTranslateError(
+        "LoadInst: destination operand is not an integer or floating-point register",
+      )
   }
   [minst]
 }
 
-pub fn translate_llvm_store_inst(llvm_inst: @IR.StoreInst, builder: IRBuilder, func: Function, data_layout: @IR.DataLayout) -> Array[Instruction] raise MIRError {
-  let { value, ptr, ..} = llvm_inst
+///|
+pub fn translate_llvm_store_inst(
+  llvm_inst : @IR.StoreInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  let { value, ptr, .. } = llvm_inst
   guard func.get_operand_from_llvm_value(value) is Some(src_op) else {
     raise IRTranslateError("StoreInst: value operand not found in value_map")
   }
@@ -202,48 +275,854 @@ pub fn translate_llvm_store_inst(llvm_inst: @IR.StoreInst, builder: IRBuilder, f
   let (base, offset) = match ptr_op {
     Mem(base, offset) => (base, offset)
     IRegister(r) => (r, 0L)
-    _ => raise IRTranslateError("StoreInst: pointer operand is not a memory address or integer register")
+    _ =>
+      raise IRTranslateError(
+        "StoreInst: pointer operand is not a memory address or integer register",
+      )
   }
   let data_size = data_layout.getTypeAllocSizeInBits(value.getType())
   match src_op {
-    IRegister(src) => [
-      builder.build_storei(data_size, src~, base~, offset~)
-    ]
-    FRegister(src) => [
-      builder.build_storef(data_size, src~, base~, offset~)
-    ]
+    IRegister(src) => [builder.build_storei(data_size, src~, base~, offset~)]
+    FRegister(src) => [builder.build_storef(data_size, src~, base~, offset~)]
     Imm(src) => {
       let tmp = func.new_virtual_reg()
       [
         builder.build_imove_imm(data_size, dst=tmp, src~),
-        builder.build_storei(data_size, src=tmp, base~, offset~)
+        builder.build_storei(data_size, src=tmp, base~, offset~),
       ]
     }
     FImm(src) => {
       let tmp = func.new_virtual_freg()
       [
         builder.build_fmove_imm(data_size, dst=tmp, src~),
-        builder.build_storef(data_size, src=tmp, base~, offset~)
+        builder.build_storef(data_size, src=tmp, base~, offset~),
       ]
     }
     Mem(b, o) => {
       let tmp = func.new_virtual_reg()
       [
         builder.build_loadi(data_size, dst=tmp, base=b, offset=o),
-        builder.build_storei(data_size, src=tmp, base~, offset~)
+        builder.build_storei(data_size, src=tmp, base~, offset~),
       ]
     }
     Label(label) => {
       let tmp = func.new_virtual_reg()
       [
         builder.build_load_addr(tmp, label),
-        builder.build_storei(data_size, src=tmp, base~, offset~)
+        builder.build_storei(data_size, src=tmp, base~, offset~),
       ]
     }
   }
 }
 
-pub fn Function::phi_elimination(self: Self) -> Unit {
-  ...
+pub fn translate_llvm_binary_inst(
+  llvm_inst : @IR.BinaryInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  if llvm_inst.getType().isIEEELikeFPTy() {
+    translate_llvm_float_binary_inst(llvm_inst, builder, func, data_layout)
+  } else {
+    translate_llvm_int_binary_inst(llvm_inst, builder, func, data_layout)
+  }
 }
 
+pub fn translate_llvm_float_binary_inst(
+  llvm_inst : @IR.BinaryInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  let { opcode, lhs, rhs, .. } = llvm_inst
+  let data_size = data_layout.getTypeAllocSizeInBits(llvm_inst.getType())
+  let binop = match opcode {
+    FAdd => FAdd
+    FSub => FSub
+    FMul => FMul
+    FDiv => FDiv
+    FRem => FRem
+    _ => raise IRTranslateError("Unsupported floating-point binary opcode")
+  }
+  guard func.get_operand_from_llvm_value(lhs) is Some(lhs_op) else {
+    raise IRTranslateError("BinaryInst: lhs operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(rhs) is Some(rhs_op) else {
+    raise IRTranslateError("BinaryInst: rhs operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
+    raise IRTranslateError(
+      "BinaryInst: destination operand not found in value_map",
+    )
+  }
+  guard dst_op is FRegister(dst) else {
+    raise IRTranslateError(
+      "BinaryInst: destination operand is not a floating-point register",
+    )
+  }
+  match (lhs_op, rhs_op) {
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src1 = func.new_virtual_freg()
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Mem(b1, o1), FRegister(src2)) => {
+      let src1 = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Mem(b1, o1), FImm(f)) => {
+      let src1 = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_imove_imm(data_size, dst=ireg, src=f.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst=src2, src=ireg),
+        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FRegister(src1), Mem(b2, o2)) => {
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FRegister(src1), FRegister(src2)) =>
+      [builder.build_fbinary(binop, data_size, dst~, src1~, src2~)]
+    (FRegister(src1), FImm(f)) => {
+      let ireg = func.new_virtual_reg()
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=f.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst=src2, src=ireg),
+        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FImm(f), Mem(b2, o2)) => {
+      let src1 = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=f.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst=src1, src=ireg),
+        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FImm(f), FRegister(src2)) => {
+      let src1 = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=f.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst=src1, src=ireg),
+        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FImm(f1), FImm(f2)) => {
+      let f = match binop {
+        FAdd => f1 + f2
+        FSub => f1 - f2
+        FMul => f1 * f2
+        FDiv => f1 / f2
+        FRem => f1 % f2
+      }
+      let ireg = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=f.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst~, src=ireg),
+      ]
+    }
+    _ => raise IRTranslateError("Unsupported operand types for float binary operation")
+  }
+}
+
+pub fn translate_llvm_int_binary_inst(
+  llvm_inst : @IR.BinaryInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  let { opcode, lhs, rhs, .. } = llvm_inst
+  let data_size = data_layout.getTypeAllocSizeInBits(llvm_inst.getType())
+  let binop = match opcode {
+    Add => Add
+    Sub => Sub
+    Mul => Mul
+    UDiv | SDiv => Div
+    URem | SRem => Rem
+    And => And
+    Or => Or
+    Xor => Xor
+    Shl => Shl
+    LShr => LShr
+    AShr => AShr
+    _ => raise IRTranslateError("Unsupported integer binary opcode")
+  }
+  guard func.get_operand_from_llvm_value(lhs) is Some(lhs_op) else {
+    raise IRTranslateError("BinaryInst: lhs operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(rhs) is Some(rhs_op) else {
+    raise IRTranslateError("BinaryInst: rhs operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
+    raise IRTranslateError(
+      "BinaryInst: destination operand not found in value_map",
+    )
+  }
+  guard dst_op is IRegister(dst) else {
+    raise IRTranslateError(
+      "BinaryInst: destination operand is not an integer register",
+    )
+  }
+  match (lhs_op, rhs_op) {
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src1 = func.new_virtual_reg()
+      let src2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_loadi(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_ibinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Mem(b1, o1), IRegister(src2)) => {
+      let src1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_ibinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Mem(b1, o1), Imm(src2)) => {
+      let src1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_ibinary_imm(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (IRegister(src1), Mem(b2, o2)) => {
+      let src2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_ibinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (IRegister(src1), IRegister(src2)) =>
+      [builder.build_ibinary(binop, data_size, dst~, src1~, src2~)]
+    (IRegister(src1), Imm(src2)) => 
+      [builder.build_ibinary_imm(binop, data_size, dst~, src1~, src2~)]
+    (Imm(src1), Mem(b2, o2)) if binop.is_commutative() => {
+      let src2 = src1 // Swap
+      let src1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src1, base=b2, offset=o2),
+        builder.build_ibinary_imm(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Imm(src1), IRegister(src2)) if binop.is_commutative() =>
+      [builder.build_ibinary_imm(binop, data_size, dst~, src1=src2, src2=src1)] // swap
+    (Imm(src1_imm), IRegister(src2)) => {
+      let src1 = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(data_size, dst=src1, src=src1_imm),
+        builder.build_ibinary(binop, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Imm(src1), Imm(src2)) => {
+      let src = match binop {
+        Add => src1 + src2
+        Sub => src1 - src2
+        Mul => src1 * src2
+        Div => src1 / src2
+        Rem => src1 % src2
+        And => src1 & src2
+        Or => src1 | src2
+        Xor => src1 ^ src2
+        Shl => src1 << src2.to_int()
+        LShr => (src1.reinterpret_as_uint64() >> src2.to_int()).reinterpret_as_int64()
+        AShr => (src1 >> src2.to_int())
+      }
+      [builder.build_imove_imm(data_size, dst~, src~)]
+    }
+    _ => raise IRTranslateError("Unsupported operand types for integer binary operation")
+  }
+}
+
+pub fn translate_llvm_icmp_inst(
+  llvm_inst : @IR.ICmpInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  // If the ICmpInst is only used by a BranchInst,
+  // we do not generate a separate instruction for it.
+  let inst_users = llvm_inst.getUsers().unwrap()
+  if inst_users.length() == 1 &&
+    inst_users[0].asValueEnum() is BranchInst(_) {
+    return []
+  }
+  let { predicate, lhs, rhs, .. } = llvm_inst
+  let opcode : ICmpOpCode = match predicate {
+    EQ => Eq
+    NE => Ne
+    SGT => Gt
+    SGE => Ge
+    SLT => Lt
+    SLE => Le
+    UGT => Gtu
+    UGE => Geu
+    ULT => Ltu
+    ULE => Leu
+  }
+  guard func.get_operand_from_llvm_value(lhs) is Some(lhs_op) else {
+    raise IRTranslateError("ICmpInst: lhs operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(rhs) is Some(rhs_op) else {
+    raise IRTranslateError("ICmpInst: rhs operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
+    raise IRTranslateError(
+      "ICmpInst: destination operand not found in value_map",
+    )
+  }
+  guard dst_op is IRegister(dst) else {
+    raise IRTranslateError(
+      "ICmpInst: destination operand is not an integer register",
+    )
+  }
+  let data_size = data_layout.getTypeAllocSizeInBits(llvm_inst.getType())
+  match (lhs_op, rhs_op) {
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src1 = func.new_virtual_reg()
+      let src2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_loadi(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Mem(b1, o1), IRegister(src2)) => {
+      let src1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Mem(b1, o1), Imm(src2)) => {
+      let src1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_icmp_imm(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (IRegister(src1), Mem(b2, o2)) => {
+      let src2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (IRegister(src1), IRegister(src2)) =>
+      [builder.build_icmp(opcode, data_size, dst~, src1~, src2~)]
+    (IRegister(src1), Imm(src2)) =>
+      [builder.build_icmp_imm(opcode, data_size, dst~, src1~, src2~)]
+    (Imm(src1), Mem(b2, o2)) => {
+      let src2 = src1 // Swap
+      let src1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=src1, base=b2, offset=o2),
+        builder.build_icmp_imm(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Imm(src1_imm), IRegister(src2)) => {
+      let src1 = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(data_size, dst=src1, src=src1_imm),
+        builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Imm(src1), Imm(src2)) => {
+      let src = match opcode {
+        Eq => if src1 == src2 { 1L } else { 0L }
+        Ne => if src1 != src2 { 1L } else { 0L }
+        Gt => if src1 > src2 { 1L } else { 0L }
+        Ge => if src1 >= src2 { 1L } else { 0L }
+        Lt => if src1 < src2 { 1L } else { 0L }
+        Le => if src1 <= src2 { 1L } else { 0L }
+        Gtu => if (src1.reinterpret_as_uint64() > src2.reinterpret_as_uint64()) { 1L } else { 0L }
+        Geu => if (src1.reinterpret_as_uint64() >= src2.reinterpret_as_uint64()) { 1L } else { 0L }
+        Ltu => if (src1.reinterpret_as_uint64() < src2.reinterpret_as_uint64()) { 1L } else { 0L }
+        Leu => if (src1.reinterpret_as_uint64() <= src2.reinterpret_as_uint64()) { 1L } else { 0L }
+      }
+      [builder.build_imove_imm(data_size, dst~, src~)]
+    }
+    _ => raise IRTranslateError("Unsupported operand types for integer comparison")
+  }
+}
+
+pub fn translate_llvm_fcmp_inst(
+  llvm_inst : @IR.FCmpInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
+    raise IRTranslateError(
+      "FCmpInst: destination operand not found in value_map",
+    )
+  }
+  guard dst_op is IRegister(dst) else {
+    raise IRTranslateError(
+      "FCmpInst: destination operand is not an integer register",
+    )
+  }
+  let { predicate, lhs, rhs, .. } = llvm_inst
+  match  predicate {
+    FALSE => return [builder.build_imove_imm(64, dst~, src=0L)]
+    TRUE => return [builder.build_imove_imm(64, dst~, src=1L)]
+    _ => ()
+  }
+  let opcode : FCmpOpCode = match predicate {
+    OEQ => Feq
+    OGT => Fgt
+    OGE => Fge
+    OLT => Flt
+    OLE => Fle
+    ONE => Fne
+    UEQ => Feq // unordered or equal
+    UGT => Fgt // unordered or greater than
+    UGE => Fge // unordered or greater than or equal
+    ULT => Flt // unordered or less than
+    ULE => Fle // unordered or less than or equal
+    UNE => Fne // unordered or not equal
+    _ =>
+      raise IRTranslateError("Unsupported floating-point comparison predicate")
+  }
+  guard func.get_operand_from_llvm_value(lhs) is Some(lhs_op) else {
+    raise IRTranslateError("FCmpInst: lhs operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(rhs) is Some(rhs_op) else {
+    raise IRTranslateError("FCmpInst: rhs operand not found in value_map")
+  }
+  let data_size = data_layout.getTypeAllocSizeInBits(llvm_inst.getType())
+  match (lhs_op, rhs_op) {
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src1 = func.new_virtual_freg()
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Mem(b1, o1), FRegister(src2)) => {
+      let src1 = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (Mem(b1, o1), FImm(f)) => {
+      let src1 = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
+        builder.build_imove_imm(data_size, dst=ireg, src=f.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst=src2, src=ireg),
+        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FRegister(src1), Mem(b2, o2)) => {
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FRegister(src1), FRegister(src2)) =>
+      [builder.build_fcmp(opcode, data_size, dst~, src1~, src2~)]
+    (FRegister(src1), FImm(f)) => {
+      let ireg = func.new_virtual_reg()
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=f.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst=src2, src=ireg),
+        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FImm(f1), Mem(b2, o2)) => {
+      let src1 = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      let src2 = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=f1.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst=src1, src=ireg),
+        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
+        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FImm(f1), FRegister(src2)) => {
+      let src1 = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=f1.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst=src1, src=ireg),
+        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
+      ]
+    }
+    (FImm(f1), FImm(f2)) => {
+      let src = match opcode {
+        Feq => if f1 == f2 { 1L } else { 0L }
+        Fne => if f1 != f2 { 1L } else { 0L }
+        Fgt => if f1 > f2 { 1L } else { 0L }
+        Fge => if f1 >= f2 { 1L } else { 0L }
+        Flt => if f1 < f2 { 1L } else { 0L }
+        Fle => if f1 <= f2 { 1L } else { 0L }
+      }
+      [builder.build_imove_imm(data_size, dst~, src~)]
+    }
+    _ => raise IRTranslateError("Unsupported operand types for floating-point comparison")
+  }
+}
+
+pub fn translate_llvm_branch_inst(
+  llvm_inst : @IR.BranchInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  match llvm_inst.condition {
+    Some(_) => {
+      translate_llvm_conditional_branch(llvm_inst, builder, func, data_layout)
+    }
+    None => {
+      translate_llvm_unconditional_branch(llvm_inst, builder, func)
+    }
+  }
+}
+
+pub fn translate_llvm_conditional_branch(
+  llvm_inst : @IR.BranchInst, builder : IRBuilder, func : Function, data_layout : @IR.DataLayout
+) -> Array[Instruction] raise MIRError {
+  guard llvm_inst is { condition: Some(cond), trueBlock: Some(truebb), falseBlock: Some(falsebb), .. } else {
+    raise IRTranslateError("BranchInst: Invalid conditional branch instruction")
+  }
+  guard func.get_operand_from_llvm_value(truebb) is Some(true_op) else {
+    raise IRTranslateError("BranchInst: trueBlock operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(falsebb) is Some(false_op) else {
+    raise IRTranslateError("BranchInst: falseBlock operand not found in value_map")
+  }
+  guard true_op is Label(true_label) else {
+    raise IRTranslateError("BranchInst: trueBlock operand is not a label")
+  }
+  guard false_op is Label(false_label) else {
+    raise IRTranslateError("BranchInst: falseBlock operand is not a label")
+  }
+  let cmp_users = cond.getUsers().unwrap()
+  let cmp_only_used_in_branch = cmp_users.length() == 1 &&
+      cmp_users[0].asValueEnum() is BranchInst(_)
+
+  // If the comparison instruction is not only used in this branch,
+  // generate Bne directly.
+  if !cmp_only_used_in_branch {
+    guard func.get_operand_from_llvm_value(cond) is Some(cond_op) else {
+      raise IRTranslateError("BranchInst: condition operand not found in value_map")
+    }
+    guard cond_op is IRegister(lhs) else {
+      raise IRTranslateError("BranchInst: condition operand is not an integer register")
+    }
+    let minst = builder.build_branch_imm(
+      Bne, lhs~, rhs=0L, true_label~, false_label~
+    )
+    return [minst]
+  }
+
+  // If the comparison instruction only used in this branch,
+  // generate breach with the comparison.
+  guard cond.asValueEnum() is ICmpInst({ predicate, lhs, rhs, .. }) else {
+    raise IRTranslateError("BranchInst: condition is not ICmpInst")
+  }
+  let opcode = match predicate {
+    EQ => Beq
+    NE => Bne
+    SGT => Bgt
+    SGE => Bge
+    SLT => Blt
+    SLE => Ble
+    UGT => Bgtu
+    UGE => Bgeu
+    ULT => Bltu
+    ULE => Bleu
+  }
+  guard func.get_operand_from_llvm_value(lhs) is Some(lhs_op) else {
+    raise IRTranslateError("BranchInst: lhs operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(rhs) is Some(rhs_op) else {
+    raise IRTranslateError("BranchInst: rhs operand not found in value_map")
+  }
+  let data_size = data_layout.getTypeAllocSizeInBits(lhs.getType())
+  match (lhs_op, rhs_op) {
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let lhs = func.new_virtual_reg()
+      let rhs = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=lhs, base=b1, offset=o1),
+        builder.build_loadi(data_size, dst=rhs, base=b2, offset=o2),
+        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
+      ]
+    }
+    (Mem(b1, o1), IRegister(rhs)) => {
+      let lhs = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=lhs, base=b1, offset=o1),
+        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
+      ]
+    }
+    (Mem(b1, o1), Imm(rhs)) => {
+      let lhs = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=lhs, base=b1, offset=o1),
+        builder.build_branch_imm(opcode, lhs~, rhs~, true_label~, false_label~),
+      ]
+    }
+    (IRegister(lhs), Mem(b2, o2)) => {
+      let rhs = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=rhs, base=b2, offset=o2),
+        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
+      ]
+    }
+    (IRegister(lhs), IRegister(rhs)) =>
+      [builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~)]
+    (IRegister(lhs), Imm(rhs)) =>
+      [builder.build_branch_imm(opcode, lhs~, rhs~, true_label~, false_label~)]
+    (Imm(lhs_imm), Mem(b2, o2)) => {
+      let lhs = func.new_virtual_reg()
+      let rhs = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(data_size, dst=lhs, src=lhs_imm),
+        builder.build_loadi(data_size, dst=rhs, base=b2, offset=o2),
+        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
+      ]
+    }
+    (Imm(lhs_imm), IRegister(rhs)) => {
+      let lhs = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(data_size, dst=lhs, src=lhs_imm),
+        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
+      ]
+    }
+    (Imm(lhs), Imm(rhs)) => {
+      let take_true_branch = match opcode {
+        Beq => lhs == rhs
+        Bne => lhs != rhs
+        Bgt => lhs > rhs
+        Bge => lhs >= rhs
+        Blt => lhs < rhs
+        Ble => lhs <= rhs
+        Bgtu => (lhs.reinterpret_as_uint64() > rhs.reinterpret_as_uint64())
+        Bgeu => (lhs.reinterpret_as_uint64() >= rhs.reinterpret_as_uint64())
+        Bltu => (lhs.reinterpret_as_uint64() < rhs.reinterpret_as_uint64())
+        // Bleu
+        _ => (lhs.reinterpret_as_uint64() <= rhs.reinterpret_as_uint64())
+      }
+      let target_label = if take_true_branch { true_label } else { false_label }
+      [builder.build_jmp(target_label~)]
+    }
+    _ => raise IRTranslateError("Unsupported operand types for integer comparison in BranchInst")
+  }
+}
+
+pub fn translate_llvm_unconditional_branch(
+  llvm_inst : @IR.BranchInst,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  guard llvm_inst is { condition: None, trueBlock: Some(targetBB), falseBlock: None, .. } else {
+    raise IRTranslateError("BranchInst: Invalid unconditional branch instruction")
+  }
+  guard func.get_operand_from_llvm_value(targetBB) is Some(target_op) else {
+    raise IRTranslateError("BranchInst: trueBlock operand not found in value_map")
+  }
+  guard target_op is Label(target_label) else {
+    raise IRTranslateError("BranchInst: trueBlock operand is not a label")
+  }
+  let minst = builder.build_jmp(target_label~)
+  [minst]
+}
+
+pub fn translate_llvm_switch_inst(
+  llvm_inst : @IR.SwitchInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  if false {
+    raise IRTranslateError("SwitchInst translation not implemented yet")
+  }
+  ignore(llvm_inst)
+  ignore(builder)
+  ignore(func)
+  ignore(data_layout)
+  []
+}
+
+pub fn translate_llvm_cast_inst(
+  llvm_inst : @IR.CastInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  if false {
+    raise IRTranslateError("CastInst translation not implemented yet")
+  }
+  ignore(llvm_inst)
+  ignore(builder)
+  ignore(func)
+  ignore(data_layout)
+  []
+}
+
+pub fn translate_llvm_gep_inst(
+  llvm_inst : @IR.GetElementPtrInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  if false {
+    raise IRTranslateError("GetElementPtrInst translation not implemented yet")
+  }
+  ignore(llvm_inst)
+  ignore(builder)
+  ignore(func)
+  ignore(data_layout)
+  []
+}
+
+pub fn translate_llvm_select_inst(
+  llvm_inst : @IR.SelectInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  if false {
+    raise IRTranslateError("SelectInst translation not implemented yet")
+  }
+  ignore(llvm_inst)
+  ignore(builder)
+  ignore(func)
+  ignore(data_layout)
+  []
+}
+
+pub fn translate_llvm_return_inst(
+  llvm_inst : @IR.ReturnInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  let { retVal, .. } = llvm_inst
+  guard retVal is Some(retVal) else {
+    let minst = builder.build_ret()
+    return [minst]
+  }
+  guard func.get_operand_from_llvm_value(retVal) is Some(ret_op) else {
+    raise IRTranslateError("ReturnInst: return value operand not found in value_map")
+  }
+  match ret_op {
+    IRegister(ret) if ret is AReg(0) => [builder.build_ret()]
+    IRegister(ret) => {
+      let minst = builder.build_imove(64, dst=AReg(0), src=ret)
+      return [minst, builder.build_ret()]
+    }
+    FRegister(ret) if ret is FAReg(0) => [builder.build_ret()]
+    FRegister(ret) => {
+      let minst = builder.build_fmove(64, dst=FAReg(0), src=ret)
+      return [minst, builder.build_ret()]
+    }
+    Imm(ret) => {
+      let minst = builder.build_imove_imm(64, dst=AReg(0), src=ret)
+      return [minst, builder.build_ret()]
+    }
+    FImm(ret) => {
+      let ireg = func.new_virtual_reg()
+      let freg = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(64, dst=ireg, src=ret.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(64, dst=freg, src=ireg),
+        builder.build_fmove(64, dst=FAReg(0), src=freg),
+        builder.build_ret(),
+      ]
+    }
+    Mem(b, o) if retVal.getType().isIEEELikeFPTy() => {
+      let data_size = data_layout.getTypeAllocSizeInBits(retVal.getType())
+      let freg = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=freg, base=b, offset=o),
+        builder.build_fmove(data_size, dst=FAReg(0), src=freg),
+        builder.build_ret(),
+      ]
+    }
+    Mem(b, o) => {
+      let data_size = data_layout.getTypeAllocSizeInBits(retVal.getType())
+      let reg = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=reg, base=b, offset=o),
+        builder.build_imove(data_size, dst=AReg(0), src=reg),
+        builder.build_ret(),
+      ]
+    }
+    Label(label) => {
+      let minst = builder.build_load_addr(AReg(0), label)
+      [minst, builder.build_ret()]
+    }
+  }
+}
+
+pub fn translate_llvm_call_inst(
+  llvm_inst : @IR.CallInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  if false {
+    raise IRTranslateError("CallInst translation not implemented yet")
+  }
+  ignore(llvm_inst)
+  ignore(builder)
+  ignore(func)
+  ignore(data_layout)
+  []
+}
+
+pub fn translate_llvm_phi_node(
+  llvm_inst : @IR.PHINode,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  if false {
+    raise IRTranslateError("PHINode translation not implemented yet")
+  }
+  ignore(llvm_inst)
+  ignore(builder)
+  ignore(func)
+  ignore(data_layout)
+  []
+}
+
+
+///|
+pub fn Function::phi_elimination(_ : Self) -> Unit {
+  //if false {
+  //  raise IRTranslateError("Phi elimination not implemented yet")
+  //}
+}

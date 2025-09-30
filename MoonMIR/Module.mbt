@@ -20,8 +20,10 @@ pub fn Module::new(arch_config : ArchConfig) -> Module {
   }
 }
 
+///|
 pub(all) enum ArgPattern {
-  I; F
+  I
+  F
 }
 
 ///|
@@ -52,7 +54,11 @@ pub(all) enum ArgPattern {
 ///   #|
 /// inspect(func, content=expected)
 /// ```
-pub fn Module::add_function(self: Self, name:String, arg_patterns: Array[ArgPattern]) -> Function {
+pub fn Module::add_function(
+  self : Self,
+  name : String,
+  arg_patterns : Array[ArgPattern],
+) -> Function {
   let func = Function::new(self, name)
   if arg_patterns.is_empty() {
     return func
@@ -76,7 +82,11 @@ pub fn Module::add_function(self: Self, name:String, arg_patterns: Array[ArgPatt
 ///   #|
 /// inspect(gv, content=expected)
 /// ```
-pub fn Module::add_global_string(self: Self, label~: String, content~: String) -> GlobalValue {
+pub fn Module::add_global_string(
+  self : Self,
+  label~ : String,
+  content~ : String,
+) -> GlobalValue {
   let gv = GlobalValue::{
     label,
     content: GlobalValueContent::String(content),
@@ -100,7 +110,11 @@ pub fn Module::add_global_string(self: Self, label~: String, content~: String) -
 ///  #|
 /// inspect(gv, content=expected)
 /// ```
-pub fn Module::add_global_zero_data(self: Self, label: String, size: UInt) -> GlobalValue {
+pub fn Module::add_global_zero_data(
+  self : Self,
+  label : String,
+  size : UInt,
+) -> GlobalValue {
   let gv = GlobalValue::{
     label,
     content: GlobalValueContent::Zero(size),
@@ -133,7 +147,11 @@ pub fn Module::add_global_zero_data(self: Self, label: String, size: UInt) -> Gl
 ///   #|
 /// inspect(gv, content=expected)
 /// ```
-pub fn Module::add_global_data(self: Self, label: String, data: Array[GlobalValueData]) -> GlobalValue {
+pub fn Module::add_global_data(
+  self : Self,
+  label : String,
+  data : Array[GlobalValueData],
+) -> GlobalValue {
   let gv = GlobalValue::{
     label,
     content: GlobalValueContent::Data(data),
@@ -144,13 +162,13 @@ pub fn Module::add_global_data(self: Self, label: String, data: Array[GlobalValu
   gv
 }
 
-pub fn Module::clear(self: Self) -> Unit {
+///|
+pub fn Module::clear(self : Self) -> Unit {
   self.llvm_mod = None
   self.functions.clear()
   self.all_llvm_functions.clear()
   self.external_functions.clear()
   self.global_values.clear()
 }
-
 
 // -===================-
