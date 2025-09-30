@@ -1,5 +1,6 @@
 ///|
 pub(all) struct Module {
+  source_file: String
   mut llvm_mod : @IR.Module?
   arch_config : ArchConfig
   functions : Array[Function]
@@ -9,8 +10,13 @@ pub(all) struct Module {
 }
 
 ///|
-pub fn Module::new(arch_config : ArchConfig) -> Module {
+pub fn Module::new(arch_config : ArchConfig, source_file?: String) -> Module {
+  let source_file = match source_file {
+    None => "demo"
+    Some(f) => f
+  }
   Module::{
+    source_file,
     llvm_mod: None,
     arch_config,
     functions: Array::new(),
@@ -60,11 +66,11 @@ pub fn Module::add_function(
   arg_patterns : Array[ArgPattern],
 ) -> Function {
   let func = Function::new(self, name)
+  self.functions.push(func)
   if arg_patterns.is_empty() {
     return func
   }
   func.set_params_by_patterns(arg_patterns)
-  self.functions.push(func)
   func
 }
 
@@ -169,6 +175,21 @@ pub fn Module::clear(self : Self) -> Unit {
   self.all_llvm_functions.clear()
   self.external_functions.clear()
   self.global_values.clear()
+}
+
+pub impl Show for Module with output(self, logger) {
+  logger.write_string("; Source File: \{self.source_file}\n")
+  logger.write_string("; Architecture: \{self.arch_config.arch_name}\n\n")
+
+  for gv in self.global_values {
+    logger.write_object(gv)
+    logger.write_string("\n")
+  }
+
+  for func in self.functions {
+    logger.write_object(func)
+    logger.write_string("\n")
+  }
 }
 
 // -===================-
