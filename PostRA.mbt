@@ -101,7 +101,7 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
   let reg_usage : Map[Operand, Int] = Map::new()
   let freg_usage : Map[Operand, Int] = Map::new()
   let call_insts = self.collect_insts_by_opcode(Call)
-  
+
   // Debug: print function name and number of calls
   // println("=== group_callee_saved_registers for \{self.name} ===")
   // println("Found \{call_insts.length()} call instructions")
@@ -166,15 +166,14 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
           Reg(_) as reg => {
             // This register is live across this call and needs preservation
             let count = reg_usage.get(reg).unwrap_or(0)
-            reg_usage.set(reg, count + 1000)  // Very high priority
+            reg_usage.set(reg, count + 1000) // Very high priority
           }
-          AReg(_) => {
+          AReg(_) =>
             // AReg is already assigned, skip
             ()
-          }
           FReg(_) as freg => {
             let count = freg_usage.get(freg).unwrap_or(0)
-            freg_usage.set(freg, count + 1000)  // Very high priority
+            freg_usage.set(freg, count + 1000) // Very high priority
           }
           _ => ()
         }
@@ -194,7 +193,7 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
               // This register was defined by call i and is live across call j
               // It needs a saved register with high priority
               let count = reg_usage.get(reg).unwrap_or(0)
-              reg_usage.set(reg, count + 2000)  // Even higher priority
+              reg_usage.set(reg, count + 2000) // Even higher priority
             }
             _ => ()
           }
@@ -202,7 +201,7 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
           match call_def_map.get(freg) {
             Some(i) if i < j => {
               let count = freg_usage.get(freg).unwrap_or(0)
-              freg_usage.set(freg, count + 2000)  // Even higher priority
+              freg_usage.set(freg, count + 2000) // Even higher priority
             }
             _ => ()
           }
@@ -223,14 +222,14 @@ fn Function::group_callee_saved_registers(self : Function) -> Unit {
   let { num_saved_regs, num_saved_fregs, .. } = self.getArchConfig()
   let replace_map : Map[Operand, Operand] = Map::new()
   let mut saved_reg_idx : Int = 0
-  
+
   // Debug: show what needs saved registers
   // println("Registers needing saved registers in \{self.name}:")
   // for info in reg_usage {
   //   let (r, count) = info
   //   println("  \{r}: priority \{count}")
   // }
-  
+
   while !reg_usage_pq.is_empty() && saved_reg_idx < num_saved_regs {
     let OperandUsage(r, _count) = reg_usage_pq.pop().unwrap()
     // println("Assigning \{r} (priority \{count}) to SReg(\{saved_reg_idx})")

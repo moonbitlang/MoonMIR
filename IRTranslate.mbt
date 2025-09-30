@@ -840,7 +840,7 @@ fn Instruction::from_llvm_inst(
           let idx_op = func
             .get_operand_from_llvm_value(idx.asValueClass())
             .unwrap()
-          
+
           // Ensure ptr is in a register before arithmetic
           let ptr_reg = match ptr {
             Mem(FramePtrPrim, off) => {
@@ -868,7 +868,6 @@ fn Instruction::from_llvm_inst(
             }
             _ => ptr
           }
-          
           if struct_size == 1 {
             // For byte-sized structs, no need to scale
             let new_ptr = func.add_vreg()

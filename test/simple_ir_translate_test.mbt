@@ -1158,7 +1158,7 @@ test "Simple IRTranslate - proper struct access" {
       #|func struct_access_test(%v0) {
       #|entry:
       #|  %v1 = Loadl %v0
-      #|  %v2 = Addq %v0, 8
+      #|  %v2 = Addq %v0, 4
       #|  %v3 = Loadl %v2
       #|  %v4 = Addl %v1, %v3
       #|  Ret %v4

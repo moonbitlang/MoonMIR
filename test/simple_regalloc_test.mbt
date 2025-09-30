@@ -33,8 +33,8 @@ test "Simple IR RegAlloc - fadd" {
   let expected =
     #|func fadd(%f0, %f1) {
     #|entry:
-    #|  %f0 = FAddD %f0, %f1
-    #|  Ret %f0
+    #|  %f2 = FAddD %f0, %f1
+    #|  Ret %f2
     #|}
     #|
   inspect(mir_func, content=expected)
@@ -70,8 +70,8 @@ test "Simple IR RegAlloc - mixed types" {
       #|entry:
       #|  %f1 = SIToFP(32, 64) %r0
       #|  %f2 = SIToFP(32, 64) %r1
-      #|  %f0 = FAddD %f1, %f0
-      #|  %f0 = FAddD %f0, %f2
+      #|  %f3 = FAddD %f1, %f0
+      #|  %f0 = FAddD %f3, %f2
       #|  Ret %f0
       #|}
       #|
@@ -110,10 +110,10 @@ test "Simple IR RegAlloc - many parameters" {
     content=(
       #|func many_params(%r0, %r1, %r2, %r3, %r4) {
       #|entry:
-      #|  %r0 = Addl %r0, %r1
-      #|  %r1 = Mull %r2, %r3
-      #|  %r1 = Divl %r1, %r4
-      #|  %r0 = Subl %r0, %r1
+      #|  %r5 = Addl %r0, %r1
+      #|  %r0 = Mull %r2, %r3
+      #|  %r1 = Divl %r0, %r4
+      #|  %r0 = Subl %r5, %r1
       #|  Ret %r0
       #|}
       #|
