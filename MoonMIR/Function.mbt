@@ -22,7 +22,7 @@ pub(all) struct Function {
   //terminal_basic_blocks : Array[BasicBlock] // BasicBlocks that end with ret instruction
 
   // LLVM
-  llvm_func : @IR.Function
+  mut llvm_func : @IR.Function?
   is_external : Bool
 
   // Value Map
@@ -30,9 +30,24 @@ pub(all) struct Function {
   bbmap : Map[String, BasicBlock] // Map from label to BasicBlock
   mut vreg_cnt : Int
   mut vfreg_cnt : Int
+}
 
-  // phase tracking
-  mut ir_translated : Bool
+pub fn Function::new(mod: Module, name: String) -> Function {
+  Function::{
+    mod,
+    name,
+    params: Array::new(),
+    body: Array::new(),
+    var_stack_size: 0,
+    reg_stack_size: 0,
+    //terminal_basic_blocks: Array::new(),
+    llvm_func: None,
+    is_external: false,
+    value_map: Map::new(),
+    bbmap: Map::new(),
+    vreg_cnt: 0,
+    vfreg_cnt: 0,
+  }
 }
 
 ///|

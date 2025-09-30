@@ -3,11 +3,7 @@ pub suberror LegalizeError String derive(Show)
 
 ///|
 pub fn Module::legalize(self : Self) -> Unit raise LegalizeError {
-  if self.legalized {
-    return
-  }
   self.functions.each(f => f.legalize())
-  self.legalized = true
 }
 
 ///|
