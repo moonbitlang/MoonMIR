@@ -383,6 +383,33 @@ fn Instruction::from_llvm_inst(
       func.phi_insts.push(minst)
       [minst]
     }
+    FNegInst({ operand, .. }) => {
+      let data_ty = operand.getType()
+      let data_size = data_layout.getTypeAllocSize(data_ty)
+      let opcode = match data_size {
+        4 => FNegS
+        8 => FNegD
+        _ =>
+          raise IRTranslateError(
+            "Unsupported FNegInst data size {\{data_size}}",
+          )
+      }
+      let def_op = func.bind_llvm_value_to_vfreg(inst)
+      let operand_op = match operand.tryAsConstantEnum() {
+        Some(ConstantFP(f)) => FImm(f.value)
+        None => {
+          guard func.get_operand_from_llvm_value(operand) is Some(op) else {
+            raise IRTranslateError(
+              "FNegInst: operand not found in value map",
+            )
+          }
+          op
+        }
+        _ => raise IRTranslateError("FNegInst: unsupported operand type")
+      }
+      let minst = Instruction::new(opcode, [def_op], [operand_op], bb~)
+      [minst]
+    }
     CastInst({ to_ty, from_val, opcode: cast_op, .. }) => {
       let from_ty = from_val.getType()
       // Handle constants first, then check value map

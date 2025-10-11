@@ -189,6 +189,8 @@ pub fn translate_llvm_inst(
       translate_llvm_load_inst(load_inst, builder, func, data_layout)
     StoreInst(store_inst) =>
       translate_llvm_store_inst(store_inst, builder, func, data_layout)
+    FNegInst(fneg_inst) =>
+      translate_llvm_fneg_inst(fneg_inst, builder, func, data_layout)
     BinaryInst(binary_inst) =>
       translate_llvm_binary_inst(binary_inst, builder, func, data_layout)
     ICmpInst(icmp_inst) =>
@@ -551,6 +553,52 @@ pub fn translate_llvm_int_binary_inst(
       [builder.build_imove_imm(data_size, dst~, src~)]
     }
     _ => raise IRTranslateError("Unsupported operand types for integer binary operation")
+  }
+}
+
+pub fn translate_llvm_fneg_inst(
+  llvm_inst : @IR.FNegInst,
+  builder : IRBuilder,
+  func : Function,
+  data_layout : @IR.DataLayout,
+) -> Array[Instruction] raise MIRError {
+  let { operand, .. } = llvm_inst
+  guard func.get_operand_from_llvm_value(operand) is Some(src_op) else {
+    raise IRTranslateError("FNegInst: operand not found in value_map")
+  }
+  guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
+    raise IRTranslateError(
+      "FNegInst: destination operand not found in value_map",
+    )
+  }
+  guard dst_op is FRegister(dst) else {
+    raise IRTranslateError(
+      "FNegInst: destination operand is not a floating-point register",
+    )
+  }
+  let data_size = data_layout.getTypeAllocSizeInBits(llvm_inst.getType())
+  match src_op {
+    Mem(b, o) => {
+      let src = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=src, base=b, offset=o),
+        builder.build_fneg(data_size, dst~, src~),
+      ]
+    }
+    FRegister(src) => [builder.build_fneg(data_size, dst~, src~)]
+    FImm(f) => {
+      let ireg = func.new_virtual_reg()
+      let src = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=f.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst=src, src=ireg),
+        builder.build_fneg(data_size, dst~, src~),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "FNegInst: operand is not a memory address, floating-point register, or immediate",
+      )
   }
 }
 

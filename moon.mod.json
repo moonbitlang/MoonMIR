@@ -8,6 +8,9 @@
     "Kaida-Amethyst/mbtcc": {
       "path": "../mbtcc/"
     },
+    "Kaida-Amethyst/TinyMoonBit": {
+      "path": "../TinyMoonbit/"
+    },
     "moonbitlang/x": "0.4.34"
   },
   "readme": "README.md",

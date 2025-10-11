@@ -127,6 +127,14 @@ pub fn IRBuilder::build_fbinary(self: Self, binop: FBinaryOpCode, bits: Int, dst
 }
 
 #callsite(autofill(loc))
+pub fn IRBuilder::build_fneg(self: Self, bits: Int, dst~: FRegister, src~: FRegister, loc~: SourceLoc) -> Instruction raise MIRError {
+  check_bits(bits, loc)
+  let dst = Operand::FRegister(dst)
+  let src = Operand::FRegister(src)
+  Instruction::new(FUnary(FNeg, bits), [dst], [src], self.bb)
+}
+
+#callsite(autofill(loc))
 pub fn IRBuilder::build_icmp(self: Self, cmpop: ICmpOpCode, bits: Int, dst~: IRegister, src1~: IRegister, src2~: IRegister, loc~: SourceLoc) -> Instruction raise MIRError {
   check_bits(bits, loc)
   let dst = Operand::IRegister(dst)
