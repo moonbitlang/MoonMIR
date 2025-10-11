@@ -192,6 +192,20 @@ pub fn Function::get_operand_from_llvm_value(
   self : Self,
   val : &@IR.Value,
 ) -> Operand? {
+  if val.tryAsConstantEnum() is Some(c) {
+    let operand = match c {
+      ConstantInt(c) => Imm(c.getValueAsInt64())
+      ConstantFP(c) => FImm(c.getValue())
+      _ => {
+        let err_msg =
+          $|Fatal Error happened in Function::get_operand_from_llvm_value
+          #|Unsupported constant value: \{val}
+        println(err_msg)
+        panic()
+      }
+    }
+    return Some(operand)
+  }
   self.value_map.get(val)
 }
 
@@ -201,8 +215,11 @@ pub impl Show for Function with output(self, logger) {
   let pstr = self.params.map(p => "\{p}").join(", ")
   logger.write_string(pstr)
   logger.write_string(") {\n")
-  for bb in self.body {
+  for i, bb in self.body {
     logger.write_object(bb)
+    if i != self.body.length() - 1 {
+      logger.write_string("\n")
+    }
   }
   logger.write_string("}\n")
 }

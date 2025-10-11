@@ -144,15 +144,6 @@ pub fn IRBuilder::build_icmp(self: Self, cmpop: ICmpOpCode, bits: Int, dst~: IRe
 }
 
 #callsite(autofill(loc))
-pub fn IRBuilder::build_icmp_imm(self: Self, cmpop: ICmpOpCode, bits: Int, dst~: IRegister, src1~: IRegister, src2~: Int64, loc~: SourceLoc) -> Instruction raise MIRError {
-  check_bits(bits, loc)
-  let dst = Operand::IRegister(dst)
-  let src1 = Operand::IRegister(src1)
-  let src2 = Operand::Imm(src2)
-  Instruction::new(ICmp(cmpop, bits), [dst], [src1, src2], self.bb)
-}
-
-#callsite(autofill(loc))
 pub fn IRBuilder::build_fcmp(self: Self, cmpop: FCmpOpCode, bits: Int, dst~: IRegister, src1~: FRegister, src2~: FRegister, loc~: SourceLoc) -> Instruction raise MIRError {
   check_bits(bits, loc)
   let dst = Operand::IRegister(dst)

@@ -3,5 +3,5 @@
     "Kaida-Amethyst/MoonLLVM/IR",
     "Kaida-Amethyst/TinyMoonBit"
   ],
-  "warn-list": "-15"
+  "warn-list": "-15-29"
 }
