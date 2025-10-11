@@ -1086,19 +1086,11 @@ pub fn translate_llvm_return_inst(
     raise IRTranslateError("ReturnInst: return value operand not found in value_map")
   }
   match ret_op {
-    IRegister(ret) if ret is AReg(0) => [builder.build_ret()]
-    IRegister(ret) => {
-      let minst = builder.build_imove(64, dst=AReg(0), src=ret)
-      return [minst, builder.build_ret()]
-    }
-    FRegister(ret) if ret is FAReg(0) => [builder.build_ret()]
-    FRegister(ret) => {
-      let minst = builder.build_fmove(64, dst=FAReg(0), src=ret)
-      return [minst, builder.build_ret()]
-    }
+    IRegister(ret) => [builder.build_ret_ireg(ret)]
+    FRegister(ret) => [builder.build_ret_freg(ret)]
     Imm(ret) => {
       let minst = builder.build_imove_imm(64, dst=AReg(0), src=ret)
-      return [minst, builder.build_ret()]
+      return [minst, builder.build_ret_ireg(AReg(0))]
     }
     FImm(ret) => {
       let ireg = func.new_virtual_reg()
@@ -1107,7 +1099,7 @@ pub fn translate_llvm_return_inst(
         builder.build_imove_imm(64, dst=ireg, src=ret.reinterpret_as_int64()),
         builder.build_fmove_from_ireg(64, dst=freg, src=ireg),
         builder.build_fmove(64, dst=FAReg(0), src=freg),
-        builder.build_ret(),
+        builder.build_ret_freg(FAReg(0)),
       ]
     }
     Mem(b, o) if retVal.getType().isIEEELikeFPTy() => {
@@ -1116,7 +1108,7 @@ pub fn translate_llvm_return_inst(
       [
         builder.build_loadf(data_size, dst=freg, base=b, offset=o),
         builder.build_fmove(data_size, dst=FAReg(0), src=freg),
-        builder.build_ret(),
+        builder.build_ret_freg(FAReg(0)),
       ]
     }
     Mem(b, o) => {
@@ -1125,12 +1117,12 @@ pub fn translate_llvm_return_inst(
       [
         builder.build_loadi(data_size, dst=reg, base=b, offset=o),
         builder.build_imove(data_size, dst=AReg(0), src=reg),
-        builder.build_ret(),
+        builder.build_ret_freg(FAReg(0)),
       ]
     }
     Label(label) => {
       let minst = builder.build_load_addr(AReg(0), label)
-      [minst, builder.build_ret()]
+      [minst, builder.build_ret_ireg(AReg(0))]
     }
   }
 }
