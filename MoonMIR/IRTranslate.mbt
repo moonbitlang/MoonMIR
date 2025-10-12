@@ -213,7 +213,7 @@ pub fn translate_llvm_inst(
     CallInst(call_inst) =>
       translate_llvm_call_inst(call_inst, builder, func, data_layout)
     PHINode(phi_node) =>
-      translate_llvm_phi_node(phi_node, builder, func, data_layout)
+      translate_llvm_phi_node(phi_node, func)
     ExtractValueInst(_) =>
       raise IRTranslateError(
         "Translation for LLVM instruction \{llvm_inst} is not implemented",
@@ -466,7 +466,7 @@ pub fn translate_llvm_float_binary_inst(
   }
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
     raise IRTranslateError(
-      "BinaryInst: destination operand not found in value_map",
+      "BinaryInst: destination operand not found in value_map: \{llvm_inst}",
     )
   }
   guard dst_op is FRegister(dst) else {
@@ -633,7 +633,7 @@ pub fn translate_llvm_int_binary_inst(
   }
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
     raise IRTranslateError(
-      "BinaryInst: destination operand not found in value_map",
+      "BinaryInst: destination operand not found in value_map, \{llvm_inst}",
     )
   }
   guard dst_op is IRegister(dst) else {
@@ -1217,6 +1217,19 @@ pub fn translate_llvm_conditional_branch(
   current_bb.succs.push(machine_true_bb)
   current_bb.succs.push(machine_false_bb)
 
+  if !(cond.asValueEnum() is ICmpInst(_)) {
+    guard func.get_operand_from_llvm_value(cond) is Some(cond_op) else {
+      raise IRTranslateError("BranchInst: condition operand not found in value_map")
+    }
+    guard cond_op is IRegister(lhs) else {
+      raise IRTranslateError("BranchInst: condition operand is not an integer register")
+    }
+    let minst = builder.build_branch_imm(
+      Bne, lhs~, rhs=0L, true_label~, false_label~
+    )
+    return [minst]
+  }
+
   //
   let cmp_users = cond.getUsers().unwrap()
   let cmp_only_used_in_branch = cmp_users.length() == 1 &&
@@ -1239,9 +1252,7 @@ pub fn translate_llvm_conditional_branch(
 
   // If the comparison instruction only used in this branch,
   // generate breach with the comparison.
-  guard cond.asValueEnum() is ICmpInst({ predicate, lhs, rhs, .. }) else {
-    raise IRTranslateError("BranchInst: condition is not ICmpInst")
-  }
+  guard cond.asValueEnum() is ICmpInst({ predicate, lhs, rhs, .. })
   let opcode = match predicate {
     EQ => Beq
     NE => Bne
@@ -1530,24 +1541,81 @@ pub fn translate_llvm_call_inst(
 
 pub fn translate_llvm_phi_node(
   llvm_inst : @IR.PHINode,
-  builder : IRBuilder,
   func : Function,
-  data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
-  if false {
-    raise IRTranslateError("PHINode translation not implemented yet")
+  let { incomings, .. } = llvm_inst
+  for imcoming in incomings {
+    let (value, llvm_bb) = imcoming
+    guard func.get_operand_from_llvm_value(value) is Some(value_op) else {
+      raise IRTranslateError("PHINode: incoming value operand not found in value_map")
+    }
+    guard func.get_operand_from_llvm_value(llvm_bb) is Some(bb_op) else {
+      raise IRTranslateError("PHINode: incoming basic block operand not found in value_map")
+    }
+    guard bb_op is Label(bb_label) else {
+      raise IRTranslateError("PHINode: incoming basic block operand is not a label")
+    }
+    let machine_bb = func.bbmap.get(bb_label).unwrap()
+    machine_bb.phi_nodes.push((llvm_inst, value_op))
   }
-  ignore(llvm_inst)
-  ignore(builder)
-  ignore(func)
-  ignore(data_layout)
   []
 }
 
 
 ///|
-pub fn Function::phi_elimination(_ : Self) -> Unit {
-  //if false {
-  //  raise IRTranslateError("Phi elimination not implemented yet")
-  //}
+pub fn Function::phi_elimination(func : Self) -> Unit raise MIRError {
+  func.body.each(bb => bb.phi_elimination())
+}
+
+pub fn BasicBlock::phi_elimination(self: Self) -> Unit raise MIRError {
+  let func = self.parent
+  let data_layout = func.llvm_func.unwrap().getDataLayout()
+  let builder = IRBuilder::new(func, self)
+  for pair in self.phi_nodes {
+    let (llvm_phi_node, value_op) = pair
+    guard func.get_operand_from_llvm_value(llvm_phi_node) is Some(dst_op) else {
+      raise IRTranslateError("PHINode: destination operand not found in value_map")
+    }
+    let data_size = data_layout.getTypeAllocSizeInBits(llvm_phi_node.getType())
+    match (dst_op, value_op) {
+      (IRegister(dst), IRegister(src)) => {
+        let inst = builder.build_imove(data_size, dst~, src~)
+        self.push_inst_before_terminator(inst)
+      }
+      (IRegister(dst), Imm(src)) => {
+        let inst = builder.build_imove_imm(data_size, dst~, src~)
+        self.push_inst_before_terminator(inst)
+      }
+      (IRegister(dst), Mem(b, o)) => {
+        let src = func.new_virtual_reg()
+        let load_inst = builder.build_loadi(data_size, dst=src, base=b, offset=o)
+        let move_inst = builder.build_imove(data_size, dst~, src~)
+        self.push_inst_before_terminator(load_inst)
+        self.push_inst_before_terminator(move_inst)
+      }
+      (FRegister(dst), FRegister(src)) => {
+        let inst = builder.build_fmove(data_size, dst~, src~)
+        self.push_inst_before_terminator(inst)
+      }
+      (FRegister(dst), FImm(src)) => {
+        let ireg = func.new_virtual_reg()
+        let freg = func.new_virtual_freg()
+        let imove_inst = builder.build_imove_imm(data_size, dst=ireg, src=src.reinterpret_as_int64())
+        let fmove_inst = builder.build_fmove_from_ireg(data_size, dst=freg, src=ireg)
+        let move_inst = builder.build_fmove(data_size, dst~, src=freg)
+        self.push_inst_before_terminator(imove_inst)
+        self.push_inst_before_terminator(fmove_inst)
+        self.push_inst_before_terminator(move_inst)
+      }
+      (FRegister(dst), Mem(b, o)) => {
+        let freg = func.new_virtual_freg()
+        let load_inst = builder.build_loadf(data_size, dst=freg, base=b, offset=o)
+        let move_inst = builder.build_fmove(data_size, dst~, src=freg)
+        self.push_inst_before_terminator(load_inst)
+        self.push_inst_before_terminator(move_inst)
+      }
+      _ =>
+        raise IRTranslateError("PHINode: Unsupported operand types for phi elimination")
+    }
+  }
 }

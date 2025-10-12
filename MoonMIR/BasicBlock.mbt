@@ -6,6 +6,7 @@ pub(all) struct BasicBlock {
   parent : Function
   preds : Array[BasicBlock]
   succs: Array[BasicBlock]
+  phi_nodes: Array[(@IR.PHINode, Operand)] // (phi node, operand)
   mut live_in : Set[Operand]
   mut live_out : Set[Operand]
 }
@@ -23,6 +24,7 @@ pub fn BasicBlock::new(func : Function, label : String) -> BasicBlock {
     parent: func,
     preds: Array::new(),
     succs: Array::new(),
+    phi_nodes: Array::new(),
     live_in: Set::new(),
     live_out: Set::new(),
   }
@@ -39,6 +41,19 @@ pub fn BasicBlock::clear(self : Self) -> Unit {
 ///|
 pub fn BasicBlock::push(self : Self, inst : Instruction) -> Unit {
   self.insts.push(inst)
+}
+
+pub fn BasicBlock::push_inst_before_terminator(self: Self, inst: Instruction) -> Unit {
+  if self.insts.is_empty() {
+    self.insts.push(inst)
+    return
+  }
+  let last_inst = self.insts.last().unwrap()
+  if last_inst.opcode.is_terminator() {
+    self.insts.insert(self.insts.length() - 1, inst)
+  } else {
+    self.insts.push(inst)
+  }
 }
 
 // Return True is the live_out set was changed

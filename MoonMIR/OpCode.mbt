@@ -122,6 +122,13 @@ pub(all) enum OpCode {
   Intrinsic(String)
 }
 
+pub fn OpCode::is_terminator(self : Self) -> Bool {
+  match self {
+    Branch(_) | Ret => true
+    _ => false
+  }
+}
+
 ///|
 pub impl Show for OpCode with output(self, logger) {
   let s = match self {
