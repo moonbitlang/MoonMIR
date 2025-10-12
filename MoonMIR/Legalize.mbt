@@ -489,3 +489,103 @@ pub fn Instruction::legalize_istore(
     _ => raise LegalizeError("Unhandled IStore legalization case: \{self}")
   }
 }
+
+pub fn Instruction::legalize_imove(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: IMove(bits), .. } else {
+    println(
+      "Compiler ICE: calling legalize_imove on non-IMove instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
+      let v1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+        builder.build_storei(bits, src=v1, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Imm(i1)], .. } => {
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(bits, dst=vdst, src=i1),
+        builder.build_storei(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [IRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
+    { defs: [IRegister(_)], uses: [Imm(_)], .. } as inst => [inst]
+    _ => raise LegalizeError("Unhandled IMove legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_branch(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: Branch(bop), .. } else {
+    println(
+      "Compiler ICE: calling legalize_branch on non-IBranch instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [], uses: [Mem(b1, o1), Mem(b2, o2), Label(true_label), Label(false_label)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let v2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(32, dst=v1, base=b1, offset=o1),
+        builder.build_loadi(32, dst=v2, base=b2, offset=o2),
+        builder.build_branch(bop, lhs=v1, rhs=v2, true_label~, false_label~),
+      ]
+    }
+    { defs: [], uses: [Mem(b1, o1), IRegister(r2), Label(true_label), Label(false_label)], .. } => {
+      let v1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(32, dst=v1, base=b1, offset=o1),
+        builder.build_branch(bop, lhs=v1, rhs=r2, true_label~, false_label~),
+      ]
+    }
+    { defs: [], uses: [Mem(b1, o1), Imm(v2), Label(true_label), Label(false_label)], .. } => {
+      let v1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(32, dst=v1, base=b1, offset=o1),
+        builder.build_branch_imm(bop, lhs=v1, rhs=v2, true_label~, false_label~),
+      ]
+    }
+    { defs: [], uses: [IRegister(r1), Mem(b2, o2), Label(true_label), Label(false_label)], .. } => {
+      let v2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(32, dst=v2, base=b2, offset=o2),
+        builder.build_branch(bop, lhs=r1, rhs=v2, true_label~, false_label~),
+      ]
+    }
+    { defs: [], uses: [IRegister(_), IRegister(_), Label(_), Label(_)], .. } as inst => [inst]
+    { defs: [], uses: [IRegister(_), Imm(_), Label(_), Label(_)], .. } as inst => [inst]
+    { defs: [], uses: [Imm(i1), Mem(b2, o2), Label(true_label), Label(false_label)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let v2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(32, dst=v2, base=b2, offset=o2),
+        builder.build_imove_imm(32, dst=v1, src=i1),
+        builder.build_branch(bop, lhs=v1, rhs=v2, true_label~, false_label~),
+      ]
+    }
+    { defs: [], uses: [Imm(i1), IRegister(r2), Label(true_label), Label(false_label)], .. } => {
+      let v1 = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(32, dst=v1, src=i1),
+        builder.build_branch(bop, lhs=v1, rhs=r2, true_label~, false_label~),
+      ]
+    }
+    { defs: [], uses: [Imm(i1), Imm(i2), Label(true_label), Label(false_label)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let v2 = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(32, dst=v1, src=i1),
+        builder.build_imove_imm(32, dst=v2, src=i2),
+        builder.build_branch(bop, lhs=v1, rhs=v2, true_label~, false_label~),
+      ]
+    }
+    { defs: [], uses: [Label(_)], .. } as inst => [inst]
+    _ => raise LegalizeError("Unhandled IBranch legalization case: \{self}")
+  }
+}
