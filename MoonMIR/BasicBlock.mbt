@@ -68,6 +68,10 @@ pub fn BasicBlock::compute_live_out_from_succs(self: Self) -> Set[Operand] {
 
 ///|
 pub impl Show for BasicBlock with output(self, logger) {
+  if !self.live_in.is_empty() {
+    let str = self.live_in.iter().map(op => "\{op}").join(", ")
+    logger.write_string("# live: \{str}\n")
+  }
   logger.write_string(self.label)
   logger.write_string(":")
   if !self.preds.is_empty() {
@@ -77,12 +81,12 @@ pub impl Show for BasicBlock with output(self, logger) {
   }
   logger.write_string("\n")
   for inst in self.insts {
-    if !inst.live_in.is_empty() {
-      let str = inst.live_in.iter().map(op => "\{op}").join(", ")
-      logger.write_string("  # live: \{str}\n")
-    }
     logger.write_string("  ")
     logger.write_string(inst.to_string())
+    if !inst.live_in.is_empty() {
+      let str = inst.live_in.iter().map(op => "\{op}").join(", ")
+      logger.write_string("     # live in: \{str}")
+    }
     logger.write_string("\n")
   }
 }

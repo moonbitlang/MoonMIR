@@ -1,6 +1,10 @@
 ///|
 typealias @deque.Deque
 
+pub fn Module::live_analysis(self: Self) -> Unit {
+  self.functions.each(f => f.live_analysis())
+}
+
 ///|
 pub fn Function::live_analysis(self: Self) -> Unit {
   let bb_queue : Deque[BasicBlock] = Deque::new()
