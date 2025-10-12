@@ -5,8 +5,8 @@ pub(all) struct Instruction {
   uses : Array[Operand]
   bb : BasicBlock
   func : Function
-  mut livein : Set[Operand]
-  mut liveout : Set[Operand]
+  livein : Set[Operand]
+  liveout : Set[Operand]
 }
 
 ///|

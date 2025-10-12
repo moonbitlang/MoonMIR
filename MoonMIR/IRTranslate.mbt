@@ -3,7 +3,6 @@ pub fn Module::translate_llvm_module(
   self : Self,
   llvm_mod : @IR.Module,
 ) -> Unit raise MIRError {
-  self.clear()
   self.llvm_mod = Some(llvm_mod)
 
   // Step 1: Translate global values
@@ -25,7 +24,6 @@ pub fn Function::translate_llvm_function(
   self : Self,
   llvm_func : @IR.Function,
 ) -> Unit raise MIRError {
-  self.clear()
   self.llvm_func = Some(llvm_func)
 
   // Step 1: Translate parameters
@@ -41,6 +39,10 @@ pub fn Function::translate_llvm_function(
   for pair in llvm_machine_bbs {
     let (llvm_bb, machine_bb) = pair
     machine_bb.translate_llvm_basic_block(llvm_bb)
+  }
+
+  if self.terminal_blocks.is_empty() {
+    self.terminal_blocks.push(self.body.last().unwrap())
   }
 
   // Step 5: Phi Elimination
@@ -165,7 +167,6 @@ pub fn BasicBlock::translate_llvm_basic_block(
   self : Self,
   llvm_bb : @IR.BasicBlock,
 ) -> Unit raise MIRError {
-  self.clear()
   let func = self.parent
   let builder = IRBuilder::new(func, self)
   for inst in llvm_bb.instIter() {
@@ -1106,37 +1107,36 @@ pub fn translate_llvm_fcmp_inst(
 /// IRTranslate from LLVM IR to MoonMIR for BranchInst.
 ///
 /// ```mbt
-/// test "Branch IRTranslate Test" {
-///   let code = 
-///     #|fn demo(a: Int, b: Int) -> Int {
-///     #|  if a < b {
-///     #|    return a
-///     #|  }
-///     #|  return b
-///     #|}
-///   let llvm_mod = @TinyMoonBit.compile(code)
-///   // IRTranslate
-///   let mir_mod = Module::new(rv64)
-///   mir_mod.translate_llvm_module(llvm_mod)
-///   let mir_func = mir_mod.functions[0]
-///   let expected = 
-///     #|func demo(a0, a1) {
-///     #|entry:
-///     #|  blt a0, a1, demo_L1, demo_L2
-///     #|
-///     #|demo_L1:
-///     #|  ret a0
-///     #|
-///     #|demo_L2:
-///     #|  jmp demo_L3
-///     #|
-///     #|demo_L3:
-///     #|  ret a1
-///     #|}
-///     #|
+/// let code = 
+///   #|fn demo(a: Int, b: Int) -> Int {
+///   #|  if a < b {
+///   #|    return a
+///   #|  }
+///   #|  return b
+///   #|}
+/// let llvm_mod = @TinyMoonBit.compile(code)
+/// // IRTranslate
+/// let rv64 = ArchConfig::riscv64()
+/// let mir_mod = Module::new(rv64)
+/// mir_mod.translate_llvm_module(llvm_mod)
+/// let mir_func = mir_mod.functions[0]
+/// let expected = 
+///   #|func demo(a0, a1) {
+///   #|entry:
+///   #|  blt a0, a1, demo_L1, demo_L2
+///   #|
+///   #|demo_L1:                       ; preds: entry
+///   #|  ret a0
+///   #|
+///   #|demo_L2:                       ; preds: entry
+///   #|  jmp demo_L3
+///   #|
+///   #|demo_L3:                       ; preds: demo_L2
+///   #|  ret a1
+///   #|}
+///   #|
 /// 
-///   inspect(mir_func, content=expected)
-/// }
+/// inspect(mir_func, content=expected)
 /// ```
 pub fn translate_llvm_branch_inst(
   llvm_inst : @IR.BranchInst,
@@ -1159,37 +1159,36 @@ pub fn translate_llvm_branch_inst(
 /// IRTranslate from LLVM IR to MoonMIR for conditional BranchInst.
 ///
 /// ```mbt
-/// test "Branch IRTranslate Test" {
-///   let code = 
-///     #|fn demo(a: Int, b: Int) -> Int {
-///     #|  if a < b {
-///     #|    return a
-///     #|  }
-///     #|  return b
-///     #|}
-///   let llvm_mod = @TinyMoonBit.compile(code)
-///   // IRTranslate
-///   let mir_mod = Module::new(rv64)
-///   mir_mod.translate_llvm_module(llvm_mod)
-///   let mir_func = mir_mod.functions[0]
-///   let expected = 
-///     #|func demo(a0, a1) {
-///     #|entry:
-///     #|  blt a0, a1, demo_L1, demo_L2
-///     #|
-///     #|demo_L1:
-///     #|  ret a0
-///     #|
-///     #|demo_L2:
-///     #|  jmp demo_L3
-///     #|
-///     #|demo_L3:
-///     #|  ret a1
-///     #|}
-///     #|
+/// let code = 
+///   #|fn demo(a: Int, b: Int) -> Int {
+///   #|  if a < b {
+///   #|    return a
+///   #|  }
+///   #|  return b
+///   #|}
+/// let llvm_mod = @TinyMoonBit.compile(code)
+/// // IRTranslate
+/// let rv64 = ArchConfig::riscv64()
+/// let mir_mod = Module::new(rv64)
+/// mir_mod.translate_llvm_module(llvm_mod)
+/// let mir_func = mir_mod.functions[0]
+/// let expected = 
+///   #|func demo(a0, a1) {
+///   #|entry:
+///   #|  blt a0, a1, demo_L1, demo_L2
+///   #|
+///   #|demo_L1:                       ; preds: entry
+///   #|  ret a0
+///   #|
+///   #|demo_L2:                       ; preds: entry
+///   #|  jmp demo_L3
+///   #|
+///   #|demo_L3:                       ; preds: demo_L2
+///   #|  ret a1
+///   #|}
+///   #|
 /// 
-///   inspect(mir_func, content=expected)
-/// }
+/// inspect(mir_func, content=expected)
 /// ```
 pub fn translate_llvm_conditional_branch(
   llvm_inst : @IR.BranchInst, builder : IRBuilder, func : Function, data_layout : @IR.DataLayout
@@ -1209,6 +1208,16 @@ pub fn translate_llvm_conditional_branch(
   guard false_op is Label(false_label) else {
     raise IRTranslateError("BranchInst: falseBlock operand is not a label")
   }
+  // Push the successors and predecessors
+  let machine_true_bb = func.bbmap.get(true_label).unwrap()
+  let machine_false_bb = func.bbmap.get(false_label).unwrap()
+  let current_bb = builder.bb
+  machine_true_bb.preds.push(current_bb)
+  machine_false_bb.preds.push(current_bb)
+  current_bb.succs.push(machine_true_bb)
+  current_bb.succs.push(machine_false_bb)
+
+  //
   let cmp_users = cond.getUsers().unwrap()
   let cmp_only_used_in_branch = cmp_users.length() == 1 &&
       cmp_users[0].asValueEnum() is BranchInst(_)
@@ -1329,37 +1338,36 @@ pub fn translate_llvm_conditional_branch(
 /// IRTranslate from LLVM IR to MoonMIR for unconditional BranchInst.
 ///
 /// ```mbt
-/// test "Branch IRTranslate Test" {
-///   let code = 
-///     #|fn demo(a: Int, b: Int) -> Int {
-///     #|  if a < b {
-///     #|    return a
-///     #|  }
-///     #|  return b
-///     #|}
-///   let llvm_mod = @TinyMoonBit.compile(code)
-///   // IRTranslate
-///   let mir_mod = Module::new(rv64)
-///   mir_mod.translate_llvm_module(llvm_mod)
-///   let mir_func = mir_mod.functions[0]
-///   let expected = 
-///     #|func demo(a0, a1) {
-///     #|entry:
-///     #|  blt a0, a1, demo_L1, demo_L2
-///     #|
-///     #|demo_L1:
-///     #|  ret a0
-///     #|
-///     #|demo_L2:
-///     #|  jmp demo_L3
-///     #|
-///     #|demo_L3:
-///     #|  ret a1
-///     #|}
-///     #|
+/// let code = 
+///   #|fn demo(a: Int, b: Int) -> Int {
+///   #|  if a < b {
+///   #|    return a
+///   #|  }
+///   #|  return b
+///   #|}
+/// let llvm_mod = @TinyMoonBit.compile(code)
+/// // IRTranslate
+/// let rv64 = ArchConfig::riscv64()
+/// let mir_mod = Module::new(rv64)
+/// mir_mod.translate_llvm_module(llvm_mod)
+/// let mir_func = mir_mod.functions[0]
+/// let expected = 
+///   #|func demo(a0, a1) {
+///   #|entry:
+///   #|  blt a0, a1, demo_L1, demo_L2
+///   #|
+///   #|demo_L1:                       ; preds: entry
+///   #|  ret a0
+///   #|
+///   #|demo_L2:                       ; preds: entry
+///   #|  jmp demo_L3
+///   #|
+///   #|demo_L3:                       ; preds: demo_L2
+///   #|  ret a1
+///   #|}
+///   #|
 /// 
-///   inspect(mir_func, content=expected)
-/// }
+/// inspect(mir_func, content=expected)
 /// ```
 pub fn translate_llvm_unconditional_branch(
   llvm_inst : @IR.BranchInst,
@@ -1375,6 +1383,10 @@ pub fn translate_llvm_unconditional_branch(
   guard target_op is Label(target_label) else {
     raise IRTranslateError("BranchInst: trueBlock operand is not a label")
   }
+  let machine_target_bb = func.bbmap.get(target_label).unwrap()
+  let current_bb = builder.bb
+  machine_target_bb.preds.push(current_bb)
+  current_bb.succs.push(machine_target_bb)
   let minst = builder.build_jmp(target_label~)
   [minst]
 }
@@ -1449,6 +1461,7 @@ pub fn translate_llvm_return_inst(
   func : Function,
   data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
+  func.terminal_blocks.push(builder.bb)
   let { retVal, .. } = llvm_inst
   guard retVal is Some(retVal) else {
     let minst = builder.build_ret()

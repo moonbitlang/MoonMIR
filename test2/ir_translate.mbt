@@ -308,13 +308,13 @@ test "Branch IRTranslate Test" {
     #|entry:
     #|  blt a0, a1, demo_L1, demo_L2
     #|
-    #|demo_L1:
+    #|demo_L1:                       ; preds: entry
     #|  ret a0
     #|
-    #|demo_L2:
+    #|demo_L2:                       ; preds: entry
     #|  jmp demo_L3
     #|
-    #|demo_L3:
+    #|demo_L3:                       ; preds: demo_L2
     #|  ret a1
     #|}
     #|

@@ -9,7 +9,7 @@ pub(all) enum IRegister {
   FramePtr // Frame Pointer
   FramePtrPrim // Fake Frame Pointer used in prologue/epilogue
   ReturnAddr // Return Address
-}
+} derive(Hash, Eq)
 
 ///|
 pub impl Show for IRegister with output(self, logger) {
@@ -34,7 +34,7 @@ pub(all) enum FRegister {
   FAReg(Int) // Float Argument Register (after grouping)
   FTReg(Int) // Float Temporary Register (after grouping)
   FSReg(Int) // Float Saved Register (after grouping)
-}
+} derive(Hash, Eq)
 
 ///|
 pub impl Show for FRegister with output(self, logger) {
@@ -56,7 +56,7 @@ pub(all) enum Operand {
   Imm(Int64) // Immediate Value
   FImm(Double) // Floating Point Immediate Value
   Label(String) // Label
-}
+} derive(Hash, Eq)
 
 ///|
 pub impl Show for Operand with output(self, logger) {

@@ -19,7 +19,7 @@ pub(all) struct Function {
   body : Array[BasicBlock]
   mut var_stack_size : Int64
   mut reg_stack_size : Int64
-  //terminal_basic_blocks : Array[BasicBlock] // BasicBlocks that end with ret instruction
+  terminal_blocks : Array[BasicBlock] // BasicBlocks that end with ret instruction
 
   // LLVM
   mut llvm_func : @IR.Function?
@@ -41,7 +41,7 @@ pub fn Function::new(mod : Module, name : String) -> Function {
     body: Array::new(),
     var_stack_size: 0,
     reg_stack_size: 0,
-    //terminal_basic_blocks: Array::new(),
+    terminal_blocks: Array::new(),
     llvm_func: None,
     is_external: false,
     value_map: Map::new(),
