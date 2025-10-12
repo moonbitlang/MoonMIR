@@ -1539,6 +1539,39 @@ pub fn translate_llvm_return_inst(
   }
 }
 
+///|
+///
+/// IRTranslate from LLVM IR to MoonMIR for CallInst.
+///
+/// ```mbt
+/// let code = 
+///   #|fn add(x: Int, y: Int) -> Int {
+///   #|  x + y
+///   #|}
+///   #|
+///   #|fn demo() -> Int {
+///   #|  let a = add(10, 20)
+///   #|  return a
+///   #|}
+/// let llvm_mod = @TinyMoonBit.compile(code)
+/// // IRTranslate
+/// let mir_mod = Module::new(rv64)
+/// mir_mod.translate_llvm_module(llvm_mod)
+/// let mir_func = mir_mod.functions[1]
+/// let expected =
+///   #|func demo() {
+///   #|entry:
+///   #|  a0 = move.i64 10
+///   #|  a1 = move.i64 20
+///   #|  call add
+///   #|  v0 = move.i64 a0
+///   #|  a0 = move.i64 v0
+///   #|  ret
+///   #|}
+///   #|
+/// inspect(mir_func, content=expected)
+///
+/// ```
 pub fn translate_llvm_call_inst(
   llvm_inst : @IR.CallInst,
   builder : IRBuilder,

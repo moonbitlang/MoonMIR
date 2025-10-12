@@ -75,6 +75,16 @@ pub fn Module::add_function(
 }
 
 ///|
+pub fn Module::get_function(self: Self, name: String) -> Function? {
+  for func in self.functions {
+    if func.name == name {
+      return Some(func)
+    }
+  }
+  None
+}
+
+///|
 ///
 /// ```mbt
 /// let mod = Module::new(ArchConfig::riscv64())
