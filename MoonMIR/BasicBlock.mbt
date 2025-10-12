@@ -5,12 +5,13 @@ pub(all) struct BasicBlock {
   mut insts : Array[Instruction]
   parent : Function
   preds : Array[BasicBlock]
-  succs: Array[BasicBlock]
-  phi_nodes: Array[(@IR.PHINode, Operand)] // (phi node, operand)
+  succs : Array[BasicBlock]
+  phi_nodes : Array[(@IR.PHINode, Operand)] // (phi node, operand)
   mut live_in : Set[Operand]
   mut live_out : Set[Operand]
 }
 
+///|
 pub impl Eq for BasicBlock with equal(self, other) {
   self.label == other.label
 }
@@ -43,7 +44,11 @@ pub fn BasicBlock::push(self : Self, inst : Instruction) -> Unit {
   self.insts.push(inst)
 }
 
-pub fn BasicBlock::push_inst_before_terminator(self: Self, inst: Instruction) -> Unit {
+///|
+pub fn BasicBlock::push_inst_before_terminator(
+  self : Self,
+  inst : Instruction,
+) -> Unit {
   if self.insts.is_empty() {
     self.insts.push(inst)
     return
@@ -57,7 +62,12 @@ pub fn BasicBlock::push_inst_before_terminator(self: Self, inst: Instruction) ->
 }
 
 // Return True is the live_out set was changed
-pub fn BasicBlock::update_live_out(self: Self, live_out: Set[Operand]) -> Bool {
+
+///|
+pub fn BasicBlock::update_live_out(
+  self : Self,
+  live_out : Set[Operand],
+) -> Bool {
   if self.live_out == live_out {
     return false
   }
@@ -65,7 +75,8 @@ pub fn BasicBlock::update_live_out(self: Self, live_out: Set[Operand]) -> Bool {
   true
 }
 
-pub fn BasicBlock::update_live_in(self: Self, live_in: Set[Operand]) -> Bool {
+///|
+pub fn BasicBlock::update_live_in(self : Self, live_in : Set[Operand]) -> Bool {
   if self.live_in == live_in {
     return false
   }
@@ -73,8 +84,9 @@ pub fn BasicBlock::update_live_in(self: Self, live_in: Set[Operand]) -> Bool {
   true
 }
 
-pub fn BasicBlock::compute_live_out_from_succs(self: Self) -> Set[Operand] {
-  let live_out: Set[Operand] = Set::new()
+///|
+pub fn BasicBlock::compute_live_out_from_succs(self : Self) -> Set[Operand] {
+  let live_out : Set[Operand] = Set::new()
   for succ in self.succs {
     succ.live_in.each(v => live_out.add(v))
   }
@@ -106,7 +118,14 @@ pub impl Show for BasicBlock with output(self, logger) {
     }
     inst_strs.push((inst_str, live_str))
   }
-  fn max(a: Int, b: Int) { if a > b { a } else { b } }
+  fn max(a : Int, b : Int) {
+    if a > b {
+      a
+    } else {
+      b
+    }
+  }
+
   let max_inst_len = inst_strs.map(p => p.0.length()).fold(init=0, max)
   for inst_str_pair in inst_strs {
     let (inst_str, live_str) = inst_str_pair

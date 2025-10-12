@@ -54,7 +54,8 @@ pub(all) enum Operand {
   Label(String) // Label
 } derive(Hash, Eq)
 
-fn Operand::is_fp_operand(self: Self) -> Bool {
+///|
+fn Operand::is_fp_operand(self : Self) -> Bool {
   match self {
     FRegister(_) => true
     FImm(_) => true

@@ -1,36 +1,48 @@
+///|
 pub struct InterferenceGpaph {
-  nodes: Set[Operand]
-  edges: Map[Operand, Set[Operand]]
-  color_map: Map[Operand, Operand]
-  available_int_colors: Set[Operand]
-  available_fp_colors: Set[Operand]
-  mut spilled_count: Int
+  nodes : Set[Operand]
+  edges : Map[Operand, Set[Operand]]
+  color_map : Map[Operand, Operand]
+  available_int_colors : Set[Operand]
+  available_fp_colors : Set[Operand]
+  mut spilled_count : Int
 }
 
-pub fn InterferenceGpaph::new(config: ArchConfig, spilled_count : Int) -> InterferenceGpaph {
-  let { num_arg_regs, num_temp_regs, num_saved_regs,
-        num_arg_fregs, num_temp_fregs, num_saved_fregs, .. } = config
+///|
+pub fn InterferenceGpaph::new(
+  config : ArchConfig,
+  spilled_count : Int,
+) -> InterferenceGpaph {
+  let {
+    num_arg_regs,
+    num_temp_regs,
+    num_saved_regs,
+    num_arg_fregs,
+    num_temp_fregs,
+    num_saved_fregs,
+    ..,
+  } = config
   let available_int_colors : Set[Operand] = Set::new()
   let available_fp_colors : Set[Operand] = Set::new()
-  for i in 0 ..<num_arg_regs {
+  for i in 0..<num_arg_regs {
     available_int_colors.add(IRegister(AReg(i)))
   }
-  for i in 0 ..<num_temp_regs {
+  for i in 0..<num_temp_regs {
     available_int_colors.add(IRegister(TReg(i)))
   }
-  for i in 0 ..<num_saved_regs {
+  for i in 0..<num_saved_regs {
     available_int_colors.add(IRegister(SReg(i)))
   }
-  for i in 0 ..<num_arg_fregs {
+  for i in 0..<num_arg_fregs {
     available_fp_colors.add(FRegister(FAReg(i)))
   }
-  for i in 0 ..<num_temp_fregs {
+  for i in 0..<num_temp_fregs {
     available_fp_colors.add(FRegister(FTReg(i)))
   }
-  for i in 0 ..<num_saved_fregs {
+  for i in 0..<num_saved_fregs {
     available_fp_colors.add(FRegister(FSReg(i)))
   }
-  for i in 0 ..< spilled_count {
+  for i in 0..<spilled_count {
     available_int_colors.add(Mem(FramePtrPrim, i.to_int64() * 8))
     available_fp_colors.add(Mem(FramePtrPrim, i.to_int64() * 8))
   }
@@ -44,7 +56,11 @@ pub fn InterferenceGpaph::new(config: ArchConfig, spilled_count : Int) -> Interf
   }
 }
 
-pub fn InterferenceGpaph::add_node(self : InterferenceGpaph, node : Operand) -> Unit {
+///|
+pub fn InterferenceGpaph::add_node(
+  self : InterferenceGpaph,
+  node : Operand,
+) -> Unit {
   // No need to check if nodes contains node.
   self.nodes.add(node)
   if !self.edges.contains(node) {
@@ -62,11 +78,12 @@ pub fn InterferenceGpaph::add_edge(
     return
   }
   // No need to check if nodes contains node1 or node2.
-  self..add_node(node1) .. add_node(node2)
+  self..add_node(node1)..add_node(node2)
   self.edges[node1].add(node2)
   self.edges[node2].add(node1)
 }
 
+///|
 pub fn InterferenceGpaph::find_uncolored_vreg_with_greatest_uncolored_degree(
   self : InterferenceGpaph,
 ) -> Operand? {
@@ -79,8 +96,7 @@ pub fn InterferenceGpaph::find_uncolored_vreg_with_greatest_uncolored_degree(
     if self.color_map.contains(node) {
       continue
     }
-    let degree =
-      self.edges[node]
+    let degree = self.edges[node]
       .iter()
       .filter(n => !n.is_fp_operand() && !self.color_map.contains(n))
       .collect()
@@ -93,6 +109,7 @@ pub fn InterferenceGpaph::find_uncolored_vreg_with_greatest_uncolored_degree(
   candidate
 }
 
+///|
 pub fn InterferenceGpaph::find_uncolored_vfreg_with_greatest_uncolored_degree(
   self : InterferenceGpaph,
 ) -> Operand? {
@@ -105,8 +122,7 @@ pub fn InterferenceGpaph::find_uncolored_vfreg_with_greatest_uncolored_degree(
     if self.color_map.contains(node) {
       continue
     }
-    let degree =
-      self.edges[node]
+    let degree = self.edges[node]
       .iter()
       .filter(n => n.is_fp_operand() && !self.color_map.contains(n))
       .collect()
@@ -120,7 +136,7 @@ pub fn InterferenceGpaph::find_uncolored_vfreg_with_greatest_uncolored_degree(
 }
 
 ///|
-pub fn Function::build_interference_graph(self: Function) -> InterferenceGpaph {
+pub fn Function::build_interference_graph(self : Function) -> InterferenceGpaph {
   let config = self.mod.arch_config
   let graph = InterferenceGpaph::new(config, self.spilled_count)
   for inst in self.inst_iter() {
@@ -136,7 +152,9 @@ pub fn Function::build_interference_graph(self: Function) -> InterferenceGpaph {
 ///|
 ///
 /// Move Bias
-pub fn Function::build_preference_list(self: Function) -> Map[Operand, Deque[Operand]] {
+pub fn Function::build_preference_list(
+  self : Function,
+) -> Map[Operand, Deque[Operand]] {
   let preference_list : Map[Operand, Deque[Operand]] = Map::new()
   for inst in self.inst_iter() {
     match inst {
@@ -158,9 +176,11 @@ pub fn Function::build_preference_list(self: Function) -> Map[Operand, Deque[Ope
 }
 
 // Return color_map and number of spills
+
+///|
 pub fn InterferenceGpaph::coloring(
-  self: Self,
-  preference_list: Map[Operand, Deque[Operand]]
+  self : Self,
+  preference_list : Map[Operand, Deque[Operand]],
 ) -> (Map[Operand, Operand], Int) {
   // for debugging infinite loop
   // TODO: remove this guard after confirmed no infinite loop
@@ -179,12 +199,12 @@ pub fn InterferenceGpaph::coloring(
           let color = self.color_map[neighbor]
           avaliable_int_colors.remove(color)
         }
-        IRegister(_) => {
-          avaliable_int_colors.remove(neighbor)
-        }
+        IRegister(_) => avaliable_int_colors.remove(neighbor)
         FRegister(_) => ()
         _ => {
-          println("Compiler ICE: Graph coloring should not have non register nodes.")
+          println(
+            "Compiler ICE: Graph coloring should not have non register nodes.",
+          )
           panic()
         }
       }
@@ -197,14 +217,16 @@ pub fn InterferenceGpaph::coloring(
     } else {
       if avaliable_int_colors.is_empty() {
         // Spill
-        self.color_map[node] = Mem(FramePtrPrim, self.spilled_count.to_int64() * 8)
+        self.color_map[node] = Mem(
+          FramePtrPrim,
+          self.spilled_count.to_int64() * 8,
+        )
         self.spilled_count += 1
       } else {
         self.color_map[node] = avaliable_int_colors.iter().take(1).collect()[0]
       }
     }
   }
-
   exit_guard = 0
   while self.find_uncolored_vfreg_with_greatest_uncolored_degree() is Some(node) {
     exit_guard += 1
@@ -220,12 +242,12 @@ pub fn InterferenceGpaph::coloring(
           let color = self.color_map[neighbor]
           avaliable_fp_colors.remove(color)
         }
-        FRegister(_) => {
-          avaliable_fp_colors.remove(neighbor)
-        }
+        FRegister(_) => avaliable_fp_colors.remove(neighbor)
         IRegister(_) => ()
         _ => {
-          println("Compiler ICE: Graph coloring should not have non register nodes.")
+          println(
+            "Compiler ICE: Graph coloring should not have non register nodes.",
+          )
           panic()
         }
       }
@@ -238,13 +260,15 @@ pub fn InterferenceGpaph::coloring(
     } else {
       if avaliable_fp_colors.is_empty() {
         // Spill
-        self.color_map[node] = Mem(FramePtrPrim, self.spilled_count.to_int64() * 8)
+        self.color_map[node] = Mem(
+          FramePtrPrim,
+          self.spilled_count.to_int64() * 8,
+        )
         self.spilled_count += 1
       } else {
         self.color_map[node] = avaliable_fp_colors.iter().take(1).collect()[0]
       }
     }
   }
-
   (self.color_map, self.spilled_count)
 }

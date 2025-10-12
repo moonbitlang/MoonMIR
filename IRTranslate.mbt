@@ -399,9 +399,7 @@ fn Instruction::from_llvm_inst(
         Some(ConstantFP(f)) => FImm(f.value)
         None => {
           guard func.get_operand_from_llvm_value(operand) is Some(op) else {
-            raise IRTranslateError(
-              "FNegInst: operand not found in value map",
-            )
+            raise IRTranslateError("FNegInst: operand not found in value map")
           }
           op
         }

@@ -30,7 +30,10 @@ fn Instruction::new(
 ///|
 ///
 /// Returns true if live_in changed.
-pub fn Instruction::update_live_out(self: Self, live_out: Set[Operand]) -> Bool {
+pub fn Instruction::update_live_out(
+  self : Self,
+  live_out : Set[Operand],
+) -> Bool {
   if self.live_out == live_out {
     return false
   }
@@ -41,7 +44,7 @@ pub fn Instruction::update_live_out(self: Self, live_out: Set[Operand]) -> Bool 
 ///|
 ///
 /// Returns true if live_out changed.
-pub fn Instruction::update_live_in(self: Self, live_in: Set[Operand]) -> Bool {
+pub fn Instruction::update_live_in(self : Self, live_in : Set[Operand]) -> Bool {
   if self.live_in == live_in {
     return false
   }

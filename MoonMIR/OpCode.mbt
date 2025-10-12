@@ -65,6 +65,7 @@ pub(all) enum FBinaryOpCode {
   FRem
 }
 
+///|
 pub fn FBinaryOpCode::is_commutative(self : Self) -> Bool {
   match self {
     FAdd | FMul => true
@@ -122,6 +123,7 @@ pub(all) enum OpCode {
   Intrinsic(String)
 }
 
+///|
 pub fn OpCode::is_terminator(self : Self) -> Bool {
   match self {
     Branch(_) | Ret => true

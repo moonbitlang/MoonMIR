@@ -1,6 +1,6 @@
 ///|
 pub(all) struct Module {
-  source_file: String
+  source_file : String
   mut llvm_mod : @IR.Module?
   arch_config : ArchConfig
   functions : Map[String, Function]
@@ -10,7 +10,7 @@ pub(all) struct Module {
 }
 
 ///|
-pub fn Module::new(arch_config : ArchConfig, source_file?: String) -> Module {
+pub fn Module::new(arch_config : ArchConfig, source_file? : String) -> Module {
   let source_file = match source_file {
     None => "demo"
     Some(f) => f
@@ -75,7 +75,7 @@ pub fn Module::add_function(
 }
 
 ///|
-pub fn Module::get_function(self: Self, name: String) -> Function? {
+pub fn Module::get_function(self : Self, name : String) -> Function? {
   self.functions.get(name)
 }
 
@@ -182,15 +182,14 @@ pub fn Module::clear(self : Self) -> Unit {
   self.global_values.clear()
 }
 
+///|
 pub impl Show for Module with output(self, logger) {
   logger.write_string("; Source File: \{self.source_file}\n")
   logger.write_string("; Architecture: \{self.arch_config.arch_name}\n\n")
-
   for gv in self.global_values {
     logger.write_object(gv)
     logger.write_string("\n")
   }
-
   for func in self.functions {
     logger.write_object(func)
     logger.write_string("\n")

@@ -41,7 +41,7 @@ typealias @deque.Deque
 ///
 /// inspect(mir_func, content=expected)
 /// ```
-pub fn Function::live_analysis(self: Self) -> Unit {
+pub fn Function::live_analysis(self : Self) -> Unit {
   let bb_queue : Deque[BasicBlock] = Deque::new()
   self.terminal_blocks.each(bb => bb_queue.push_back(bb))
   while !bb_queue.is_empty() {
@@ -49,8 +49,8 @@ pub fn Function::live_analysis(self: Self) -> Unit {
     let bb_is_changed = bb.live_analysis()
     if bb_is_changed {
       bb.preds
-        .filter(pred_bb => !bb_queue.contains(pred_bb))
-        .each(pred_bb => bb_queue.push_back(pred_bb))
+      .filter(pred_bb => !bb_queue.contains(pred_bb))
+      .each(pred_bb => bb_queue.push_back(pred_bb))
     }
   }
 }
@@ -58,7 +58,7 @@ pub fn Function::live_analysis(self: Self) -> Unit {
 ///|
 ///
 /// return if is changed
-pub fn BasicBlock::live_analysis(self: Self) -> Bool {
+pub fn BasicBlock::live_analysis(self : Self) -> Bool {
   let mut is_changed = false
 
   // Step 1. Compute live_out as the union of live_in of all successors
@@ -78,19 +78,18 @@ pub fn BasicBlock::live_analysis(self: Self) -> Bool {
     let first_inst = self.insts[0]
     is_changed = self.update_live_in(first_inst.live_in) || is_changed
   }
-
   is_changed
 }
 
 ///|
 ///
-pub fn Instruction::live_analysis(self: Self) -> Bool {
+pub fn Instruction::live_analysis(self : Self) -> Bool {
   let { defs, uses, .. } = self
-  let live_in: Set[Operand] = self.live_out.copy()
+  let live_in : Set[Operand] = self.live_out.copy()
   // Remove defs from live_in
   defs.each(d => if d is (IRegister(_) | FRegister(_)) { live_in.remove(d) })
   // Add uses to live_in
-  uses.each(u => if u is (IRegister(_) | FRegister(_)) { live_in.add(u) } )
+  uses.each(u => if u is (IRegister(_) | FRegister(_)) { live_in.add(u) })
 
   // update_live_in returns true if changed
   let is_changed = self.update_live_in(live_in)

@@ -1,7 +1,7 @@
 ///|
 /// Architecture Configuration
 pub(all) struct ArchConfig {
-  arch_name: String
+  arch_name : String
   // The Number of Total Physical Registers
   // max_num_reg should be = num_arg_regs + num_temp_regs + num_saved_regs
   // not include special registers like zero, ra, sp

@@ -55,6 +55,7 @@ pub fn Function::new(mod : Module, name : String) -> Function {
   }
 }
 
+///|
 pub fn Function::inst_iter(self : Self) -> Iter[Instruction] {
   letrec f = yield_ => {
     for bb in self.body {
@@ -64,6 +65,7 @@ pub fn Function::inst_iter(self : Self) -> Iter[Instruction] {
     }
     IterContinue
   }
+
   Iter::new(f)
 }
 

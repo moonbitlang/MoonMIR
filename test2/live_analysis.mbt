@@ -1,6 +1,6 @@
-
+///|
 test "Simple Insts Live Analysis" {
-  let code = 
+  let code =
     #|fn foo(x: Int, y: Int) -> Int {
     #|  let a = x + y;
     #|  let b = x - y;
@@ -9,7 +9,6 @@ test "Simple Insts Live Analysis" {
     #|  let e = c % d;
     #|  e
     #|}
-
   let llvm_mod = @TinyMoonBit.compile(code)
 
   // IRTranslate
@@ -17,8 +16,7 @@ test "Simple Insts Live Analysis" {
   mir_mod.translate_llvm_module(llvm_mod)
   let mir_func = mir_mod.get_function("foo").unwrap()
   mir_func.live_analysis()
-
-  let expected = 
+  let expected =
     #|func foo(a0, a1) {
     #|# live: a0, a1
     #|entry:
@@ -31,12 +29,12 @@ test "Simple Insts Live Analysis" {
     #|  ret
     #|}
     #|
-
   inspect(mir_func, content=expected)
 }
 
+///|
 test "Cond Branch Insts Live Analysis" {
-  let code = 
+  let code =
     #|fn foo(a: Int, b: Int, c: Bool) -> Int{
     #|  if c {
     #|    a + b
@@ -44,7 +42,6 @@ test "Cond Branch Insts Live Analysis" {
     #|    a * b
     #|  }
     #|}
-
   let llvm_mod = @TinyMoonBit.compile(code)
 
   // IRTranslate
@@ -52,7 +49,6 @@ test "Cond Branch Insts Live Analysis" {
   mir_mod.translate_llvm_module(llvm_mod)
   let mir_func = mir_mod.get_function("foo").unwrap()
   mir_func.live_analysis()
-
   let expected =
     #|func foo(a0, a1, a2) {
     #|# live: a0, a1, a2
@@ -77,6 +73,5 @@ test "Cond Branch Insts Live Analysis" {
     #|  ret
     #|}
     #|
-
   inspect(mir_func, content=expected)
 }

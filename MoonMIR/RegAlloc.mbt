@@ -8,6 +8,7 @@ pub fn Module::alloc_register(self : Module) -> Unit raise RegAllocError {
   }
 }
 
+///|
 pub fn Function::alloc_register(self : Function) -> Unit raise RegAllocError {
   if false {
     raise RegAllocError("Not implemented yet.")
@@ -23,13 +24,13 @@ pub fn Function::alloc_register(self : Function) -> Unit raise RegAllocError {
 
   // Step 3. Graph Coloring, get a replacement map
   let (replacement_map, spilled_count) = interf_graph.coloring(pref_list)
-
   if spilled_count != self.spilled_count {
     let extra_spilled = spilled_count - self.spilled_count
     let _ = self.extend_reg_stack(extra_spilled.to_int64() * 8, 8L)
-  }
 
-  let need_rewrite = !replacement_map.is_empty() || spilled_count != self.spilled_count
+  }
+  let need_rewrite = !replacement_map.is_empty() ||
+    spilled_count != self.spilled_count
 
   // Step 4. If replacement map is not empty:
   // rewrite the function, legalize, then back to Step 1,
@@ -37,7 +38,10 @@ pub fn Function::alloc_register(self : Function) -> Unit raise RegAllocError {
   if need_rewrite {
     self.rewrite_by_replacement_map(replacement_map)
     self.legalize() catch {
-      err => raise RegAllocError("Failed to legalize after register allocation: \{err}")
+      err =>
+        raise RegAllocError(
+          "Failed to legalize after register allocation: \{err}",
+        )
     }
     self.alloc_register()
   }
@@ -45,19 +49,34 @@ pub fn Function::alloc_register(self : Function) -> Unit raise RegAllocError {
 
 //
 // This Will clear live in and live out.
-pub fn Function::rewrite_by_replacement_map(self: Function, replacement_map: Map[Operand, Operand]) -> Unit {
+
+///|
+pub fn Function::rewrite_by_replacement_map(
+  self : Function,
+  replacement_map : Map[Operand, Operand],
+) -> Unit {
   self.body.each(bb => bb.rewrite_by_replacement_map(replacement_map))
 }
 
 // This Will clear live in and live out.
-pub fn BasicBlock::rewrite_by_replacement_map(self: BasicBlock, replacement_map: Map[Operand, Operand]) -> Unit {
+
+///|
+pub fn BasicBlock::rewrite_by_replacement_map(
+  self : BasicBlock,
+  replacement_map : Map[Operand, Operand],
+) -> Unit {
   self.insts.each(inst => inst.rewrite_by_replacement_map(replacement_map))
   self.live_in.clear()
   self.live_out.clear()
 }
 
 // This Will clear live in and live out.
-pub fn Instruction::rewrite_by_replacement_map(self: Instruction, replacement_map: Map[Operand, Operand]) -> Unit {
+
+///|
+pub fn Instruction::rewrite_by_replacement_map(
+  self : Instruction,
+  replacement_map : Map[Operand, Operand],
+) -> Unit {
   for i, def in self.defs {
     if replacement_map.get(def) is Some(repl) {
       self.defs[i] = repl
