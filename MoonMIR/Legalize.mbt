@@ -36,11 +36,15 @@ pub fn Instruction::legalize(
     FBinary(_) => self.legalize_fbinary(builder)
     FUnary(_) => self.legalize_funary(builder)
     FCmp(_) => self.legalize_fcmp(builder)
-    //FLoad(_) => self.legalize_fload(builder)
-    //FStore(_) => self.legalize_fstore(builder)
-    //FMove(_) => self.legalize_fmove(builder)
-    //FMoveI(_) => self.legalize_fmovei(builder)
-    //IMoveF(_) => self.legalize_imovef(builder)
+    FLoad(_) => self.legalize_fload(builder)
+    FStore(_) => self.legalize_fstore(builder)
+    FMove(_) => self.legalize_fmove(builder)
+    FMoveI(_) => self.legalize_fmovei(builder)
+    IMoveF(_) => self.legalize_imovef(builder)
+    Call => [self]
+    Ret => [self]
+    Nop => [self]
+    Intrinsic(_) => raise LegalizeError("Unimplmented Intrinsic legalize Yet")
     _ => raise LegalizeError("Unimplmented Yet")
   }
 }
@@ -783,5 +787,150 @@ pub fn Instruction::legalize_fcmp(self: Instruction, builder: IRBuilder) -> Arra
     }
     { defs: [IRegister(_)], uses: [IRegister(_), IRegister(_)], .. } as inst => [inst]
     _ => raise LegalizeError("Unhandled FCmp legalization case: \{self}")
+  }
+}
+
+    //FLoad(_) => self.legalize_fload(builder)
+    //FStore(_) => self.legalize_fstore(builder)
+    //FMove(_) => self.legalize_fmove(builder)
+    //FMoveI(_) => self.legalize_fmovei(builder)
+    //IMoveF(_) => self.legalize_imovef(builder)
+
+
+pub fn Instruction::legalize_fload(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: FLoad(bits), .. } else {
+    println(
+      "Compiler ICE: calling legalize_fload on non-FLoad instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
+      let v1 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_storef(bits, src=v1, base~, offset~),
+      ]
+    }
+    { defs: [FRegister(_)], uses: [Mem(_)], .. } as inst => [inst]
+    _ => raise LegalizeError("Unhandled FLoad legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_fstore(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: FStore(bits), .. } else {
+    println(
+      "Compiler ICE: calling legalize_fstore on non-FStore instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
+      let v1 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_storef(bits, src=v1, base~, offset~),
+      ]
+    }
+    { defs: [Mem(_)], uses: [FRegister(_)], .. } as inst => [inst]
+    _ => raise LegalizeError("Unhandled FStore legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_fmove(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: FMove(bits), .. } else {
+    println(
+      "Compiler ICE: calling legalize_fmove on non-FMove instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
+      let v1 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_storef(bits, src=v1, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FRegister(r1)], .. } => {
+      let vdst = func.new_virtual_freg()
+      [
+        builder.build_fmove(bits, dst=vdst, src=r1),
+        builder.build_storef(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [FRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+    { defs: [FRegister(_)], uses: [Mem(base, offset)], .. } => {
+      let v1 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base~, offset~),
+        builder.build_fmove(bits, dst=func.new_virtual_freg(), src=v1),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled FMove legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_fmovei(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: FMoveI(bits), .. } else {
+    println(
+      "Compiler ICE: calling legalize_fmovei on non-FMoveI instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [IRegister(r1)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let vdst = func.new_virtual_freg()
+      [
+        builder.build_imove(bits, dst=v1, src=r1),
+        builder.build_fmove_from_ireg(bits, dst=vdst, src=v1),
+        builder.build_storef(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [FRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
+    { defs: [FRegister(_)], uses: [Mem(base, offset)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let vdst = func.new_virtual_freg()
+      [
+        builder.build_loadi(bits, dst=v1, base~, offset~),
+        builder.build_fmove_from_ireg(bits, dst=vdst, src=v1),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled FMoveI legalization case: \{self}")
+  }
+}
+
+// imovef means move from freg to ireg
+pub fn Instruction::legalize_imovef(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: IMoveF(bits), .. } else {
+    println(
+      "Compiler ICE: calling legalize_imovef on non-IMoveF instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [FRegister(r1)], .. } => {
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_fmove_to_ireg(bits, dst=vdst, src=r1),
+        builder.build_storei(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [IRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+    { defs: [IRegister(_)], uses: [Mem(base, offset)], .. } => {
+      let v1 = func.new_virtual_freg()
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_loadf(bits, dst=v1, base~, offset~),
+        builder.build_fmove_to_ireg(bits, dst=vdst, src=v1),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled IMoveF legalization case: \{self}")
   }
 }

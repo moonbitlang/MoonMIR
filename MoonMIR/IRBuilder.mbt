@@ -289,7 +289,22 @@ pub fn IRBuilder::build_fmove_from_ireg(
   check_bits(bits, loc)
   let dst = Operand::FRegister(dst)
   let src = Operand::IRegister(src)
-  Instruction::new(FMove(bits), [dst], [src], self.bb)
+  Instruction::new(FMoveI(bits), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_fmove_to_ireg(
+  self : Self,
+  bits : Int,
+  dst~ : IRegister,
+  src~ : FRegister,
+  loc~ : SourceLoc,
+) -> Instruction raise MIRError {
+  check_bits(bits, loc)
+  let dst = Operand::IRegister(dst)
+  let src = Operand::FRegister(src)
+  Instruction::new(IMoveF(bits), [dst], [src], self.bb)
 }
 
 ///|

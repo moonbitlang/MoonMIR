@@ -88,6 +88,18 @@ pub(all) enum FCmpOpCode {
   Fle
 }
 
+pub(all) enum CastOpCode {
+  Trunc(Int, Int)
+  ZExt(Int, Int)
+  SExt(Int, Int)
+  FPTrunc(Int, Int)
+  FPExt(Int, Int)
+  FPToSI(Int, Int)
+  FPToUI(Int, Int)
+  SIToFP(Int, Int)
+  UIToFP(Int, Int)
+}
+
 ///|
 pub(all) enum OpCode {
   IBinary(IBinaryOpCode, Int) // Int is the bit width (8, 16, 32, 64)
@@ -106,17 +118,8 @@ pub(all) enum OpCode {
   FMoveI(Int) // Int is the float bit width (32, 64), move from int to float register
   IMoveF(Int) // Int is the float bit width (32, 64), move from float to int register
   LoadAddr // Load address of a variable
-  Trunc(from~ : Int, to~ : Int)
-  ZExt(from~ : Int, to~ : Int)
-  SExt(from~ : Int, to~ : Int)
-  FPTrunc(from~ : Int, to~ : Int)
-  FPExt(from~ : Int, to~ : Int)
-  FPToSI(from~ : Int, to~ : Int)
-  FPToUI(from~ : Int, to~ : Int)
-  SIToFP(from~ : Int, to~ : Int)
-  UIToFP(from~ : Int, to~ : Int)
+  Cast(CastOpCode)
   Call
-  Phi
   Select
   Ret
   Nop
@@ -209,17 +212,19 @@ pub impl Show for OpCode with output(self, logger) {
     FMoveI(bits) => "fmovei.f\{bits}"
     IMoveF(bits) => "imovef.f\{bits}"
     LoadAddr => "loadaddr"
-    Trunc(from~, to~) => "trunc.i\{from}_to_i\{to}"
-    ZExt(from~, to~) => "zext.i\{from}_to_i\{to}"
-    SExt(from~, to~) => "sext.i\{from}_to_i\{to}"
-    FPTrunc(from~, to~) => "fptrunc.f\{from}_to_f\{to}"
-    FPExt(from~, to~) => "fpext.f\{from}_to_f\{to}"
-    FPToSI(from~, to~) => "fptosi.f\{from}_to_i\{to}"
-    FPToUI(from~, to~) => "fptoui.f\{from}_to_i\{to}"
-    SIToFP(from~, to~) => "sitofp.i\{from}_to_f\{to}"
-    UIToFP(from~, to~) => "uitofp.i\{from}_to_f\{to}"
+    Cast(op) =>
+      match op {
+        Trunc(from, to) => "trunc.i\{from}_to_i\{to}"
+        ZExt(from, to) => "zext.i\{from}_to_i\{to}"
+        SExt(from, to) => "sext.i\{from}_to_i\{to}"
+        FPTrunc(from, to) => "fptrunc.f\{from}_to_f\{to}"
+        FPExt(from, to) => "fpext.f\{from}_to_f\{to}"
+        FPToSI(from, to) => "fptosi.f\{from}_to_i\{to}"
+        FPToUI(from, to) => "fptoui.f\{from}_to_i\{to}"
+        SIToFP(from, to) => "sitofp.i\{from}_to_f\{to}"
+        UIToFP(from, to) => "uitofp.i\{from}_to_f\{to}"
+      }
     Call => "call"
-    Phi => "phi"
     Select => "select"
     Ret => "ret"
     Nop => "nop"

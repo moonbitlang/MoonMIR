@@ -210,14 +210,14 @@ test "Complex Float Binary IRTranslate Test" {
     #|  store.f32 (fp' - 4), vf4
     #|  vf0 = load.f32 (fp' - 4)
     #|  v0 = move.i32 1073741824
-    #|  vf5 = move.f32 v0
+    #|  vf5 = fmovei.f32 v0
     #|  vf1 = fadd.f32 vf0, vf5
     #|  vf2 = load.f32 (fp' - 4)
     #|  v1 = move.i32 1084227584
-    #|  vf6 = move.f32 v1
+    #|  vf6 = fmovei.f32 v1
     #|  vf3 = fsub.f32 vf6, vf2
     #|  v2 = move.i64 0
-    #|  vf7 = move.f64 v2
+    #|  vf7 = fmovei.f64 v2
     #|  fa0 = move.f64 vf7
     #|  ret
     #|}
