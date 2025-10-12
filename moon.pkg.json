@@ -1,4 +1,7 @@
 {
-  "import" : ["Kaida-Amethyst/MoonLLVM/IR"],
-  "warn-list": "-15"
+  "import" : [
+    "Kaida-Amethyst/MoonLLVM/IR",
+    "Kaida-Amethyst/TinyMoonBit"
+  ],
+  "warn-list": "-15-29"
 }

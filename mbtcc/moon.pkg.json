@@ -2,8 +2,8 @@
   "is-main": true,
   "import" : [
     "Kaida-Amethyst/MoonLLVM/IR",
-    "Kaida-Amethyst/GMIR",
-    "Kaida-Amethyst/GMIR/riscv",
+    "Kaida-Amethyst/MoonMIR/GMIR",
+    "Kaida-Amethyst/MoonMIR/gmir_riscv",
     "Kaida-Amethyst/mbtcc/parser",
     "Kaida-Amethyst/mbtcc/codegen",
     "moonbitlang/x/fs"

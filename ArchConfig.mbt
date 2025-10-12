@@ -1,6 +1,7 @@
 ///|
 /// Architecture Configuration
 pub(all) struct ArchConfig {
+  arch_name : String
   // The Number of Total Physical Registers
   // max_num_reg should be = num_arg_regs + num_temp_regs + num_saved_regs
   // not include special registers like zero, ra, sp
@@ -28,6 +29,7 @@ pub(all) struct ArchConfig {
 ///|
 pub fn ArchConfig::riscv64() -> ArchConfig {
   ArchConfig::{
+    arch_name: "riscv64",
     max_num_reg: 17,
     max_num_freg: 17,
     num_arg_regs: 8,
@@ -43,6 +45,7 @@ pub fn ArchConfig::riscv64() -> ArchConfig {
 ///|
 pub fn ArchConfig::debug() -> ArchConfig {
   ArchConfig::{
+    arch_name: "demo",
     max_num_reg: 8,
     max_num_freg: 8,
     num_arg_regs: 4,

@@ -1,97 +1,104 @@
 ///|
 pub(all) struct BasicBlock {
-  llvm_bb : @IR.BasicBlock
+  mut llvm_bb : @IR.BasicBlock?
   label : String
   mut insts : Array[Instruction]
   parent : Function
   preds : Array[BasicBlock]
-  livein : Set[Operand]
-  liveout : Set[Operand]
+  succs : Array[BasicBlock]
+  phi_nodes : Array[(@IR.PHINode, Operand)] // (phi node, operand)
+  mut live_in : Set[Operand]
+  mut live_out : Set[Operand]
 }
 
 ///|
-fn BasicBlock::new(
-  func : Function,
-  llvm_bb : @IR.BasicBlock,
-  label : String,
-) -> BasicBlock {
+pub impl Eq for BasicBlock with equal(self, other) {
+  self.label == other.label
+}
+
+///|
+pub fn BasicBlock::new(func : Function, label : String) -> BasicBlock {
   BasicBlock::{
-    llvm_bb,
+    llvm_bb: None,
     label,
     insts: Array::new(),
     parent: func,
     preds: Array::new(),
-    livein: Set::new(),
-    liveout: Set::new(),
+    succs: Array::new(),
+    phi_nodes: Array::new(),
+    live_in: Set::new(),
+    live_out: Set::new(),
   }
 }
 
 ///|
-fn BasicBlock::successors_label(self : Self) -> Array[String] {
-  guard self.insts.last() is Some(last_inst) else { return Array::new() }
-  let succ_labels = Array::new()
-  if last_inst
-    is {
-      opcode: Beq
-      | Bne
-      | Bgt
-      | Blt
-      | Bge
-      | Ble
-      | Bequ
-      | Bneu
-      | Bgtu
-      | Bgeu
-      | Bltu
-      | Bleu
-      | Jmp,
-      uses,
-      ..,
-    } {
-    uses.each(u => if u is Label(l) { succ_labels.push(l) })
-  }
-  succ_labels
+pub fn BasicBlock::clear(self : Self) -> Unit {
+  self.insts.clear()
+  self.preds.clear()
+  self.live_in.clear()
+  self.live_out.clear()
 }
 
-/////|
-//pub fn BasicBlock::new(llvm_bb: @IR.BasicBlock, label : String) -> BasicBlock {
-//  BasicBlock::{ llvm_bb, label, insts: Array::new(), parent: None, preds: Array::new() }
-//}
+///|
+pub fn BasicBlock::push(self : Self, inst : Instruction) -> Unit {
+  self.insts.push(inst)
+}
 
 ///|
-pub fn BasicBlock::add_inst_before_terminator(
+pub fn BasicBlock::push_inst_before_terminator(
   self : Self,
   inst : Instruction,
 ) -> Unit {
-  if self.insts.length() == 0 {
+  if self.insts.is_empty() {
     self.insts.push(inst)
     return
   }
-  if self.insts.last().unwrap().is_terminator() {
+  let last_inst = self.insts.last().unwrap()
+  if last_inst.opcode.is_terminator() {
     self.insts.insert(self.insts.length() - 1, inst)
   } else {
     self.insts.push(inst)
   }
 }
 
+// Return True is the live_out set was changed
+
 ///|
-pub fn BasicBlock::run_ir_translation(
+pub fn BasicBlock::update_live_out(
   self : Self,
-) -> Unit raise IRTranslateError {
-  for inst in self.llvm_bb.instIter() {
-    let minsts = Instruction::from_llvm_inst(inst, self) catch {
-      e => {
-        println("Error converting instruction in BB \{self.label}:")
-        println("  Instruction: \{inst}")
-        raise e
-      }
-    }
-    minsts.each(i => self.insts.push(i))
+  live_out : Set[Operand],
+) -> Bool {
+  if self.live_out == live_out {
+    return false
   }
+  self.live_out = live_out
+  true
+}
+
+///|
+pub fn BasicBlock::update_live_in(self : Self, live_in : Set[Operand]) -> Bool {
+  if self.live_in == live_in {
+    return false
+  }
+  self.live_in = live_in
+  true
+}
+
+///|
+pub fn BasicBlock::compute_live_out_from_succs(self : Self) -> Set[Operand] {
+  let live_out : Set[Operand] = Set::new()
+  for succ in self.succs {
+    succ.live_in.each(v => live_out.add(v))
+  }
+  live_out
 }
 
 ///|
 pub impl Show for BasicBlock with output(self, logger) {
+  if !self.live_in.is_empty() {
+    let str = self.live_in.iter().map(op => "\{op}").join(", ")
+    logger.write_string("# live: \{str}\n")
+  }
   logger.write_string(self.label)
   logger.write_string(":")
   if !self.preds.is_empty() {
@@ -100,9 +107,33 @@ pub impl Show for BasicBlock with output(self, logger) {
     logger.write_string("; preds: \{pred_labels}")
   }
   logger.write_string("\n")
+  let inst_strs : Array[(String, String)] = Array::new()
   for inst in self.insts {
-    logger.write_string("  ")
-    logger.write_string(inst.to_string())
-    logger.write_string("\n")
+    let inst_str = "  \{inst}"
+    let live_str = if !inst.live_in.is_empty() {
+      let str = inst.live_in.iter().map(op => "\{op}").join(", ")
+      " # live in: \{str}"
+    } else {
+      ""
+    }
+    inst_strs.push((inst_str, live_str))
+  }
+  fn max(a : Int, b : Int) {
+    if a > b {
+      a
+    } else {
+      b
+    }
+  }
+
+  let max_inst_len = inst_strs.map(p => p.0.length()).fold(init=0, max)
+  for inst_str_pair in inst_strs {
+    let (inst_str, live_str) = inst_str_pair
+    if live_str is "" {
+      logger.write_string("\{inst_str}\n")
+      continue
+    }
+    let padding = " ".repeat(max_inst_len - inst_str.length() + 8)
+    logger.write_string("\{inst_str}\{padding}\{live_str}\n")
   }
 }

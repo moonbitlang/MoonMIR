@@ -1,8 +1,6 @@
 {
-  "is-main": true,
-  "import" : [
+  "test-import" : [
     "Kaida-Amethyst/MoonLLVM/IR",
     "Kaida-Amethyst/MoonMIR/GMIR",
-    "Kaida-Amethyst/MoonMIR/gmir_riscv"
   ]
 }

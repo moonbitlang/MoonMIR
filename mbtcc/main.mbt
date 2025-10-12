@@ -138,7 +138,7 @@ fn main {
     )
     println(gmir)
   }
-  let riscv_asm = @riscv.from_gmir_module(gmir) catch {
+  let riscv_asm = @gmir_riscv.from_gmir_module(gmir) catch {
     e => {
       println("Error during RISCV assembly generation: \{e}")
       return

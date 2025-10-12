@@ -82,7 +82,7 @@ fn main_err() -> Unit raise {
   println(post_regalloc_mod)
 
   // Test RISC-V conversion to ensure prologue/epilogue works correctly
-  let rv_insts = @riscv.from_gmir_module(regalloced_mod)
+  let rv_insts = @gmir_riscv.from_gmir_module(regalloced_mod)
   println("\n=== RISC-V Assembly ===")
   for inst in rv_insts {
     println(inst)
