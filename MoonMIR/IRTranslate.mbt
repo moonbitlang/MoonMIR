@@ -240,7 +240,7 @@ pub fn translate_llvm_inst(
 /// // IRTranslate
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.functions[0]
+/// let mir_func = mir_mod.get_function("demo").unwrap()
 ///
 /// let expected =
 ///   #|func demo() {
@@ -305,7 +305,7 @@ pub fn translate_llvm_load_inst(
 /// // IRTranslate
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.functions[0]
+/// let mir_func = mir_mod.get_function("demo").unwrap()
 ///
 /// let expected =
 ///   #|func demo() {
@@ -392,7 +392,7 @@ pub fn translate_llvm_store_inst(
 /// let rv64_config = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64_config)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let actual = mir_mod.functions[0]
+/// let actual = mir_mod.get_function("add").unwrap()
 ///
 /// let expected =
 ///   #|func add(a0, a1, fa0, fa1) {
@@ -432,7 +432,7 @@ pub fn translate_llvm_binary_inst(
 /// let rv64_config = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64_config)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let actual = mir_mod.functions[0]
+/// let actual = mir_mod.get_function("add").unwrap()
 ///
 /// let expected =
 ///  #|func add(fa0, fa1) {
@@ -594,7 +594,7 @@ pub fn translate_llvm_float_binary_inst(
 /// let rv64_config = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64_config)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let actual = mir_mod.functions[0]
+/// let actual = mir_mod.get_function("add").unwrap()
 ///
 /// let expected = 
 ///   #|func add(a0, a1) {
@@ -732,7 +732,7 @@ pub fn translate_llvm_int_binary_inst(
 /// let mir_mod = Module::new(rv64_config)
 ///
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let actual = mir_mod.functions[0]
+/// let actual = mir_mod.get_function("neg").unwrap()
 ///
 /// let expected =
 ///  #|func neg(fa0) {
@@ -811,7 +811,7 @@ pub fn translate_llvm_fneg_inst(
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.functions[0]
+/// let mir_func = mir_mod.get_function("demo").unwrap()
 /// let expected =
 ///   #|func demo(a0, a1) {
 ///   #|entry:
@@ -964,7 +964,7 @@ pub fn translate_llvm_icmp_inst(
 ///   // IRTranslate
 ///   let mir_mod = Module::new(rv64)
 ///   mir_mod.translate_llvm_module(llvm_mod)
-///   let mir_func = mir_mod.functions[0]
+///   let mir_func = mir_mod.get_function("demo").unwrap()
 ///   let expected =
 ///     #|func demo(fa0, fa1) {
 ///     #|entry:
@@ -1124,7 +1124,7 @@ pub fn translate_llvm_fcmp_inst(
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.functions[0]
+/// let mir_func = mir_mod.get_function("demo").unwrap()
 /// let expected = 
 ///   #|func demo(a0, a1) {
 ///   #|entry:
@@ -1177,7 +1177,7 @@ pub fn translate_llvm_branch_inst(
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.functions[0]
+/// let mir_func = mir_mod.get_function("demo").unwrap()
 /// let expected = 
 ///   #|func demo(a0, a1) {
 ///   #|entry:
@@ -1368,7 +1368,7 @@ pub fn translate_llvm_conditional_branch(
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.functions[0]
+/// let mir_func = mir_mod.get_function("demo").unwrap()
 /// let expected = 
 ///   #|func demo(a0, a1) {
 ///   #|entry:
@@ -1555,9 +1555,10 @@ pub fn translate_llvm_return_inst(
 ///   #|}
 /// let llvm_mod = @TinyMoonBit.compile(code)
 /// // IRTranslate
+/// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.functions[1]
+/// let mir_func = mir_mod.get_function("demo").unwrap()
 /// let expected =
 ///   #|func demo() {
 ///   #|entry:

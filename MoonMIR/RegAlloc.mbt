@@ -3,7 +3,7 @@ pub suberror RegAllocError String derive(Show)
 
 ///|
 pub fn Module::alloc_register(self : Module) -> Unit raise RegAllocError {
-  for func in self.functions {
+  for func in self.functions.values() {
     func.alloc_register()
   }
 }

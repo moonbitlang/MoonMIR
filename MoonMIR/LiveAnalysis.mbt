@@ -3,7 +3,7 @@ typealias @deque.Deque
 
 ///|
 pub fn Module::live_analysis(self: Self) -> Unit {
-  self.functions.each(f => f.live_analysis())
+  self.functions.values().each(f => f.live_analysis())
 }
 
 ///|
@@ -28,7 +28,7 @@ pub fn Module::live_analysis(self: Self) -> Unit {
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
 /// mir_mod.live_analysis()
-/// let mir_func = mir_mod.functions[0]
+/// let mir_func = mir_mod.get_function("foo").unwrap()
 ///
 /// let expected = 
 ///   #|func foo(a0, a1) {

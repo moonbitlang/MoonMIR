@@ -18,8 +18,8 @@ test "Simple Int32 Binary IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
+  let mir_func = mir_mod.get_function("add").unwrap()
 
-  let mir_func = mir_mod.functions[0]
   let expected =
     #|func add(a0, a1) {
     #|entry:
@@ -55,8 +55,8 @@ test "Simple Int64 Binary IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
+  let mir_func = mir_mod.get_function("add").unwrap()
 
-  let mir_func = mir_mod.functions[0]
   let expected =
     #|func add(a0, a1) {
     #|entry:
@@ -90,7 +90,7 @@ test "Simple Float Binary IRTranslate Test" {
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
 
-  let mir_func = mir_mod.functions[0]
+  let mir_func = mir_mod.get_function("add").unwrap()
   let expected =
     #|func add(fa0, fa1) {
     #|entry:
@@ -120,8 +120,8 @@ test "Simple Double Binary IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
+  let mir_func = mir_mod.get_function("add").unwrap()
 
-  let mir_func = mir_mod.functions[0]
   let expected =
     #|func add(fa0, fa1) {
     #|entry:
@@ -147,7 +147,7 @@ test "Simple Alloca, Store and Load IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
-  let mir_func = mir_mod.functions[0]
+  let mir_func = mir_mod.get_function("demo").unwrap()
 
   let expected =
     #|func demo() {
@@ -175,7 +175,7 @@ test "Complex Int Binary IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
-  let mir_func = mir_mod.functions[0]
+  let mir_func = mir_mod.get_function("demo").unwrap()
 
   let expected =
     #|func demo() {
@@ -207,7 +207,7 @@ test "Complex Float Binary IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
-  let mir_func = mir_mod.functions[0]
+  let mir_func = mir_mod.get_function("demo").unwrap()
 
   let expected =
     #|func demo() {
@@ -246,7 +246,8 @@ test "ICmp IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
-  let mir_func = mir_mod.functions[0]
+  let mir_func = mir_mod.get_function("demo").unwrap()
+
   let expected =
     #|func demo(a0, a1) {
     #|entry:
@@ -278,7 +279,7 @@ test "FCmp IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
-  let mir_func = mir_mod.functions[0]
+  let mir_func = mir_mod.get_function("demo").unwrap()
   let expected =
     #|func demo(fa0, fa1) {
     #|entry:
@@ -307,7 +308,7 @@ test "Branch IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
-  let mir_func = mir_mod.functions[0]
+  let mir_func = mir_mod.get_function("demo").unwrap()
   let expected = 
     #|func demo(a0, a1) {
     #|entry:
@@ -341,8 +342,7 @@ test "While IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
-  let mir_func = mir_mod.functions[0]
-  println(mir_func)
+  let mir_func = mir_mod.get_function("demo").unwrap()
   let expected =
     #|func demo() {
     #|entry:
@@ -365,6 +365,8 @@ test "While IRTranslate Test" {
     #|  a0 = move.i64 v4
     #|  ret
     #|}
+    #|
+
   inspect(mir_func, content=expected)
 }
 
@@ -382,7 +384,7 @@ test "Call IRTranslate Test" {
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
-  let mir_func = mir_mod.functions[1]
+  let mir_func = mir_mod.get_function("demo").unwrap()
   let expected =
     #|func demo() {
     #|entry:

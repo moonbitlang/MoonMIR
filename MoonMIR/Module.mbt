@@ -3,7 +3,7 @@ pub(all) struct Module {
   source_file: String
   mut llvm_mod : @IR.Module?
   arch_config : ArchConfig
-  functions : Array[Function]
+  functions : Map[String, Function]
   all_llvm_functions : Map[String, @IR.Function] // includes external functions
   external_functions : Map[String, @IR.Function]
   global_values : Array[GlobalValue]
@@ -19,7 +19,7 @@ pub fn Module::new(arch_config : ArchConfig, source_file?: String) -> Module {
     source_file,
     llvm_mod: None,
     arch_config,
-    functions: Array::new(),
+    functions: Map::new(),
     all_llvm_functions: Map::new(),
     external_functions: Map::new(),
     global_values: Array::new(),
@@ -66,7 +66,7 @@ pub fn Module::add_function(
   arg_patterns : Array[ArgPattern],
 ) -> Function {
   let func = Function::new(self, name)
-  self.functions.push(func)
+  self.functions.set(name, func)
   if arg_patterns.is_empty() {
     return func
   }
@@ -76,12 +76,7 @@ pub fn Module::add_function(
 
 ///|
 pub fn Module::get_function(self: Self, name: String) -> Function? {
-  for func in self.functions {
-    if func.name == name {
-      return Some(func)
-    }
-  }
-  None
+  self.functions.get(name)
 }
 
 ///|

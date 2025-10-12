@@ -1,6 +1,6 @@
 ///|
 pub fn Module::legalize(self : Self) -> Unit raise MIRError {
-  self.functions.each(f => f.legalize())
+  self.functions.values().each(f => f.legalize())
 }
 
 ///|
