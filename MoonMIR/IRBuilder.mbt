@@ -136,6 +136,22 @@ pub fn IRBuilder::build_fbinary(
 
 ///|
 #callsite(autofill(loc))
+pub fn IRBuilder::build_funary(
+  self : Self,
+  unop : FUnaryOpCode,
+  bits : Int,
+  dst~ : FRegister,
+  src~ : FRegister,
+  loc~ : SourceLoc,
+) -> Instruction raise MIRError {
+  check_bits(bits, loc)
+  let dst = Operand::FRegister(dst)
+  let src = Operand::FRegister(src)
+  Instruction::new(FUnary(unop, bits), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
 pub fn IRBuilder::build_fneg(
   self : Self,
   bits : Int,

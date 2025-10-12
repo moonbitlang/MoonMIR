@@ -26,10 +26,21 @@ pub fn Instruction::legalize(
   let { bb, func, .. } = self
   let builder = IRBuilder::new(func, bb)
   match self.opcode {
-    IUnary(_, _) => self.legalize_iunary(builder)
-    IBinary(_, _) => self.legalize_ibinary(builder)
+    IBinary(_) => self.legalize_ibinary(builder)
+    IUnary(_) => self.legalize_iunary(builder)
+    ICmp(_) => self.legalize_icmp(builder)
     ILoad(_) => self.legalize_iload(builder)
     IStore(_) => self.legalize_istore(builder)
+    IMove(_) => self.legalize_imove(builder)
+    Branch(_) => self.legalize_branch(builder)
+    FBinary(_) => self.legalize_fbinary(builder)
+    FUnary(_) => self.legalize_funary(builder)
+    FCmp(_) => self.legalize_fcmp(builder)
+    //FLoad(_) => self.legalize_fload(builder)
+    //FStore(_) => self.legalize_fstore(builder)
+    //FMove(_) => self.legalize_fmove(builder)
+    //FMoveI(_) => self.legalize_fmovei(builder)
+    //IMoveF(_) => self.legalize_imovef(builder)
     _ => raise LegalizeError("Unimplmented Yet")
   }
 }
@@ -662,5 +673,115 @@ pub fn Instruction::legalize_fbinary(self: Instruction, builder: IRBuilder) -> A
     }
     { defs: [FRegister(_)], uses: [FRegister(_), FRegister(_)], .. } as inst => [inst]
     _ => raise LegalizeError("Unhandled FBinary legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_funary(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: FUnary(unop, bits), .. } else {
+    println(
+      "Compiler ICE: calling legalize_funary on non-FUnary instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
+      let v1 = func.new_virtual_freg()
+      let vdst = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_funary(unop, bits, dst=vdst, src=v1),
+        builder.build_storef(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FRegister(r1)], .. } => {
+      let vdst = func.new_virtual_freg()
+      [
+        builder.build_funary(unop, bits, dst=vdst, src=r1),
+        builder.build_storef(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [FRegister(rdst)], uses: [Mem(b1, o1)], .. } => {
+      let v1 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_funary(unop, bits, dst=rdst, src=v1),
+      ]
+    }
+    { defs: [FRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+    _ => raise LegalizeError("Unhandled FUnary legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_fcmp(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: FCmp(fcmpop, bits), .. } else {
+    println(
+      "Compiler ICE: calling legalize_fcmp on non-FCmp instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    {defs: [Mem(base, offset)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
+      let v1 = func.new_virtual_freg()
+      let v2 = func.new_virtual_freg()
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
+        builder.build_fcmp(fcmpop, bits, dst=vdst, src1=v1, src2=v2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1), FRegister(r2)], .. } => {
+      let v1 = func.new_virtual_freg()
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_fcmp(fcmpop, bits, dst=vdst, src1=v1, src2=r2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FRegister(r1), Mem(b2, o2)], .. } => {
+      let v2 = func.new_virtual_freg()
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
+        builder.build_fcmp(fcmpop, bits, dst=vdst, src1=r1, src2=v2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_fcmp(fcmpop, bits, dst=vdst, src1=r1, src2=r2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [IRegister(rdst)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
+      let v1 = func.new_virtual_freg()
+      let v2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
+        builder.build_fcmp(fcmpop, bits, dst=rdst, src1=v1, src2=v2),
+      ]
+    }
+    { defs: [IRegister(rdst)], uses: [Mem(b1, o1), FRegister(r2)], .. } => {
+      let v1 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_fcmp(fcmpop, bits, dst=rdst, src1=v1, src2=r2),
+      ]
+    }
+    { defs: [IRegister(rdst)], uses: [FRegister(r1), Mem(b2, o2)], .. } => {
+      let v2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
+        builder.build_fcmp(fcmpop, bits, dst=rdst, src1=r1, src2=v2),
+      ]
+    }
+    { defs: [IRegister(_)], uses: [IRegister(_), IRegister(_)], .. } as inst => [inst]
+    _ => raise LegalizeError("Unhandled FCmp legalization case: \{self}")
   }
 }
