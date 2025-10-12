@@ -25,9 +25,23 @@ pub fn Instruction::legalize(
 ) -> Array[Instruction] raise MIRError {
   let { bb, func, .. } = self
   let builder = IRBuilder::new(func, bb)
+  match self.opcode {
+    IUnary(_, _) => self.legalize_iunary(builder)
+    IBinary(_, _) => self.legalize_ibinary(builder)
+    ILoad(_) => self.legalize_iload(builder)
+    IStore(_) => self.legalize_istore(builder)
+    _ => raise LegalizeError("Unimplmented Yet")
+  }
+}
+
+fn Instruction::legalize_ibinary(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, ..} = builder
+  guard self is { opcode: IBinary(binop, bits), .. } else {
+    println("Compiler ICE: calling legalize_ibinary on non-IBinary instruction: \{self}")
+    panic()
+  }
   match self {
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [Mem(b1, o1), Mem(b2, o2)],
       ..,
@@ -43,7 +57,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [Mem(b1, o1), IRegister(r2)],
       ..,
@@ -57,7 +70,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [Mem(b1, o1), Imm(i2)],
       ..,
@@ -71,7 +83,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [IRegister(r1), Mem(b2, o2)],
       ..,
@@ -85,7 +96,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [IRegister(r1), IRegister(r2)],
       ..,
@@ -97,7 +107,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [IRegister(r1), Imm(i2)],
       ..,
@@ -109,7 +118,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [Imm(i1), Mem(b2, o2)],
       ..,
@@ -123,7 +131,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [Imm(i1), Mem(b2, o2)],
       ..,
@@ -139,7 +146,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [Imm(i1), IRegister(r2)],
       ..,
@@ -151,7 +157,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [Imm(i1), IRegister(r2)],
       ..,
@@ -165,7 +170,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [Mem(base, offset)],
       uses: [Imm(i1), Imm(i2)],
       ..,
@@ -191,7 +195,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [IRegister(rdst)],
       uses: [Mem(b1, o1), Mem(b2, o2)],
       ..,
@@ -205,7 +208,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [IRegister(rdst)],
       uses: [Mem(b1, o1), IRegister(r2)],
       ..,
@@ -217,7 +219,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [IRegister(rdst)],
       uses: [Mem(b1, o1), Imm(i2)],
       ..,
@@ -229,7 +230,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(binop, bits),
       defs: [IRegister(rdst)],
       uses: [IRegister(r1), Mem(b2, o2)],
       ..,
@@ -241,13 +241,11 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IBinary(_),
       defs: [IRegister(_)],
       uses: [IRegister(_), IRegister(_)],
       ..,
     } => [self]
     {
-      opcode: IBinary(_),
       defs: [IRegister(_)],
       uses: [IRegister(_), Imm(_)],
       ..,
@@ -260,7 +258,6 @@ pub fn Instruction::legalize(
     } if binop.is_commutative() =>
       [builder.build_ibinary_imm(binop, bits, dst=rdst, src1=r2, src2=i)]
     {
-      opcode: IBinary(binop, bits),
       defs: [IRegister(rdst)],
       uses: [Imm(i), IRegister(r2)],
       ..,
@@ -271,10 +268,19 @@ pub fn Instruction::legalize(
         builder.build_ibinary(binop, bits, dst=rdst, src1=v1, src2=r2),
       ]
     }
-    { opcode: IBinary(_), .. } =>
+    _ =>
       raise LegalizeError("Unhandled IBinary legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_iunary(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, ..} = builder
+  guard self is { opcode: IUnary(unop, bits), .. } else {
+    println("Compiler ICE: calling legalize_iunary on non-IUnary instruction: \{self}")
+    panic()
+  }
+  match self {
     {
-      opcode: IUnary(unop, bits),
       defs: [Mem(base, offset)],
       uses: [Mem(b1, o1)],
       ..,
@@ -288,7 +294,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IUnary(unop, bits),
       defs: [Mem(base, offset)],
       uses: [IRegister(r1)],
       ..,
@@ -300,7 +305,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IUnary(unop, bits),
       defs: [Mem(base, offset)],
       uses: [Imm(i1)],
       ..,
@@ -315,7 +319,6 @@ pub fn Instruction::legalize(
       ]
     }
     {
-      opcode: IUnary(unop, bits),
       defs: [IRegister(rdst)],
       uses: [Mem(b1, o1)],
       ..,
@@ -326,9 +329,9 @@ pub fn Instruction::legalize(
         builder.build_iunary(unop, bits, dst=rdst, src=v1),
       ]
     }
-    { opcode: IUnary(_), defs: [IRegister(_)], uses: [IRegister(_)], .. } =>
+    { defs: [IRegister(_)], uses: [IRegister(_)], .. } =>
       [self]
-    { opcode: IUnary(unop, bits), defs: [IRegister(rdst)], uses: [Imm(i1)], .. } => {
+    { defs: [IRegister(rdst)], uses: [Imm(i1)], .. } => {
       let i = match unop {
         Not => i1.lnot()
       }
@@ -338,8 +341,153 @@ pub fn Instruction::legalize(
         builder.build_imove(bits, dst=rdst, src=vdst),
       ]
     }
-    { opcode: IUnary(_), .. } =>
-      raise LegalizeError("Unhandled IUnary legalization case: \{self}")
-    _ => raise LegalizeError("Unimplmented Yet")
+    _ => raise LegalizeError("Unhandled IUnary legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_icmp(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+
+  let { func, ..} = builder
+  guard self is { opcode: ICmp(_, _), .. } else {
+    println("Compiler ICE: calling legalize_icmp on non-ICmp instruction: \{self}")
+    panic()
+  }
+
+  match self {
+    { opcode: ICmp(cmpop, bits), defs: [Mem(base, offset)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let v2 = func.new_virtual_reg()
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+        builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
+        builder.build_icmp(cmpop, bits, dst=vdst, src1=v1, src2=v2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { opcode: ICmp(cmpop, bits), defs: [Mem(base, offset)], uses: [Mem(b1, o1), IRegister(r2)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+        builder.build_icmp(cmpop, bits, dst=vdst, src1=v1, src2=r2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { opcode: ICmp(cmpop, bits), defs: [Mem(base, offset)], uses: [Mem(b1, o1), Imm(i2)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let v2 = func.new_virtual_reg()
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+        builder.build_imove_imm(bits, dst=v2, src=i2),
+        builder.build_icmp(cmpop, bits, dst=vdst, src1=v1, src2=v2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { opcode: ICmp(cmpop, bits), defs: [Mem(base, offset)], uses: [IRegister(r1), Mem(b2, o2)], .. } => {
+      let v2 = func.new_virtual_reg()
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
+        builder.build_icmp(cmpop, bits, dst=vdst, src1=r1, src2=v2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { opcode: ICmp(cmpop, bits), defs: [Mem(base, offset)], uses: [IRegister(r1), IRegister(r2)], .. } => {
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_icmp(cmpop, bits, dst=vdst, src1=r1, src2=r2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { opcode: ICmp(cmpop, bits), defs: [Mem(base, offset)], uses: [IRegister(r1), Imm(i2)], .. } => {
+      let v2 = func.new_virtual_reg()
+      let vdst = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(bits, dst=v2, src=i2),
+        builder.build_icmp(cmpop, bits, dst=vdst, src1=r1, src2=v2),
+        builder.build_storei(32, src=vdst, base~, offset~),
+      ]
+    }
+    { opcode: ICmp(cmpop, bits), defs: [IRegister(rdst)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let v2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+        builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
+        builder.build_icmp(cmpop, bits, dst=rdst, src1=v1, src2=v2),
+      ]
+    }
+    { opcode: ICmp(cmpop, bits), defs: [IRegister(rdst)], uses: [Mem(b1, o1), IRegister(r2)], .. } => {
+      let v1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+        builder.build_icmp(cmpop, bits, dst=rdst, src1=v1, src2=r2),
+      ]
+    }
+    { opcode: ICmp(cmpop, bits), defs: [IRegister(rdst)], uses: [Mem(b1, o1), Imm(i2)], .. } => {
+      let v1 = func.new_virtual_reg()
+      let v2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+        builder.build_imove_imm(bits, dst=v2, src=i2),
+        builder.build_icmp(cmpop, bits, dst=rdst, src1=v1, src2=v2),
+      ]
+    }
+    { opcode: ICmp(cmpop, bits), defs: [IRegister(rdst)], uses: [IRegister(r1), Mem(b2, o2)], .. } => {
+      let v2 = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
+        builder.build_icmp(cmpop, bits, dst=rdst, src1=r1, src2=v2),
+      ]
+    }
+    { opcode: ICmp(_, _), defs: [IRegister(_)], uses: [IRegister(_), IRegister(_)], .. } => [self]
+    { opcode: ICmp(cmpop, bits), defs: [IRegister(rdst)], uses: [IRegister(r1), Imm(i2)], .. } => {
+      let v2 = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(bits, dst=v2, src=i2),
+        builder.build_icmp(cmpop, bits, dst=rdst, src1=r1, src2=v2),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled ICmp legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_iload(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, ..} = builder
+  guard self is { opcode: ILoad(bits), .. } else {
+    println("Compiler ICE: calling legalize_iload on non-ILoad instruction: \{self}")
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
+      let v1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+        builder.build_storei(bits, src=v1, base~, offset~),
+      ]
+    }
+    { defs: [IRegister(_)], uses: [Mem(_)], .. } as inst => [inst]
+    _ => raise LegalizeError("Unhandled ILoad legalization case: \{self}")
+  }
+}
+
+pub fn Instruction::legalize_istore(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, ..} = builder
+  guard self is { opcode: IStore(bits), .. } else {
+    println("Compiler ICE: calling legalize_istore on non-IStore instruction: \{self}")
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
+      let v1 = func.new_virtual_reg()
+      [
+        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+        builder.build_storei(bits, src=v1, base~, offset~),
+      ]
+    }
+    { defs: [Mem(_)], uses: [IRegister(_)], .. } as inst => [inst]
+    _ => raise LegalizeError("Unhandled IStore legalization case: \{self}")
   }
 }
