@@ -304,3 +304,11 @@ pub fn IRBuilder::build_jmp(
   let target_label = Operand::Label(target_label)
   Instruction::new(Branch(Jmp), [], [target_label], self.bb)
 }
+
+pub fn IRBuilder::build_call(
+  self: Self,
+  func_name: String
+) -> Instruction {
+  let func_name = Operand::Label(func_name)
+  Instruction::new(Call, [], [func_name], self.bb)
+}

@@ -1527,16 +1527,118 @@ pub fn translate_llvm_call_inst(
   llvm_inst : @IR.CallInst,
   builder : IRBuilder,
   func : Function,
-  data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
-  if false {
-    raise IRTranslateError("CallInst translation not implemented yet")
+  let { callee, args, .. } = llvm_inst
+  let { num_arg_regs, num_arg_fregs, .. } = func.mod.arch_config
+  let callee_name = callee.getName().unwrap()
+  let mut call_ireg_cnt = 0
+  let mut call_freg_cnt = 0
+  let minsts : Array[Instruction] = Array::new()
+  for arg in args {
+    guard func.get_operand_from_llvm_value(arg) is Some(arg_op) else {
+      raise IRTranslateError("CallInst: argument operand not found in value_map")
+    }
+    let arg_is_fp = arg.getType().isIEEELikeFPTy()
+    match (arg_op, arg_is_fp) {
+      (IRegister(src), false) if call_ireg_cnt < num_arg_regs => {
+        let dst = AReg(call_ireg_cnt)
+        let inst = builder.build_imove(64, dst~, src~)
+        minsts.push(inst)
+        call_ireg_cnt += 1
+      }
+      (IRegister(src), false) => {
+        let _ = func.extend_var_stack(8L, 8L)
+        let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
+        let inst = builder.build_storei(64, src~, base=StackPtr, offset=stack_offset)
+        minsts.push(inst)
+        call_ireg_cnt += 1
+      }
+      (FRegister(src), true) if call_freg_cnt < num_arg_fregs => {
+        let dst = FAReg(call_freg_cnt)
+        let inst = builder.build_fmove(64, dst~, src~)
+        minsts.push(inst)
+        call_freg_cnt += 1
+      }
+      (FRegister(src), true) => {
+        let _ = func.extend_var_stack(8L, 8L)
+        let stack_offset = 8L * (call_freg_cnt - num_arg_fregs).to_int64()
+        let inst = builder.build_storef(64, src~, base=StackPtr, offset=stack_offset)
+        minsts.push(inst)
+        call_freg_cnt += 1
+      }
+      (Imm(src), false) if call_ireg_cnt < num_arg_regs => {
+        let dst = AReg(call_ireg_cnt)
+        let inst = builder.build_imove_imm(64, dst~, src~)
+        minsts.push(inst)
+        call_ireg_cnt += 1
+      }
+      (Imm(src), false) => {
+        let _ = func.extend_var_stack(8L, 8L)
+        let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
+        let vreg = func.new_virtual_reg()
+        let inst1 = builder.build_imove_imm(64, dst=vreg, src=src)
+        let inst2 = builder.build_storei(64, src=vreg, base=StackPtr, offset=stack_offset)
+        minsts.push(inst1)
+        minsts.push(inst2)
+        call_ireg_cnt += 1
+      }
+      (FImm(src), true) if call_freg_cnt < num_arg_fregs => {
+        let dst = FAReg(call_freg_cnt)
+        let ireg = func.new_virtual_reg()
+        let inst1 = builder.build_imove_imm(64, dst=ireg, src=src.reinterpret_as_int64())
+        let inst2 = builder.build_fmove_from_ireg(64, dst=dst, src=ireg)
+        minsts.push(inst1)
+        minsts.push(inst2)
+        call_freg_cnt += 1
+      }
+      (FImm(src), true) => {
+        let _ = func.extend_var_stack(8L, 8L)
+        let stack_offset = 8L * (call_freg_cnt - num_arg_fregs).to_int64()
+        let ireg = func.new_virtual_reg()
+        let inst1 = builder.build_imove_imm(64, dst=ireg, src=src.reinterpret_as_int64())
+        let inst2 = builder.build_storei(64, src= ireg, base=StackPtr, offset=stack_offset)
+        minsts.push(inst1)
+        minsts.push(inst2)
+        call_freg_cnt += 1
+      }
+      (Mem(b, o), false) if call_ireg_cnt < num_arg_regs => {
+        let dst = AReg(call_ireg_cnt)
+        let inst = builder.build_loadi(64, dst=dst, base=b, offset=o)
+        minsts.push(inst)
+        call_ireg_cnt += 1
+      }
+      (Mem(b, o), false) => {
+        let _ = func.extend_var_stack(8L, 8L)
+        let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
+        let src = func.new_virtual_reg()
+        let inst1 = builder.build_loadi(64, dst=src, base=b, offset=o)
+        let inst2 = builder.build_storei(64, src~, base=StackPtr, offset=stack_offset)
+        minsts.push(inst1)
+        minsts.push(inst2)
+        call_ireg_cnt += 1
+      }
+      (Mem(b, o), true) if call_freg_cnt < num_arg_fregs => {
+        let dst = FAReg(call_freg_cnt)
+        let inst = builder.build_loadf(64, dst=dst, base=b, offset=o)
+        minsts.push(inst)
+        call_freg_cnt += 1
+      }
+      (Mem(b, o), true) => {
+        let _ = func.extend_var_stack(8L, 8L)
+        let stack_offset = 8L * (call_freg_cnt - num_arg_fregs).to_int64()
+        let src = func.new_virtual_reg()
+        let inst1 = builder.build_loadi(64, dst=src, base=b, offset=o)
+        let inst2 = builder.build_storei(64, src~, base=StackPtr, offset=stack_offset)
+        minsts.push(inst1)
+        minsts.push(inst2)
+        call_freg_cnt += 1
+      }
+      _ =>
+        raise IRTranslateError("CallInst: Unsupported argument operand type")
+    }
   }
-  ignore(llvm_inst)
-  ignore(builder)
-  ignore(func)
-  ignore(data_layout)
-  []
+  minsts.push(builder.build_call(callee_name))
+  minsts
 }
 
 pub fn translate_llvm_phi_node(
