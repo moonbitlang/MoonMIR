@@ -30,7 +30,8 @@ test "Simple Int32 Binary IRTranslate Test" {
     #|  v4 = rem.i32 a0, a1
     #|  v5 = and.i32 a0, a1
     #|  v6 = or.i32 a0, a1
-    #|  ret v6
+    #|  a0 = move.i64 v6
+    #|  ret
     #|}
     #|
 
@@ -66,7 +67,8 @@ test "Simple Int64 Binary IRTranslate Test" {
     #|  v4 = rem.i64 a0, a1
     #|  v5 = and.i64 a0, a1
     #|  v6 = or.i64 a0, a1
-    #|  ret v6
+    #|  a0 = move.i64 v6
+    #|  ret
     #|}
     #|
 
@@ -96,7 +98,8 @@ test "Simple Float Binary IRTranslate Test" {
     #|  vf1 = fsub.f32 fa0, fa1
     #|  vf2 = fmul.f32 fa0, fa1
     #|  vf3 = fdiv.f32 fa0, fa1
-    #|  ret vf3
+    #|  fa0 = move.f64 vf3
+    #|  ret
     #|}
     #|
 
@@ -126,7 +129,8 @@ test "Simple Double Binary IRTranslate Test" {
     #|  vf1 = fsub.f64 fa0, fa1
     #|  vf2 = fmul.f64 fa0, fa1
     #|  vf3 = fdiv.f64 fa0, fa1
-    #|  ret vf3
+    #|  fa0 = move.f64 vf3
+    #|  ret
     #|}
     #|
 
@@ -151,7 +155,8 @@ test "Simple Alloca, Store and Load IRTranslate Test" {
     #|  v1 = move.i32 10
     #|  store.i32 (fp' - 4), v1
     #|  v0 = load.i32 (fp' - 4)
-    #|  ret v0
+    #|  a0 = move.i64 v0
+    #|  ret
     #|}
     #|
 
@@ -183,7 +188,7 @@ test "Complex Int Binary IRTranslate Test" {
     #|  v5 = move.i32 50
     #|  v3 = sub.i32 v5, v2
     #|  a0 = move.i64 0
-    #|  ret a0
+    #|  ret
     #|}
     #|
 
@@ -220,7 +225,7 @@ test "Complex Float Binary IRTranslate Test" {
     #|  v2 = move.i64 0
     #|  vf7 = move.f64 v2
     #|  fa0 = move.f64 vf7
-    #|  ret fa0
+    #|  ret
     #|}
     #|
   inspect(mir_func, content=expected)
@@ -309,13 +314,14 @@ test "Branch IRTranslate Test" {
     #|  blt a0, a1, demo_L1, demo_L2
     #|
     #|demo_L1:                       ; preds: entry
-    #|  ret a0
+    #|  ret
     #|
     #|demo_L2:                       ; preds: entry
     #|  jmp demo_L3
     #|
     #|demo_L3:                       ; preds: demo_L2
-    #|  ret a1
+    #|  a0 = move.i64 a1
+    #|  ret
     #|}
     #|
 

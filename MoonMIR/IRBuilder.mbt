@@ -258,16 +258,7 @@ pub fn IRBuilder::build_ret(self : Self) -> Instruction {
   Instruction::new(Ret, [], [], self.bb)
 }
 
-pub fn IRBuilder::build_ret_ireg(self: Self, src: IRegister) -> Instruction {
-  let src = Operand::IRegister(src)
-  Instruction::new(Ret, [], [src], self.bb)
-}
-
-pub fn IRBuilder::build_ret_freg(self: Self, src: FRegister) -> Instruction {
-  let src = Operand::FRegister(src)
-  Instruction::new(Ret, [], [src], self.bb)
-}
-
+///|
 pub fn IRBuilder::build_branch(
   self: Self,
   opcode: BranchOpCode,

@@ -114,7 +114,7 @@ pub impl Show for BasicBlock with output(self, logger) {
       logger.write_string("\{inst_str}\n")
       continue
     }
-    let padding = " ".repeat(max_inst_len - inst_str.length() + 4)
+    let padding = " ".repeat(max_inst_len - inst_str.length() + 8)
     logger.write_string("\{inst_str}\{padding}\{live_str}\n")
   }
 }

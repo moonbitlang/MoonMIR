@@ -211,7 +211,7 @@ pub fn translate_llvm_inst(
     ReturnInst(ret_inst) =>
       translate_llvm_return_inst(ret_inst, builder, func, data_layout)
     CallInst(call_inst) =>
-      translate_llvm_call_inst(call_inst, builder, func, data_layout)
+      translate_llvm_call_inst(call_inst, builder, func)
     PHINode(phi_node) =>
       translate_llvm_phi_node(phi_node, func)
     ExtractValueInst(_) =>
@@ -248,7 +248,8 @@ pub fn translate_llvm_inst(
 ///   #|  v1 = move.i32 10
 ///   #|  store.i32 (fp' - 4), v1
 ///   #|  v0 = load.i32 (fp' - 4)
-///   #|  ret v0
+///   #|  a0 = move.i64 v0
+///   #|  ret
 ///   #|}
 ///   #|
 ///
@@ -312,7 +313,8 @@ pub fn translate_llvm_load_inst(
 ///   #|  v1 = move.i32 10
 ///   #|  store.i32 (fp' - 4), v1
 ///   #|  v0 = load.i32 (fp' - 4)
-///   #|  ret v0
+///   #|  a0 = move.i64 v0
+///   #|  ret
 ///   #|}
 ///   #|
 ///
@@ -436,7 +438,8 @@ pub fn translate_llvm_binary_inst(
 ///  #|func add(fa0, fa1) {
 ///  #|entry:
 ///  #|  vf0 = fadd.f32 fa0, fa1
-///  #|  ret vf0
+///  #|  fa0 = move.f64 vf0
+///  #|  ret
 ///  #|}
 ///  #|
 ///
@@ -597,7 +600,8 @@ pub fn translate_llvm_float_binary_inst(
 ///   #|func add(a0, a1) {
 ///   #|entry:
 ///   #|  v0 = add.i32 a0, a1
-///   #|  ret v0
+///   #|  a0 = move.i64 v0
+///   #|  ret
 ///   #|}
 ///   #|
 ///
@@ -734,7 +738,8 @@ pub fn translate_llvm_int_binary_inst(
 ///  #|func neg(fa0) {
 ///  #|entry:
 ///  #|  vf0 = fneg.f32 fa0
-///  #|  ret vf0
+///  #|  fa0 = move.f64 vf0
+///  #|  ret
 ///  #|}
 ///  #|
 ///
@@ -1126,13 +1131,14 @@ pub fn translate_llvm_fcmp_inst(
 ///   #|  blt a0, a1, demo_L1, demo_L2
 ///   #|
 ///   #|demo_L1:                       ; preds: entry
-///   #|  ret a0
+///   #|  ret
 ///   #|
 ///   #|demo_L2:                       ; preds: entry
 ///   #|  jmp demo_L3
 ///   #|
 ///   #|demo_L3:                       ; preds: demo_L2
-///   #|  ret a1
+///   #|  a0 = move.i64 a1
+///   #|  ret
 ///   #|}
 ///   #|
 /// 
@@ -1178,13 +1184,14 @@ pub fn translate_llvm_branch_inst(
 ///   #|  blt a0, a1, demo_L1, demo_L2
 ///   #|
 ///   #|demo_L1:                       ; preds: entry
-///   #|  ret a0
+///   #|  ret
 ///   #|
 ///   #|demo_L2:                       ; preds: entry
 ///   #|  jmp demo_L3
 ///   #|
 ///   #|demo_L3:                       ; preds: demo_L2
-///   #|  ret a1
+///   #|  a0 = move.i64 a1
+///   #|  ret
 ///   #|}
 ///   #|
 /// 
@@ -1368,13 +1375,14 @@ pub fn translate_llvm_conditional_branch(
 ///   #|  blt a0, a1, demo_L1, demo_L2
 ///   #|
 ///   #|demo_L1:                       ; preds: entry
-///   #|  ret a0
+///   #|  ret
 ///   #|
 ///   #|demo_L2:                       ; preds: entry
 ///   #|  jmp demo_L3
 ///   #|
 ///   #|demo_L3:                       ; preds: demo_L2
-///   #|  ret a1
+///   #|  a0 = move.i64 a1
+///   #|  ret
 ///   #|}
 ///   #|
 /// 
@@ -1482,11 +1490,19 @@ pub fn translate_llvm_return_inst(
     raise IRTranslateError("ReturnInst: return value operand not found in value_map")
   }
   match ret_op {
-    IRegister(ret) => [builder.build_ret_ireg(ret)]
-    FRegister(ret) => [builder.build_ret_freg(ret)]
+    IRegister(ret) if !(ret is AReg(0)) => {
+      let minst = builder.build_imove(64, dst=AReg(0), src=ret)
+      return [minst, builder.build_ret()]
+    }
+    IRegister(_) => [builder.build_ret()]
+    FRegister(ret) if !(ret is FAReg(0)) => {
+      let minst = builder.build_fmove(64, dst=FAReg(0), src=ret)
+      return [minst, builder.build_ret()]
+    }
+    FRegister(_) => [builder.build_ret()]
     Imm(ret) => {
       let minst = builder.build_imove_imm(64, dst=AReg(0), src=ret)
-      return [minst, builder.build_ret_ireg(AReg(0))]
+      return [minst, builder.build_ret()]
     }
     FImm(ret) => {
       let ireg = func.new_virtual_reg()
@@ -1495,7 +1511,7 @@ pub fn translate_llvm_return_inst(
         builder.build_imove_imm(64, dst=ireg, src=ret.reinterpret_as_int64()),
         builder.build_fmove_from_ireg(64, dst=freg, src=ireg),
         builder.build_fmove(64, dst=FAReg(0), src=freg),
-        builder.build_ret_freg(FAReg(0)),
+        builder.build_ret(),
       ]
     }
     Mem(b, o) if retVal.getType().isIEEELikeFPTy() => {
@@ -1504,7 +1520,7 @@ pub fn translate_llvm_return_inst(
       [
         builder.build_loadf(data_size, dst=freg, base=b, offset=o),
         builder.build_fmove(data_size, dst=FAReg(0), src=freg),
-        builder.build_ret_freg(FAReg(0)),
+        builder.build_ret(),
       ]
     }
     Mem(b, o) => {
@@ -1513,12 +1529,12 @@ pub fn translate_llvm_return_inst(
       [
         builder.build_loadi(data_size, dst=reg, base=b, offset=o),
         builder.build_imove(data_size, dst=AReg(0), src=reg),
-        builder.build_ret_freg(FAReg(0)),
+        builder.build_ret(),
       ]
     }
     Label(label) => {
       let minst = builder.build_load_addr(AReg(0), label)
-      [minst, builder.build_ret_ireg(AReg(0))]
+      [minst, builder.build_ret()]
     }
   }
 }
@@ -1543,7 +1559,9 @@ pub fn translate_llvm_call_inst(
       (IRegister(src), false) if call_ireg_cnt < num_arg_regs => {
         let dst = AReg(call_ireg_cnt)
         let inst = builder.build_imove(64, dst~, src~)
-        minsts.push(inst)
+        if src != dst {
+          minsts.push(inst)
+        }
         call_ireg_cnt += 1
       }
       (IRegister(src), false) => {
@@ -1556,6 +1574,9 @@ pub fn translate_llvm_call_inst(
       (FRegister(src), true) if call_freg_cnt < num_arg_fregs => {
         let dst = FAReg(call_freg_cnt)
         let inst = builder.build_fmove(64, dst~, src~)
+        if src != dst {
+          minsts.push(inst)
+        }
         minsts.push(inst)
         call_freg_cnt += 1
       }
