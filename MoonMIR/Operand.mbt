@@ -1,7 +1,6 @@
 ///|
 pub(all) enum IRegister {
   VReg(Int) // Virtual Register
-  PReg(Int) // Physical Register (before grouping)
   AReg(Int) // Argument Register (after grouping)
   TReg(Int) // Temporary Register (after grouping)
   SReg(Int) // Saved Register (after grouping)
@@ -15,7 +14,6 @@ pub(all) enum IRegister {
 pub impl Show for IRegister with output(self, logger) {
   let s = match self {
     VReg(n) => "v\{n}"
-    PReg(n) => "r\{n}"
     AReg(n) => "a\{n}"
     TReg(n) => "t\{n}"
     SReg(n) => "s\{n}"
@@ -30,7 +28,6 @@ pub impl Show for IRegister with output(self, logger) {
 ///|
 pub(all) enum FRegister {
   VFReg(Int) // Virtual Float Register
-  PFReg(Int) // Physical Float Register (before grouping)
   FAReg(Int) // Float Argument Register (after grouping)
   FTReg(Int) // Float Temporary Register (after grouping)
   FSReg(Int) // Float Saved Register (after grouping)
@@ -40,7 +37,6 @@ pub(all) enum FRegister {
 pub impl Show for FRegister with output(self, logger) {
   let s = match self {
     VFReg(n) => "vf\{n}"
-    PFReg(n) => "f\{n}"
     FAReg(n) => "fa\{n}"
     FTReg(n) => "ft\{n}"
     FSReg(n) => "fs\{n}"
@@ -57,6 +53,14 @@ pub(all) enum Operand {
   FImm(Double) // Floating Point Immediate Value
   Label(String) // Label
 } derive(Hash, Eq)
+
+fn Operand::is_fp_operand(self: Self) -> Bool {
+  match self {
+    FRegister(_) => true
+    FImm(_) => true
+    _ => false
+  }
+}
 
 ///|
 pub impl Show for Operand with output(self, logger) {

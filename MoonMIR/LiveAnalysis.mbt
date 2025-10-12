@@ -2,11 +2,6 @@
 typealias @deque.Deque
 
 ///|
-pub fn Module::live_analysis(self: Self) -> Unit {
-  self.functions.values().each(f => f.live_analysis())
-}
-
-///|
 ///
 /// Perform live variable analysis on the function.
 ///
@@ -27,8 +22,8 @@ pub fn Module::live_analysis(self: Self) -> Unit {
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
-/// mir_mod.live_analysis()
 /// let mir_func = mir_mod.get_function("foo").unwrap()
+/// mir_func.live_analysis()
 ///
 /// let expected = 
 ///   #|func foo(a0, a1) {

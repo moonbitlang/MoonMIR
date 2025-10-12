@@ -30,6 +30,9 @@ pub(all) struct Function {
   bbmap : Map[String, BasicBlock] // Map from label to BasicBlock
   mut vreg_cnt : Int
   mut vfreg_cnt : Int
+
+  // spilled_count
+  mut spilled_count : Int
 }
 
 ///|
@@ -48,7 +51,20 @@ pub fn Function::new(mod : Module, name : String) -> Function {
     bbmap: Map::new(),
     vreg_cnt: 0,
     vfreg_cnt: 0,
+    spilled_count: 0,
   }
+}
+
+pub fn Function::inst_iter(self : Self) -> Iter[Instruction] {
+  letrec f = yield_ => {
+    for bb in self.body {
+      for inst in bb.insts {
+        guard yield_(inst) is IterContinue else { return IterEnd }
+      }
+    }
+    IterContinue
+  }
+  Iter::new(f)
 }
 
 ///|
@@ -136,14 +152,14 @@ fn Function::extend_var_stack(
 }
 
 ///|
-//fn Function::extend_reg_stack(
-//  self : Self,
-//  size : Int64,
-//  align : Int64,
-//) -> Int64 {
-//  self.reg_stack_size = (self.reg_stack_size + size + align - 1) / align * align
-//  self.reg_stack_size
-//}
+fn Function::extend_reg_stack(
+  self : Self,
+  size : Int64,
+  align : Int64,
+) -> Int64 {
+  self.reg_stack_size = (self.reg_stack_size + size + align - 1) / align * align
+  self.reg_stack_size
+}
 
 ///|
 pub fn Function::new_virtual_reg(self : Self) -> IRegister {
