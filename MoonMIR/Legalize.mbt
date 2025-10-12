@@ -589,3 +589,78 @@ pub fn Instruction::legalize_branch(self: Instruction, builder: IRBuilder) -> Ar
     _ => raise LegalizeError("Unhandled IBranch legalization case: \{self}")
   }
 }
+
+//
+// Note: fbinary is not support fimm operand, if it happens, raise error
+pub fn Instruction::legalize_fbinary(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: FBinary(binop, bits), .. } else {
+    println(
+      "Compiler ICE: calling legalize_fbinary on non-FBinary instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
+      let v1 = func.new_virtual_freg()
+      let v2 = func.new_virtual_freg()
+      let vdst = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
+        builder.build_fbinary(binop, bits, dst=vdst, src1=v1, src2=v2),
+        builder.build_storef(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1), FRegister(r2)], .. } => {
+      let v1 = func.new_virtual_freg()
+      let vdst = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_fbinary(binop, bits, dst=vdst, src1=v1, src2=r2),
+        builder.build_storef(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FRegister(r1), Mem(b2, o2)], .. } => {
+      let v2 = func.new_virtual_freg()
+      let vdst = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
+        builder.build_fbinary(binop, bits, dst=vdst, src1=r1, src2=v2),
+        builder.build_storef(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let vdst = func.new_virtual_freg()
+      [
+        builder.build_fbinary(binop, bits, dst=vdst, src1=r1, src2=r2),
+        builder.build_storef(bits, src=vdst, base~, offset~),
+      ]
+    }
+    { defs: [FRegister(rdst)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
+      let v1 = func.new_virtual_freg()
+      let v2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
+        builder.build_fbinary(binop, bits, dst=rdst, src1=v1, src2=v2),
+      ]
+    }
+    { defs: [FRegister(rdst)], uses: [Mem(b1, o1), FRegister(r2)], .. } => {
+      let v1 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
+        builder.build_fbinary(binop, bits, dst=rdst, src1=v1, src2=r2),
+      ]
+    }
+    { defs: [FRegister(rdst)], uses: [FRegister(r1), Mem(b2, o2)], .. } => {
+      let v2 = func.new_virtual_freg()
+      [
+        builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
+        builder.build_fbinary(binop, bits, dst=rdst, src1=r1, src2=v2),
+      ]
+    }
+    { defs: [FRegister(_)], uses: [FRegister(_), FRegister(_)], .. } as inst => [inst]
+    _ => raise LegalizeError("Unhandled FBinary legalization case: \{self}")
+  }
+}
