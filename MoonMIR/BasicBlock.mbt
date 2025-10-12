@@ -80,13 +80,26 @@ pub impl Show for BasicBlock with output(self, logger) {
     logger.write_string("; preds: \{pred_labels}")
   }
   logger.write_string("\n")
+  let inst_strs : Array[(String, String)] = Array::new()
   for inst in self.insts {
-    logger.write_string("  ")
-    logger.write_string(inst.to_string())
-    if !inst.live_in.is_empty() {
+    let inst_str = "  \{inst}"
+    let live_str = if !inst.live_in.is_empty() {
       let str = inst.live_in.iter().map(op => "\{op}").join(", ")
-      logger.write_string("     # live in: \{str}")
+      " # live in: \{str}"
+    } else {
+      ""
     }
-    logger.write_string("\n")
+    inst_strs.push((inst_str, live_str))
+  }
+  fn max(a: Int, b: Int) { if a > b { a } else { b } }
+  let max_inst_len = inst_strs.map(p => p.0.length()).fold(init=0, max)
+  for inst_str_pair in inst_strs {
+    let (inst_str, live_str) = inst_str_pair
+    if live_str is "" {
+      logger.write_string("\{inst_str}\n")
+      continue
+    }
+    let padding = " ".repeat(max_inst_len - inst_str.length() + 4)
+    logger.write_string("\{inst_str}\{padding}\{live_str}\n")
   }
 }
