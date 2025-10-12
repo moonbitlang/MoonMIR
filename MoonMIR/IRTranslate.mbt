@@ -1659,6 +1659,22 @@ pub fn translate_llvm_call_inst(
     }
   }
   minsts.push(builder.build_call(callee_name))
+  if !(llvm_inst.getType().asTypeEnum() is VoidType(_)) {
+    guard func.get_operand_from_llvm_value(llvm_inst) is Some(ret_op) else {
+      raise IRTranslateError("CallInst: return value operand not found in value_map")
+    }
+    match ret_op {
+      IRegister(dst) => {
+        let inst = builder.build_imove(64, dst~, src=AReg(0))
+        minsts.push(inst)
+      }
+      FRegister(dst) => {
+        let inst = builder.build_fmove(64, dst~, src=FAReg(0))
+        minsts.push(inst)
+      }
+      _ => ()
+    }
+  }
   minsts
 }
 

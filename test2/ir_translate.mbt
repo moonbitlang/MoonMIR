@@ -327,3 +327,73 @@ test "Branch IRTranslate Test" {
 
   inspect(mir_func, content=expected)
 }
+
+test "While IRTranslate Test" {
+  let code = 
+    #|fn demo() -> Int {
+    #|  let mut a = 0
+    #|  while a < 10 {
+    #|    a = a + 1
+    #|  }
+    #|  return a
+    #|}
+  let llvm_mod = @TinyMoonBit.compile(code)
+  // IRTranslate
+  let mir_mod = Module::new(rv64)
+  mir_mod.translate_llvm_module(llvm_mod)
+  let mir_func = mir_mod.functions[0]
+  println(mir_func)
+  let expected =
+    #|func demo() {
+    #|entry:
+    #|  v5 = move.i32 0
+    #|  store.i32 (fp' - 4), v5
+    #|  jmp demo_L1
+    #|
+    #|demo_L1:                       ; preds: entry, demo_L2
+    #|  v0 = load.i32 (fp' - 4)
+    #|  blt v0, 10, demo_L2, demo_L3
+    #|
+    #|demo_L2:                       ; preds: demo_L1
+    #|  v2 = load.i32 (fp' - 4)
+    #|  v3 = add.i32 v2, 1
+    #|  store.i32 (fp' - 4), v3
+    #|  jmp demo_L1
+    #|
+    #|demo_L3:                       ; preds: demo_L1
+    #|  v4 = load.i32 (fp' - 4)
+    #|  a0 = move.i64 v4
+    #|  ret
+    #|}
+  inspect(mir_func, content=expected)
+}
+
+test "Call IRTranslate Test" {
+  let code = 
+    #|fn add(x: Int, y: Int) -> Int {
+    #|  x + y
+    #|}
+    #|
+    #|fn demo() -> Int {
+    #|  let a = add(10, 20)
+    #|  return a
+    #|}
+  let llvm_mod = @TinyMoonBit.compile(code)
+  // IRTranslate
+  let mir_mod = Module::new(rv64)
+  mir_mod.translate_llvm_module(llvm_mod)
+  let mir_func = mir_mod.functions[1]
+  let expected =
+    #|func demo() {
+    #|entry:
+    #|  a0 = move.i64 10
+    #|  a1 = move.i64 20
+    #|  call add
+    #|  v0 = move.i64 a0
+    #|  a0 = move.i64 v0
+    #|  ret
+    #|}
+    #|
+
+  inspect(mir_func, content=expected)
+}
