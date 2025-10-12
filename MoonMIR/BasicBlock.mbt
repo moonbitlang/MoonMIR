@@ -6,8 +6,8 @@ pub(all) struct BasicBlock {
   parent : Function
   preds : Array[BasicBlock]
   succs: Array[BasicBlock]
-  livein : Set[Operand]
-  liveout : Set[Operand]
+  mut live_in : Set[Operand]
+  mut live_out : Set[Operand]
 }
 
 pub impl Eq for BasicBlock with equal(self, other) {
@@ -23,8 +23,8 @@ pub fn BasicBlock::new(func : Function, label : String) -> BasicBlock {
     parent: func,
     preds: Array::new(),
     succs: Array::new(),
-    livein: Set::new(),
-    liveout: Set::new(),
+    live_in: Set::new(),
+    live_out: Set::new(),
   }
 }
 
@@ -32,13 +32,38 @@ pub fn BasicBlock::new(func : Function, label : String) -> BasicBlock {
 pub fn BasicBlock::clear(self : Self) -> Unit {
   self.insts.clear()
   self.preds.clear()
-  self.livein.clear()
-  self.liveout.clear()
+  self.live_in.clear()
+  self.live_out.clear()
 }
 
 ///|
 pub fn BasicBlock::push(self : Self, inst : Instruction) -> Unit {
   self.insts.push(inst)
+}
+
+// Return True is the live_out set was changed
+pub fn BasicBlock::update_live_out(self: Self, live_out: Set[Operand]) -> Bool {
+  if self.live_out == live_out {
+    return false
+  }
+  self.live_out = live_out
+  true
+}
+
+pub fn BasicBlock::update_live_in(self: Self, live_in: Set[Operand]) -> Bool {
+  if self.live_in == live_in {
+    return false
+  }
+  self.live_in = live_in
+  true
+}
+
+pub fn BasicBlock::compute_live_out_from_succs(self: Self) -> Set[Operand] {
+  let live_out: Set[Operand] = Set::new()
+  for succ in self.succs {
+    succ.live_in.each(v => live_out.add(v))
+  }
+  live_out
 }
 
 ///|
@@ -52,6 +77,10 @@ pub impl Show for BasicBlock with output(self, logger) {
   }
   logger.write_string("\n")
   for inst in self.insts {
+    if !inst.live_in.is_empty() {
+      let str = inst.live_in.iter().map(op => "\{op}").join(", ")
+      logger.write_string("  # live: \{str}\n")
+    }
     logger.write_string("  ")
     logger.write_string(inst.to_string())
     logger.write_string("\n")

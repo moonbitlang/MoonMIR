@@ -5,8 +5,8 @@ pub(all) struct Instruction {
   uses : Array[Operand]
   bb : BasicBlock
   func : Function
-  livein : Set[Operand]
-  liveout : Set[Operand]
+  mut live_in : Set[Operand]
+  mut live_out : Set[Operand]
 }
 
 ///|
@@ -22,9 +22,31 @@ fn Instruction::new(
     uses,
     bb,
     func: bb.parent,
-    livein: Set::new(),
-    liveout: Set::new(),
+    live_in: Set::new(),
+    live_out: Set::new(),
   }
+}
+
+///|
+///
+/// Returns true if live_in changed.
+pub fn Instruction::update_live_in(self: Self, live_out: Set[Operand]) -> Bool {
+  if self.live_out == live_out {
+    return false
+  }
+  self.live_out = live_out
+  true
+}
+
+///|
+///
+/// Returns true if live_out changed.
+pub fn Instruction::update_live_out(self: Self, live_in: Set[Operand]) -> Bool {
+  if self.live_in == live_in {
+    return false
+  }
+  self.live_in = live_in
+  true
 }
 
 ///|
