@@ -1571,14 +1571,615 @@ pub fn translate_llvm_cast_inst(
   func : Function,
   data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
-  if false {
-    raise IRTranslateError("CastInst translation not implemented yet")
+  let { opcode, from_val, to_ty, .. } = llvm_inst
+  guard func.get_operand_from_llvm_value(from_val) is Some(from_op) else {
+    raise IRTranslateError("CastInst: source operand not found in value_map")
   }
-  ignore(llvm_inst)
-  ignore(builder)
-  ignore(func)
-  ignore(data_layout)
-  []
+  let from_ty_size = data_layout.getTypeAllocSizeInBits(from_val.getType())
+  let to_ty_size = data_layout.getTypeAllocSizeInBits(to_ty)
+  guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
+    raise IRTranslateError("CastInst: destination operand not found in value_map")
+  }
+  match opcode {
+    Trunc => translate_trunc(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    SExt => translate_sext(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    ZExt => translate_zext(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    FPTrunc => translate_fptrunc(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    FPExt => translate_fpext(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    UIToFP => translate_uitofp(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    SIToFP => translate_sitofp(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    FPToUI => translate_fptoui(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    FPToSI => translate_fptosi(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    PtrToInt => translate_bitcast(64, from_op, dst_op, builder, func)
+    IntToPtr => translate_bitcast(64, from_op, dst_op, builder, func)
+    BitCast => translate_bitcast(from_ty_size, from_op, dst_op, builder, func)
+  }
+}
+
+pub fn translate_trunc(
+  from_ty_size : Int,
+  to_ty_size : Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (IRegister(dst), IRegister(src)) => [builder.build_trunc(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_trunc(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (IRegister(dst), Mem(b, o)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
+        builder.build_trunc(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (Mem(b, o), IRegister(src)) => {
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_trunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b, o), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_trunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
+        builder.build_trunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "Trunc: Unsupported operand types for truncation",
+      )
+  }
+}
+
+pub fn translate_sext(
+  from_ty_size : Int,
+  to_ty_size : Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (IRegister(dst), IRegister(src)) => [builder.build_sext(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_sext(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (IRegister(dst), Mem(b, o)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
+        builder.build_sext(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (Mem(b, o), IRegister(src)) => {
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_sext(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b, o), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_sext(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
+        builder.build_sext(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "SExt: Unsupported operand types for sign extension",
+      )
+  }
+}
+
+pub fn translate_zext(
+  from_ty_size : Int,
+  to_ty_size : Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (IRegister(dst), IRegister(src)) => [builder.build_zext(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_zext(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (IRegister(dst), Mem(b, o)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
+        builder.build_zext(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (Mem(b, o), IRegister(src)) => {
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_zext(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b, o), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_zext(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
+        builder.build_zext(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "ZExt: Unsupported operand types for zero extension",
+      )
+  }
+}
+
+pub fn translate_fptrunc(
+  from_ty_size : Int,
+  to_ty_size : Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (FRegister(dst), FRegister(src)) => [builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src~)]
+    (FRegister(dst), FImm(src_imm)) => {
+      let src = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
+        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (FRegister(dst), Mem(b, o)) => {
+      let src = func.new_virtual_freg()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base=b, offset=o),
+        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (Mem(b, o), FRegister(src)) => {
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b, o), FImm(src_imm)) => {
+      let src = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
+        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src = func.new_virtual_freg()
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base=b2, offset=o2),
+        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "FPTrunc: Unsupported operand types for floating-point truncation",
+      )
+  }
+}
+
+pub fn translate_fpext(
+  from_ty_size : Int,
+  to_ty_size : Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (FRegister(dst), FRegister(src)) => [builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src~)]
+    (FRegister(dst), FImm(src_imm)) => {
+      let src = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
+        builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (FRegister(dst), Mem(b, o)) => {
+      let src = func.new_virtual_freg()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base=b, offset=o),
+        builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (Mem(b, o), FRegister(src)) => {
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_fpext(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b, o), FImm(src_imm)) => {
+      let src = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
+        builder.build_fpext(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src = func.new_virtual_freg()
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base=b2, offset=o2),
+        builder.build_fpext(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "FPExt: Unsupported operand types for floating-point extension",
+      )
+  }
+}
+
+pub fn translate_uitofp(
+  from_ty_size : Int,
+  to_ty_size : Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (FRegister(dst), IRegister(src)) => [builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst~, src~)]
+    (FRegister(dst), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (FRegister(dst), Mem(b, o)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
+        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (Mem(b, o), IRegister(src)) => {
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b, o), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
+        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "UIToFP: Unsupported operand types for unsigned integer to floating-point conversion",
+      )
+  }
+}
+
+pub fn translate_sitofp(
+  from_ty_size : Int,
+  to_ty_size : Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (FRegister(dst), IRegister(src)) => [builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst~, src~)]
+    (FRegister(dst), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (FRegister(dst), Mem(b, o)) => {
+      let src = func.new_virtual_reg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
+        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (Mem(b, o), IRegister(src)) => {
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b, o), Imm(src_imm)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
+        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src = func.new_virtual_reg()
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
+        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storef(to_ty_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "SIToFP: Unsupported operand types for signed integer to floating-point conversion",
+      )
+  }  
+}
+
+pub fn translate_fptoui(
+  from_ty_size : Int,
+  to_ty_size : Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (IRegister(dst), FRegister(src)) => [builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), FImm(src_imm)) => {
+      let src = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
+        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (IRegister(dst), Mem(b, o)) => {
+      let src = func.new_virtual_freg()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base=b, offset=o),
+        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (Mem(b, o), FRegister(src)) => {
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b, o), FImm(src_imm)) => {
+      let src = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
+        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src = func.new_virtual_freg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base=b2, offset=o2),
+        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "FPToUI: Unsupported operand types for floating-point to unsigned integer conversion",
+      )
+  }
+}
+
+pub fn translate_fptosi(
+  from_ty_size : Int,
+  to_ty_size : Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (IRegister(dst), FRegister(src)) => [builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), FImm(src_imm)) => {
+      let src = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
+        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (IRegister(dst), Mem(b, o)) => {
+      let src = func.new_virtual_freg()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base=b, offset=o),
+        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    (Mem(b, o), FRegister(src)) => {
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b, o), FImm(src_imm)) => {
+      let src = func.new_virtual_freg()
+      let ireg = func.new_virtual_reg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
+        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
+      ]
+    }
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let src = func.new_virtual_freg()
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base=b2, offset=o2),
+        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst=tmp, src~),
+        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "FPToSI: Unsupported operand types for floating-point to signed integer conversion",
+      )
+  }
+}
+
+// MIR has no bitcast instruction
+// Use Move, FMoveI, IMoveF, Load, Store, etc. to implement BitCast
+pub fn translate_bitcast(
+  data_size: Int,
+  from_op : Operand,
+  dst_op : Operand,
+  builder : IRBuilder,
+  func : Function,
+) -> Array[Instruction] raise MIRError {
+  match (dst_op, from_op) {
+    (IRegister(dst), IRegister(src)) => [builder.build_imove(data_size, dst~, src~)]
+    (IRegister(dst), Imm(src_imm)) => [builder.build_imove_imm(data_size, dst~, src=src_imm)]
+    (IRegister(dst), Mem(b, o)) => {
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=tmp, base=b, offset=o),
+        builder.build_imove(data_size, dst~, src=tmp),
+      ]
+    }
+    (Mem(b, o), IRegister(src)) => [builder.build_storei(data_size, src~, base=b, offset=o)]
+    (Mem(b1, o1), Mem(b2, o2)) => {
+      let tmp = func.new_virtual_reg()
+      [
+        builder.build_loadi(data_size, dst=tmp, base=b2, offset=o2),
+        builder.build_storei(data_size, src=tmp, base=b1, offset=o1),
+      ]
+    }
+    (FRegister(dst), FRegister(src)) => [builder.build_fmove(data_size, dst~, src~)]
+    (FRegister(dst), FImm(src_imm)) => {
+      let ireg = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_from_ireg(data_size, dst~, src=ireg),
+      ]
+    }
+    (FRegister(dst), Mem(b, o)) => {
+      let tmp = func.new_virtual_freg()
+      [
+        builder.build_loadf(data_size, dst=tmp, base=b, offset=o),
+        builder.build_fmove(data_size, dst~, src=tmp),
+      ]
+    }
+    (Mem(b, o), FRegister(src)) => [builder.build_storef(data_size, src~, base=b, offset=o)]
+    (FRegister(dst), IRegister(src)) => [builder.build_fmove_from_ireg(data_size, dst~, src~)]
+    (IRegister(dst), FRegister(src)) => [builder.build_fmove_to_ireg(data_size, dst~, src~)]
+    (FRegister(dst), Imm(src_imm)) => {
+      let ireg = func.new_virtual_reg()
+      [
+        builder.build_imove_imm(data_size, dst=ireg, src=src_imm),
+        builder.build_fmove_from_ireg(data_size, dst~, src=ireg),
+      ]
+    }
+    (IRegister(dst), FImm(src_imm)) => {
+      let freg = func.new_virtual_freg()
+      [
+        builder.build_imove_imm(data_size, dst~, src=src_imm.reinterpret_as_int64()),
+        builder.build_fmove_to_ireg(data_size, dst~, src=freg)
+      ]
+    }
+    _ =>
+      raise IRTranslateError(
+        "BitCast: Unsupported operand types for bitcast",
+      )
+  }
 }
 
 ///|

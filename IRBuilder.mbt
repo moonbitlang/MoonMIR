@@ -308,6 +308,168 @@ pub fn IRBuilder::build_fmove_to_ireg(
 }
 
 ///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_trunc(
+  self: Self,
+  from_ty_size~: Int,
+  to_ty_size~: Int,
+  dst~: IRegister,
+  src~: IRegister,
+  loc~: SourceLoc
+) -> Instruction raise MIRError {
+  guard from_ty_size > to_ty_size else {
+    raise InValidBitWidthError("from_size must be greater than to_size: \{from_ty_size} <= \{to_ty_size}, loc: \{loc}")
+  }
+  let dst = Operand::IRegister(dst)
+  let src = Operand::IRegister(src)
+  Instruction::new(Cast(Trunc(from_ty_size, to_ty_size)), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_zext(
+  self: Self,
+  from_ty_size~: Int,
+  to_ty_size~: Int,
+  dst~: IRegister,
+  src~: IRegister,
+  loc~: SourceLoc
+) -> Instruction raise MIRError {
+  guard from_ty_size < to_ty_size else {
+    raise InValidBitWidthError("from_size must be less than to_size: \{from_ty_size} >= \{to_ty_size}, loc: \{loc}")
+  }
+  let dst = Operand::IRegister(dst)
+  let src = Operand::IRegister(src)
+  Instruction::new(Cast(ZExt(from_ty_size, to_ty_size)), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_sext(
+  self: Self,
+  from_ty_size~: Int,
+  to_ty_size~: Int,
+  dst~: IRegister,
+  src~: IRegister,
+  loc~: SourceLoc
+) -> Instruction raise MIRError {
+  guard from_ty_size < to_ty_size else {
+    raise InValidBitWidthError("from_size must be less than to_size: \{from_ty_size} >= \{to_ty_size}, loc: \{loc}")
+  }
+  let dst = Operand::IRegister(dst)
+  let src = Operand::IRegister(src)
+  Instruction::new(Cast(SExt(from_ty_size, to_ty_size)), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_fptrunc(
+  self: Self,
+  from_ty_size~: Int,
+  to_ty_size~: Int,
+  dst~: FRegister,
+  src~: FRegister,
+  loc~: SourceLoc
+) -> Instruction raise MIRError {
+  guard from_ty_size > to_ty_size else {
+    raise InValidBitWidthError("from_size must be greater than to_size: \{from_ty_size} <= \{to_ty_size}, loc: \{loc}")
+  }
+  let dst = Operand::FRegister(dst)
+  let src = Operand::FRegister(src)
+  Instruction::new(Cast(FPTrunc(from_ty_size, to_ty_size)), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_fpext(
+  self: Self,
+  from_ty_size~: Int,
+  to_ty_size~: Int,
+  dst~: FRegister,
+  src~: FRegister,
+  loc~: SourceLoc
+) -> Instruction raise MIRError {
+  guard from_ty_size < to_ty_size else {
+    raise InValidBitWidthError("from_size must be less than to_size: \{from_ty_size} >= \{to_ty_size}, loc: \{loc}")
+  }
+  let dst = Operand::FRegister(dst)
+  let src = Operand::FRegister(src)
+  Instruction::new(Cast(FPExt(from_ty_size, to_ty_size)), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_fp_to_si(
+  self: Self,
+  from_ty_size~: Int,
+  to_ty_size~: Int,
+  dst~: IRegister,
+  src~: FRegister,
+  loc~: SourceLoc
+) -> Instruction raise MIRError {
+  guard from_ty_size <= to_ty_size else {
+    raise InValidBitWidthError("from_size must be less than or equal to to_size: \{from_ty_size} > \{to_ty_size}, loc: \{loc}")
+  }
+  let dst = Operand::IRegister(dst)
+  let src = Operand::FRegister(src)
+  Instruction::new(Cast(FPToSI(from_ty_size, to_ty_size)), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_fp_to_ui(
+  self: Self,
+  from_ty_size~: Int,
+  to_ty_size~: Int,
+  dst~: IRegister,
+  src~: FRegister,
+  loc~: SourceLoc
+) -> Instruction raise MIRError {
+  guard from_ty_size <= to_ty_size else {
+    raise InValidBitWidthError("from_size must be less than or equal to to_size: \{from_ty_size} > \{to_ty_size}, loc: \{loc}")
+  }
+  let dst = Operand::IRegister(dst)
+  let src = Operand::FRegister(src)
+  Instruction::new(Cast(FPToUI(from_ty_size, to_ty_size)), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_si_to_fp(
+  self: Self,
+  from_ty_size~: Int,
+  to_ty_size~: Int,
+  dst~: FRegister,
+  src~: IRegister,
+  loc~: SourceLoc
+) -> Instruction raise MIRError {
+  guard from_ty_size <= to_ty_size else {
+    raise InValidBitWidthError("from_size must be less than or equal to to_size: \{from_ty_size} > \{to_ty_size}, loc: \{loc}")
+  }
+  let dst = Operand::FRegister(dst)
+  let src = Operand::IRegister(src)
+  Instruction::new(Cast(SIToFP(from_ty_size, to_ty_size)), [dst], [src], self.bb)
+}
+
+///|
+#callsite(autofill(loc))
+pub fn IRBuilder::build_ui_to_fp(
+  self: Self,
+  from_ty_size~: Int,
+  to_ty_size~: Int,
+  dst~: FRegister,
+  src~: IRegister,
+  loc~: SourceLoc
+) -> Instruction raise MIRError {
+  guard from_ty_size <= to_ty_size else {
+    raise InValidBitWidthError("from_size must be less than or equal to to_size: \{from_ty_size} > \{to_ty_size}, loc: \{loc}")
+  }
+  let dst = Operand::FRegister(dst)
+  let src = Operand::IRegister(src)
+  Instruction::new(Cast(UIToFP(from_ty_size, to_ty_size)), [dst], [src], self.bb)
+}
+
+///|
 pub fn IRBuilder::build_load_addr(
   self : Self,
   dst : IRegister,
