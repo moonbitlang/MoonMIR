@@ -6,6 +6,8 @@ pub fn Module::translate_llvm_module(
   self.llvm_mod = Some(llvm_mod)
 
   // Step 1: Translate global values
+  self.translate_global_values(llvm_mod)
+
   // Step 2: Translate functions
   for func_pair in llvm_mod.functions {
     let (_, func) = func_pair
@@ -17,6 +19,97 @@ pub fn Module::translate_llvm_module(
       f.translate_llvm_function(func)
     }
   }
+}
+
+pub fn Module::translate_global_values(
+  self: Self,
+  llvm_mod: @IR.Module
+) -> Unit raise MIRError {
+  let data_layout = llvm_mod.getDataLayout()
+
+  for global_name, gv in llvm_mod.globals {
+    match gv.asGlobalValueEnum() {
+      Function(_) => ()
+      GlobalVariable({ initializer: None, initializerTy, ..}) => {
+        let size = data_layout.getTypeAllocSize(initializerTy).reinterpret_as_uint()
+        let _ = self.add_global_zero_data(global_name, size)
+      }
+      GlobalVariable({ initializer: Some(initializer), ..}) => 
+        self.translate_llvm_global_constant(global_name, initializer)
+      GlobalConstant({ value, ..}) => self.translate_llvm_global_constant(global_name, value)
+    }
+  }
+}
+
+pub fn Module::translate_llvm_global_constant(
+  self: Self,
+  global_name: String,
+  global_constant: &@IR.Constant
+) -> Unit raise MIRError {
+  let gv = match global_constant.asConstantEnum() {
+    ConstantInt({ vty, value, ..}) => {
+      match vty.asIntegerTypeEnum() {
+        Int1Type(_) => {
+          let data = [Byte(value.to_byte())]
+          self.add_global_data(global_name, data)
+        }
+        Int8Type(_) => {
+          let data = [Byte(value.to_byte())]
+          self.add_global_data(global_name, data)
+        }
+        Int16Type(_) => {
+          let data = [Half(value.to_uint16())]
+          self.add_global_data(global_name, data)
+        }
+        Int32Type(_) => {
+          let data = [Word(value.to_int().reinterpret_as_uint())]
+          self.add_global_data(global_name, data)
+        }
+        Int64Type(_) => {
+          let data = [Quad(value.reinterpret_as_uint64())]
+          self.add_global_data(global_name, data)
+        }
+      }
+    }
+    ConstantFP({ vty, value, ..}) => {
+      match vty.asFPTypeEnum() {
+        FloatType(_) => {
+          let bits = value.to_float().reinterpret_as_uint()
+          let data = [Word(bits)]
+          self.add_global_data(global_name, data)
+        }
+        DoubleType(_) => {
+          let bits = value.reinterpret_as_uint64()
+          let data = [Quad(bits)]
+          self.add_global_data(global_name, data)
+        }
+        ty =>
+          raise IRTranslateError(
+            "Unsupported floating point type \{ty} in global constant.",
+          )
+      }
+    }
+    ConstantPointerNull(_) => {
+      let data = [Quad(0)]
+      self.add_global_data(global_name, data)
+    }
+    ConstantString({ data, .. }) => {
+      self.add_global_string(label=global_name, content=data)
+    }
+    ConstantArray(_) =>
+      raise IRTranslateError(
+        "ConstantArray in global constant is not supported yet.",
+      )
+    ConstantStruct(_) =>
+      raise IRTranslateError(
+        "ConstantStruct in global constant is not supported yet.",
+      )
+    _ =>
+      raise IRTranslateError(
+        "Unsupported constant type in global constant.",
+      )
+  }
+  let _ = gv
 }
 
 ///|
