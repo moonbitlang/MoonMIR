@@ -127,6 +127,7 @@ test "While Live Analysis" {
     #|  a0 = move.i64 v7               # live in: v7
     #|  ret
     #|}
+    #|
 
   inspect(mir_func, content=expected)
 }

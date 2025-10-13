@@ -532,6 +532,7 @@ pub fn Instruction::legalize_imove(
         builder.build_storei(bits, src=vdst, base~, offset~),
       ]
     }
+    { defs: [IRegister(d)], uses: [IRegister(s)], .. } if d == s => []
     { defs: [IRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
     { defs: [IRegister(_)], uses: [Imm(_)], .. } as inst => [inst]
     _ => raise LegalizeError("Unhandled IMove legalization case: \{self}")

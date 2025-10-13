@@ -1,18 +1,13 @@
-///|
-pub suberror RegAllocError String derive(Show)
 
 ///|
-pub fn Module::alloc_register(self : Module) -> Unit raise RegAllocError {
+pub fn Module::alloc_register(self : Module) -> Unit raise MIRError {
   for func in self.functions.values() {
     func.alloc_register()
   }
 }
 
 ///|
-pub fn Function::alloc_register(self : Function) -> Unit raise RegAllocError {
-  if false {
-    raise RegAllocError("Not implemented yet.")
-  }
+pub fn Function::alloc_register(self : Function) -> Unit raise MIRError {
   // Step 1. Liveness Analysis
   self.live_analysis()
 
@@ -37,12 +32,7 @@ pub fn Function::alloc_register(self : Function) -> Unit raise RegAllocError {
   // otherwise we're done.
   if need_rewrite {
     self.rewrite_by_replacement_map(replacement_map)
-    self.legalize() catch {
-      err =>
-        raise RegAllocError(
-          "Failed to legalize after register allocation: \{err}",
-        )
-    }
+    self.legalize() 
     self.alloc_register()
   }
 }

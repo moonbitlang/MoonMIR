@@ -10,7 +10,7 @@ pub(all) struct Instruction {
 }
 
 ///|
-fn Instruction::new(
+pub fn Instruction::new(
   opcode : OpCode,
   defs : Array[Operand],
   uses : Array[Operand],

@@ -56,6 +56,25 @@ pub fn InterferenceGpaph::new(
   }
 }
 
+pub impl Show for InterferenceGpaph with output(self, logger) {
+  logger.write_string("Interference Graph:\n")
+  logger.write_string("Nodes:\n")
+  for i, node in self.nodes.iter() {
+    logger.write_string("\{node}")
+    if i % 10 != 9 && i != self.nodes.size() - 1 {
+      logger.write_string(", ")
+    } else {
+      logger.write_string("\n")
+    }
+  }
+  logger.write_string("Edges:\n")
+  for pair in self.edges {
+    let (node, neighbors) = pair
+    let neighbor_str = neighbors.iter().map(n => "\{n}").join(", ")
+    logger.write_string("  \{node}: \{neighbor_str}\n")
+  }
+}
+
 ///|
 pub fn InterferenceGpaph::add_node(
   self : InterferenceGpaph,
@@ -74,11 +93,11 @@ pub fn InterferenceGpaph::add_edge(
   node1 : Operand,
   node2 : Operand,
 ) -> Unit {
+  self..add_node(node1)..add_node(node2)
   if node1 == node2 {
     return
   }
   // No need to check if nodes contains node1 or node2.
-  self..add_node(node1)..add_node(node2)
   self.edges[node1].add(node2)
   self.edges[node2].add(node1)
 }
@@ -168,6 +187,15 @@ pub fn Function::build_preference_list(
           }
         }
         entry.push_back(src)
+        let entry = match preference_list.get(src) {
+          Some(deque) => deque
+          None => {
+            let new_deque = Deque::new()
+            preference_list.set(src, new_deque)
+            new_deque
+          }
+        }
+        entry.push_back(dst)
       }
       _ => ()
     }
