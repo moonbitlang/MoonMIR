@@ -27,14 +27,13 @@ typealias @deque.Deque
 ///
 /// let expected = 
 ///   #|func foo(a0, a1) {
-///   #|# live: a0, a1
-///   #|entry:
-///   #|  v0 = add.i32 a0, a1         # live in: a0, a1
-///   #|  v1 = sub.i32 a0, a1         # live in: v0, a0, a1
-///   #|  v2 = mul.i32 v0, v1         # live in: v0, v1
-///   #|  v3 = div.i32 v0, v1         # live in: v2, v0, v1
-///   #|  v4 = rem.i32 v2, v3         # live in: v2, v3
-///   #|  a0 = move.i64 v4            # live in: v4
+///   #|entry:                       ; live in: a0, a1
+///   #|  v0 = add.i32 a0, a1        # live in: a0, a1
+///   #|  v1 = sub.i32 a0, a1        # live in: v0, a0, a1
+///   #|  v2 = mul.i32 v0, v1        # live in: v0, v1
+///   #|  v3 = div.i32 v0, v1        # live in: v2, v0, v1
+///   #|  v4 = rem.i32 v2, v3        # live in: v2, v3
+///   #|  a0 = move.i64 v4           # live in: v4
 ///   #|  ret
 ///   #|}
 ///   #|

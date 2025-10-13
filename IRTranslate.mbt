@@ -1225,13 +1225,16 @@ pub fn translate_llvm_fcmp_inst(
 ///   #|entry:
 ///   #|  blt a0, a1, demo_L1, demo_L2
 ///   #|
-///   #|demo_L1:                       ; preds: entry
+///   #|; preds: entry
+///   #|demo_L1:
 ///   #|  ret
 ///   #|
-///   #|demo_L2:                       ; preds: entry
+///   #|; preds: entry
+///   #|demo_L2:
 ///   #|  jmp demo_L3
 ///   #|
-///   #|demo_L3:                       ; preds: demo_L2
+///   #|; preds: demo_L2
+///   #|demo_L3:
 ///   #|  a0 = move.i64 a1
 ///   #|  ret
 ///   #|}
@@ -1275,13 +1278,16 @@ pub fn translate_llvm_branch_inst(
 ///   #|entry:
 ///   #|  blt a0, a1, demo_L1, demo_L2
 ///   #|
-///   #|demo_L1:                       ; preds: entry
+///   #|; preds: entry
+///   #|demo_L1:
 ///   #|  ret
 ///   #|
-///   #|demo_L2:                       ; preds: entry
+///   #|; preds: entry
+///   #|demo_L2:
 ///   #|  jmp demo_L3
 ///   #|
-///   #|demo_L3:                       ; preds: demo_L2
+///   #|; preds: demo_L2
+///   #|demo_L3:
 ///   #|  a0 = move.i64 a1
 ///   #|  ret
 ///   #|}
@@ -1497,13 +1503,16 @@ pub fn translate_llvm_conditional_branch(
 ///   #|entry:
 ///   #|  blt a0, a1, demo_L1, demo_L2
 ///   #|
-///   #|demo_L1:                       ; preds: entry
+///   #|; preds: entry
+///   #|demo_L1:
 ///   #|  ret
 ///   #|
-///   #|demo_L2:                       ; preds: entry
+///   #|; preds: entry
+///   #|demo_L2:
 ///   #|  jmp demo_L3
 ///   #|
-///   #|demo_L3:                       ; preds: demo_L2
+///   #|; preds: demo_L2
+///   #|demo_L3:
 ///   #|  a0 = move.i64 a1
 ///   #|  ret
 ///   #|}

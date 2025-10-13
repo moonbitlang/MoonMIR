@@ -95,24 +95,24 @@ pub fn BasicBlock::compute_live_out_from_succs(self : Self) -> Set[Operand] {
 
 ///|
 pub impl Show for BasicBlock with output(self, logger) {
-  if !self.live_in.is_empty() {
-    let str = self.live_in.iter().map(op => "\{op}").join(", ")
-    logger.write_string("# live: \{str}\n")
-  }
-  logger.write_string(self.label)
-  logger.write_string(":")
   if !self.preds.is_empty() {
     let pred_labels = self.preds.map(b => b.label).join(", ")
-    logger.write_string("                       ")
-    logger.write_string("; preds: \{pred_labels}")
+    logger.write_string("; preds: \{pred_labels}\n")
   }
-  logger.write_string("\n")
   let inst_strs : Array[(String, String)] = Array::new()
+  let label_str = "\{self.label}:"
+  let live_in_notes = if !self.live_in.is_empty() {
+    let str = self.live_in.iter().map(op => "\{op}").join(", ")
+    "; live in: \{str}"
+  } else {
+    ""
+  }
+  inst_strs.push((label_str, live_in_notes))
   for inst in self.insts {
     let inst_str = "  \{inst}"
     let live_str = if !inst.live_in.is_empty() {
       let str = inst.live_in.iter().map(op => "\{op}").join(", ")
-      " # live in: \{str}"
+      "# live in: \{str}"
     } else {
       ""
     }

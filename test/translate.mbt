@@ -308,13 +308,16 @@ test "Branch IRTranslate Test" {
     #|entry:
     #|  blt a0, a1, demo_L1, demo_L2
     #|
-    #|demo_L1:                       ; preds: entry
+    #|; preds: entry
+    #|demo_L1:
     #|  ret
     #|
-    #|demo_L2:                       ; preds: entry
+    #|; preds: entry
+    #|demo_L2:
     #|  jmp demo_L3
     #|
-    #|demo_L3:                       ; preds: demo_L2
+    #|; preds: demo_L2
+    #|demo_L3:
     #|  a0 = move.i64 a1
     #|  ret
     #|}
@@ -344,17 +347,20 @@ test "While IRTranslate Test" {
     #|  store.i32 (fp' - 4), v5
     #|  jmp demo_L1
     #|
-    #|demo_L1:                       ; preds: entry, demo_L2
+    #|; preds: entry, demo_L2
+    #|demo_L1:
     #|  v0 = load.i32 (fp' - 4)
     #|  blt v0, 10, demo_L2, demo_L3
     #|
-    #|demo_L2:                       ; preds: demo_L1
+    #|; preds: demo_L1
+    #|demo_L2:
     #|  v2 = load.i32 (fp' - 4)
     #|  v3 = add.i32 v2, 1
     #|  store.i32 (fp' - 4), v3
     #|  jmp demo_L1
     #|
-    #|demo_L3:                       ; preds: demo_L1
+    #|; preds: demo_L1
+    #|demo_L3:
     #|  v4 = load.i32 (fp' - 4)
     #|  a0 = move.i64 v4
     #|  ret
