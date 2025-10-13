@@ -26,11 +26,11 @@ pub fn Function::translate_llvm_function(
 ) -> Unit raise MIRError {
   self.llvm_func = Some(llvm_func)
 
-  // Step 1: Translate parameters
-  self.translate_params()
-
-  // Step 2: Traverse llvm basic blocks in Reverse Post-Order
+  // Step 1: Traverse llvm basic blocks in Reverse Post-Order
   let llvm_machine_bbs = self.traverse_llvm_basic_blocks()
+
+  // Step 2: Translate parameters
+  self.translate_params()
 
   // Step 3: Traverse all llvm instructions (for binding values to registers)
   self.traverse_llvm_instructions(llvm_func)
@@ -67,9 +67,29 @@ pub fn Function::translate_params(self : Self, loc~ : SourceLoc) -> Unit {
 
   let arg_patterns = llvm_func.arguments.map(pattern_of_llvm_arg)
   self.set_params_by_patterns(arg_patterns)
-  llvm_func.arguments
-  .zip_to_iter2(self.params)
-  .each((arg, param) => self.value_map.set(arg, param))
+  let entry_bb = self.get_entry_block().unwrap()
+  let buiilder = IRBuilder::new(self, entry_bb)
+  for arg, param in llvm_func.arguments.zip_to_iter2(self.params) {
+    if param is (IRegister(_) | FRegister(_)) {
+      self.value_map.set(arg, param)
+      continue
+    }
+    let is_fp = arg.getType().isIEEELikeFPTy()
+    guard param is Mem(base, offset)
+    if is_fp {
+      let tmp = self.new_virtual_freg()
+      let load_inst =
+        buiilder.build_loadf(64, dst=tmp, base=base, offset=offset) catch { _ => abort("") }
+      entry_bb.push(load_inst)
+      self.value_map.set(arg, FRegister(tmp))
+    } else {
+      let tmp = self.new_virtual_reg()
+      let load_inst =
+        buiilder.build_loadi(64, dst=tmp, base=base, offset=offset) catch { _ => abort("") }
+      entry_bb.push(load_inst)
+      self.value_map.set(arg, IRegister(tmp))
+    }
+  }
 }
 
 ///|
@@ -209,7 +229,7 @@ pub fn translate_llvm_inst(
     SelectInst(select_inst) =>
       translate_llvm_select_inst(select_inst, builder, func, data_layout)
     ReturnInst(ret_inst) =>
-      translate_llvm_return_inst(ret_inst, builder, func, data_layout)
+      translate_llvm_return_inst(ret_inst, builder, func)
     CallInst(call_inst) => translate_llvm_call_inst(call_inst, builder, func)
     PHINode(phi_node) => translate_llvm_phi_node(phi_node, func)
     ExtractValueInst(_) =>
@@ -280,9 +300,9 @@ pub fn translate_llvm_load_inst(
   let minst = match dst_op {
     IRegister(dst) => builder.build_loadi(data_size, dst~, base~, offset~)
     FRegister(dst) => builder.build_loadf(data_size, dst~, base~, offset~)
-    _ =>
+    dst_op =>
       raise IRTranslateError(
-        "LoadInst: destination operand is not an integer or floating-point register",
+        "LoadInst: destination operand is not an integer or floating-point register: \{dst_op}",
       )
   }
   [minst]
@@ -357,13 +377,6 @@ pub fn translate_llvm_store_inst(
         builder.build_storef(data_size, src=tmp, base~, offset~),
       ]
     }
-    Mem(b, o) => {
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=tmp, base=b, offset=o),
-        builder.build_storei(data_size, src=tmp, base~, offset~),
-      ]
-    }
     Label(label) => {
       let tmp = func.new_virtual_reg()
       [
@@ -371,6 +384,9 @@ pub fn translate_llvm_store_inst(
         builder.build_storei(data_size, src=tmp, base~, offset~),
       ]
     }
+    src_op => raise IRTranslateError(
+      "StoreInst: value operand is not a register, immediate, or label: \{src_op}",
+    )
   }
 }
 
@@ -476,54 +492,6 @@ pub fn translate_llvm_float_binary_inst(
     )
   }
   match (lhs_op, rhs_op) {
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src1 = func.new_virtual_freg()
-      let src2 = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
-        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (Mem(b1, o1), FRegister(src2)) => {
-      let src1 = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (Mem(b1, o1), FImm(f)) => {
-      let src1 = func.new_virtual_freg()
-      let ireg = func.new_virtual_reg()
-      let src2 = func.new_virtual_freg()
-      let move_imm = match data_size {
-        32 =>
-          builder.build_imove_imm(
-            data_size,
-            dst=ireg,
-            src=f.to_float().reinterpret_as_int().to_int64(),
-          )
-        _ =>
-          builder.build_imove_imm(
-            data_size,
-            dst=ireg,
-            src=f.reinterpret_as_int64(),
-          )
-      }
-      [
-        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
-        move_imm,
-        builder.build_fmove_from_ireg(data_size, dst=src2, src=ireg),
-        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (FRegister(src1), Mem(b2, o2)) => {
-      let src2 = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
-        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
     (FRegister(src1), FRegister(src2)) =>
       [builder.build_fbinary(binop, data_size, dst~, src1~, src2~)]
     (FRegister(src1), FImm(f)) => {
@@ -545,31 +513,6 @@ pub fn translate_llvm_float_binary_inst(
             )
         },
         builder.build_fmove_from_ireg(data_size, dst=src2, src=ireg),
-        builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (FImm(f), Mem(b2, o2)) => {
-      let src1 = func.new_virtual_freg()
-      let ireg = func.new_virtual_reg()
-      let src2 = func.new_virtual_freg()
-      let move_imm = match data_size {
-        32 =>
-          builder.build_imove_imm(
-            data_size,
-            dst=ireg,
-            src=f.to_float().reinterpret_as_int().to_int64(),
-          )
-        _ =>
-          builder.build_imove_imm(
-            data_size,
-            dst=ireg,
-            src=f.reinterpret_as_int64(),
-          )
-      }
-      [
-        move_imm,
-        builder.build_fmove_from_ireg(data_size, dst=src1, src=ireg),
-        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
         builder.build_fbinary(binop, data_size, dst~, src1~, src2~),
       ]
     }
@@ -621,9 +564,9 @@ pub fn translate_llvm_float_binary_inst(
       }
       [move_imm, builder.build_fmove_from_ireg(data_size, dst~, src=ireg)]
     }
-    _ =>
+    (lhs_op, rhs_op) =>
       raise IRTranslateError(
-        "Unsupported operand types for float binary operation",
+        "Unsupported operand types for float binary operation, \{lhs_op}, \{rhs_op}",
       )
   }
 }
@@ -694,48 +637,10 @@ pub fn translate_llvm_int_binary_inst(
     )
   }
   match (lhs_op, rhs_op) {
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src1 = func.new_virtual_reg()
-      let src2 = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_loadi(data_size, dst=src2, base=b2, offset=o2),
-        builder.build_ibinary(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (Mem(b1, o1), IRegister(src2)) => {
-      let src1 = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_ibinary(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (Mem(b1, o1), Imm(src2)) => {
-      let src1 = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_ibinary_imm(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (IRegister(src1), Mem(b2, o2)) => {
-      let src2 = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=src2, base=b2, offset=o2),
-        builder.build_ibinary(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
     (IRegister(src1), IRegister(src2)) =>
       [builder.build_ibinary(binop, data_size, dst~, src1~, src2~)]
     (IRegister(src1), Imm(src2)) =>
       [builder.build_ibinary_imm(binop, data_size, dst~, src1~, src2~)]
-    (Imm(src1), Mem(b2, o2)) if binop.is_commutative() => {
-      let src2 = src1 // Swap
-      let src1 = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=src1, base=b2, offset=o2),
-        builder.build_ibinary_imm(binop, data_size, dst~, src1~, src2~),
-      ]
-    }
     (Imm(src1), IRegister(src2)) if binop.is_commutative() =>
       [builder.build_ibinary_imm(binop, data_size, dst~, src1=src2, src2=src1)] // swap
     (Imm(src1_imm), IRegister(src2)) => {
@@ -762,9 +667,9 @@ pub fn translate_llvm_int_binary_inst(
       }
       [builder.build_imove_imm(data_size, dst~, src~)]
     }
-    _ =>
+    (lhs_op, rhs_op) =>
       raise IRTranslateError(
-        "Unsupported operand types for integer binary operation",
+        "Unsupported operand types for integer binary operation: \{lhs_op}, \{rhs_op}",
       )
   }
 }
@@ -819,13 +724,6 @@ pub fn translate_llvm_fneg_inst(
   }
   let data_size = data_layout.getTypeAllocSizeInBits(llvm_inst.getType())
   match src_op {
-    Mem(b, o) => {
-      let src = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=src, base=b, offset=o),
-        builder.build_fneg(data_size, dst~, src~),
-      ]
-    }
     FRegister(src) => [builder.build_fneg(data_size, dst~, src~)]
     FImm(f) => {
       let ireg = func.new_virtual_reg()
@@ -840,9 +738,9 @@ pub fn translate_llvm_fneg_inst(
         builder.build_fneg(data_size, dst~, src~),
       ]
     }
-    _ =>
+    src_op =>
       raise IRTranslateError(
-        "FNegInst: operand is not a memory address, floating-point register, or immediate",
+        "FNegInst: operand is not a memory address, floating-point register, or immediate value: \{src_op}",
       )
   }
 }
@@ -926,53 +824,12 @@ pub fn translate_llvm_icmp_inst(
   }
   let data_size = data_layout.getTypeAllocSizeInBits(lhs.getType())
   match (lhs_op, rhs_op) {
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src1 = func.new_virtual_reg()
-      let src2 = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_loadi(data_size, dst=src2, base=b2, offset=o2),
-        builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (Mem(b1, o1), IRegister(src2)) => {
-      let src1 = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (Mem(b1, o1), Imm(src2_imm)) => {
-      let src1 = func.new_virtual_reg()
-      let src2 = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_imove_imm(data_size, dst=src2, src=src2_imm),
-        builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (IRegister(src1), Mem(b2, o2)) => {
-      let src2 = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=src2, base=b2, offset=o2),
-        builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
     (IRegister(src1), IRegister(src2)) =>
       [builder.build_icmp(opcode, data_size, dst~, src1~, src2~)]
     (IRegister(src1), Imm(src2_imm)) => {
       let src2 = func.new_virtual_reg()
       [
         builder.build_imove_imm(data_size, dst=src2, src=src2_imm),
-        builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (Imm(src1_imm), Mem(b2, o2)) => {
-      let src1 = func.new_virtual_reg()
-      let src2 = func.new_virtual_reg()
-      [
-        builder.build_imove_imm(data_size, dst=src1, src=src1_imm),
-        builder.build_loadi(data_size, dst=src2, base=b2, offset=o2),
         builder.build_icmp(opcode, data_size, dst~, src1~, src2~),
       ]
     }
@@ -1018,8 +875,8 @@ pub fn translate_llvm_icmp_inst(
       }
       [builder.build_imove_imm(data_size, dst~, src~)]
     }
-    _ =>
-      raise IRTranslateError("Unsupported operand types for integer comparison")
+    opcode =>
+      raise IRTranslateError("Unsupported operand types for integer comparison: \{opcode}")
   }
 }
 
@@ -1103,44 +960,6 @@ pub fn translate_llvm_fcmp_inst(
   }
   let data_size = data_layout.getTypeAllocSizeInBits(lhs.getType())
   match (lhs_op, rhs_op) {
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src1 = func.new_virtual_freg()
-      let src2 = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
-        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (Mem(b1, o1), FRegister(src2)) => {
-      let src1 = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (Mem(b1, o1), FImm(f)) => {
-      let src1 = func.new_virtual_freg()
-      let ireg = func.new_virtual_reg()
-      let src2 = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=src1, base=b1, offset=o1),
-        builder.build_imove_imm(
-          data_size,
-          dst=ireg,
-          src=f.reinterpret_as_int64(),
-        ),
-        builder.build_fmove_from_ireg(data_size, dst=src2, src=ireg),
-        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (FRegister(src1), Mem(b2, o2)) => {
-      let src2 = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
-        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
     (FRegister(src1), FRegister(src2)) =>
       [builder.build_fcmp(opcode, data_size, dst~, src1~, src2~)]
     (FRegister(src1), FImm(f)) => {
@@ -1153,21 +972,6 @@ pub fn translate_llvm_fcmp_inst(
           src=f.reinterpret_as_int64(),
         ),
         builder.build_fmove_from_ireg(data_size, dst=src2, src=ireg),
-        builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
-      ]
-    }
-    (FImm(f1), Mem(b2, o2)) => {
-      let src1 = func.new_virtual_freg()
-      let ireg = func.new_virtual_reg()
-      let src2 = func.new_virtual_freg()
-      [
-        builder.build_imove_imm(
-          data_size,
-          dst=ireg,
-          src=f1.reinterpret_as_int64(),
-        ),
-        builder.build_fmove_from_ireg(data_size, dst=src1, src=ireg),
-        builder.build_loadf(data_size, dst=src2, base=b2, offset=o2),
         builder.build_fcmp(opcode, data_size, dst~, src1~, src2~),
       ]
     }
@@ -1195,9 +999,9 @@ pub fn translate_llvm_fcmp_inst(
       }
       [builder.build_imove_imm(data_size, dst~, src~)]
     }
-    _ =>
+    (lhs_op, rhs_op) =>
       raise IRTranslateError(
-        "Unsupported operand types for floating-point comparison",
+        "Unsupported operand types for floating-point comparison: \{lhs_op}, \{rhs_op}",
       )
   }
 }
@@ -1406,49 +1210,10 @@ pub fn translate_llvm_conditional_branch(
   }
   let data_size = data_layout.getTypeAllocSizeInBits(lhs.getType())
   match (lhs_op, rhs_op) {
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let lhs = func.new_virtual_reg()
-      let rhs = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=lhs, base=b1, offset=o1),
-        builder.build_loadi(data_size, dst=rhs, base=b2, offset=o2),
-        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
-      ]
-    }
-    (Mem(b1, o1), IRegister(rhs)) => {
-      let lhs = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=lhs, base=b1, offset=o1),
-        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
-      ]
-    }
-    (Mem(b1, o1), Imm(rhs)) => {
-      let lhs = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=lhs, base=b1, offset=o1),
-        builder.build_branch_imm(opcode, lhs~, rhs~, true_label~, false_label~),
-      ]
-    }
-    (IRegister(lhs), Mem(b2, o2)) => {
-      let rhs = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=rhs, base=b2, offset=o2),
-        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
-      ]
-    }
     (IRegister(lhs), IRegister(rhs)) =>
       [builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~)]
     (IRegister(lhs), Imm(rhs)) =>
       [builder.build_branch_imm(opcode, lhs~, rhs~, true_label~, false_label~)]
-    (Imm(lhs_imm), Mem(b2, o2)) => {
-      let lhs = func.new_virtual_reg()
-      let rhs = func.new_virtual_reg()
-      [
-        builder.build_imove_imm(data_size, dst=lhs, src=lhs_imm),
-        builder.build_loadi(data_size, dst=rhs, base=b2, offset=o2),
-        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
-      ]
-    }
     (Imm(lhs_imm), IRegister(rhs)) => {
       let lhs = func.new_virtual_reg()
       [
@@ -1473,9 +1238,9 @@ pub fn translate_llvm_conditional_branch(
       let target_label = if take_true_branch { true_label } else { false_label }
       [builder.build_jmp(target_label~)]
     }
-    _ =>
+    (lhs_op, rhs_op) =>
       raise IRTranslateError(
-        "Unsupported operand types for integer comparison in BranchInst",
+        "Unsupported operand types for integer comparison in BranchInst: \{lhs_op}, \{rhs_op}",
       )
   }
 }
@@ -1613,41 +1378,9 @@ pub fn translate_trunc(
         builder.build_trunc(from_ty_size~, to_ty_size~, dst~, src~),
       ]
     }
-    (IRegister(dst), Mem(b, o)) => {
-      let src = func.new_virtual_reg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
-        builder.build_trunc(from_ty_size~, to_ty_size~, dst~, src~),
-      ]
-    }
-    (Mem(b, o), IRegister(src)) => {
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_trunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b, o), Imm(src_imm)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
-        builder.build_trunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
-        builder.build_trunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "Trunc: Unsupported operand types for truncation",
+        "Trunc: Unsupported operand types for truncation, got \{dst_op}, \{from_op}",
       )
   }
 }
@@ -1669,41 +1402,9 @@ pub fn translate_sext(
         builder.build_sext(from_ty_size~, to_ty_size~, dst~, src~),
       ]
     }
-    (IRegister(dst), Mem(b, o)) => {
-      let src = func.new_virtual_reg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
-        builder.build_sext(from_ty_size~, to_ty_size~, dst~, src~),
-      ]
-    }
-    (Mem(b, o), IRegister(src)) => {
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_sext(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b, o), Imm(src_imm)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
-        builder.build_sext(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
-        builder.build_sext(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "SExt: Unsupported operand types for sign extension",
+        "SExt: Unsupported operand types for sign extension, got \{dst_op}, \{from_op}",
       )
   }
 }
@@ -1725,41 +1426,9 @@ pub fn translate_zext(
         builder.build_zext(from_ty_size~, to_ty_size~, dst~, src~),
       ]
     }
-    (IRegister(dst), Mem(b, o)) => {
-      let src = func.new_virtual_reg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
-        builder.build_zext(from_ty_size~, to_ty_size~, dst~, src~),
-      ]
-    }
-    (Mem(b, o), IRegister(src)) => {
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_zext(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b, o), Imm(src_imm)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
-        builder.build_zext(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
-        builder.build_zext(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "ZExt: Unsupported operand types for zero extension",
+        "ZExt: Unsupported operand types for zero extension, got \{dst_op}, \{from_op}",
       )
   }
 }
@@ -1783,43 +1452,9 @@ pub fn translate_fptrunc(
         builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src~),
       ]
     }
-    (FRegister(dst), Mem(b, o)) => {
-      let src = func.new_virtual_freg()
-      [
-        builder.build_loadf(from_ty_size, dst=src, base=b, offset=o),
-        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src~),
-      ]
-    }
-    (Mem(b, o), FRegister(src)) => {
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b, o), FImm(src_imm)) => {
-      let src = func.new_virtual_freg()
-      let ireg = func.new_virtual_reg()
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
-        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
-        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src = func.new_virtual_freg()
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_loadf(from_ty_size, dst=src, base=b2, offset=o2),
-        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "FPTrunc: Unsupported operand types for floating-point truncation",
+        "FPTrunc: Unsupported operand types for floating-point truncation, got \{dst_op}, \{from_op}",
       )
   }
 }
@@ -1843,43 +1478,9 @@ pub fn translate_fpext(
         builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src~),
       ]
     }
-    (FRegister(dst), Mem(b, o)) => {
-      let src = func.new_virtual_freg()
-      [
-        builder.build_loadf(from_ty_size, dst=src, base=b, offset=o),
-        builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src~),
-      ]
-    }
-    (Mem(b, o), FRegister(src)) => {
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_fpext(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b, o), FImm(src_imm)) => {
-      let src = func.new_virtual_freg()
-      let ireg = func.new_virtual_reg()
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
-        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
-        builder.build_fpext(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src = func.new_virtual_freg()
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_loadf(from_ty_size, dst=src, base=b2, offset=o2),
-        builder.build_fpext(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "FPExt: Unsupported operand types for floating-point extension",
+        "FPExt: Unsupported operand types for floating-point extension, got \{dst_op}, \{from_op}",
       )
   }
 }
@@ -1901,41 +1502,9 @@ pub fn translate_uitofp(
         builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst~, src~),
       ]
     }
-    (FRegister(dst), Mem(b, o)) => {
-      let src = func.new_virtual_reg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
-        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst~, src~),
-      ]
-    }
-    (Mem(b, o), IRegister(src)) => {
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b, o), Imm(src_imm)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
-        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
-        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "UIToFP: Unsupported operand types for unsigned integer to floating-point conversion",
+        "UIToFP: Unsupported operand types for unsigned integer to floating-point conversion, got \{dst_op}, \{from_op}",
       )
   }
 }
@@ -1957,41 +1526,9 @@ pub fn translate_sitofp(
         builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst~, src~),
       ]
     }
-    (FRegister(dst), Mem(b, o)) => {
-      let src = func.new_virtual_reg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b, offset=o),
-        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst~, src~),
-      ]
-    }
-    (Mem(b, o), IRegister(src)) => {
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b, o), Imm(src_imm)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_imove_imm(from_ty_size, dst=src, src=src_imm),
-        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src = func.new_virtual_reg()
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_loadi(from_ty_size, dst=src, base=b2, offset=o2),
-        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storef(to_ty_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "SIToFP: Unsupported operand types for signed integer to floating-point conversion",
+        "SIToFP: Unsupported operand types for signed integer to floating-point conversion, got \{dst_op}, \{from_op}",
       )
   }  
 }
@@ -2015,43 +1552,9 @@ pub fn translate_fptoui(
         builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~),
       ]
     }
-    (IRegister(dst), Mem(b, o)) => {
-      let src = func.new_virtual_freg()
-      [
-        builder.build_loadf(from_ty_size, dst=src, base=b, offset=o),
-        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~),
-      ]
-    }
-    (Mem(b, o), FRegister(src)) => {
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b, o), FImm(src_imm)) => {
-      let src = func.new_virtual_freg()
-      let ireg = func.new_virtual_reg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
-        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
-        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src = func.new_virtual_freg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_loadf(from_ty_size, dst=src, base=b2, offset=o2),
-        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "FPToUI: Unsupported operand types for floating-point to unsigned integer conversion",
+        "FPToUI: Unsupported operand types for floating-point to unsigned integer conversion, got \{dst_op}, \{from_op}",
       )
   }
 }
@@ -2075,43 +1578,9 @@ pub fn translate_fptosi(
         builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~),
       ]
     }
-    (IRegister(dst), Mem(b, o)) => {
-      let src = func.new_virtual_freg()
-      [
-        builder.build_loadf(from_ty_size, dst=src, base=b, offset=o),
-        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~),
-      ]
-    }
-    (Mem(b, o), FRegister(src)) => {
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b, o), FImm(src_imm)) => {
-      let src = func.new_virtual_freg()
-      let ireg = func.new_virtual_reg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
-        builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
-        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b, offset=o),
-      ]
-    }
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let src = func.new_virtual_freg()
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_loadf(from_ty_size, dst=src, base=b2, offset=o2),
-        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst=tmp, src~),
-        builder.build_storei(to_ty_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "FPToSI: Unsupported operand types for floating-point to signed integer conversion",
+        "FPToSI: Unsupported operand types for floating-point to signed integer conversion, got \{dst_op}, \{from_op}",
       )
   }
 }
@@ -2128,21 +1597,6 @@ pub fn translate_bitcast(
   match (dst_op, from_op) {
     (IRegister(dst), IRegister(src)) => [builder.build_imove(data_size, dst~, src~)]
     (IRegister(dst), Imm(src_imm)) => [builder.build_imove_imm(data_size, dst~, src=src_imm)]
-    (IRegister(dst), Mem(b, o)) => {
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=tmp, base=b, offset=o),
-        builder.build_imove(data_size, dst~, src=tmp),
-      ]
-    }
-    (Mem(b, o), IRegister(src)) => [builder.build_storei(data_size, src~, base=b, offset=o)]
-    (Mem(b1, o1), Mem(b2, o2)) => {
-      let tmp = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=tmp, base=b2, offset=o2),
-        builder.build_storei(data_size, src=tmp, base=b1, offset=o1),
-      ]
-    }
     (FRegister(dst), FRegister(src)) => [builder.build_fmove(data_size, dst~, src~)]
     (FRegister(dst), FImm(src_imm)) => {
       let ireg = func.new_virtual_reg()
@@ -2151,14 +1605,6 @@ pub fn translate_bitcast(
         builder.build_fmove_from_ireg(data_size, dst~, src=ireg),
       ]
     }
-    (FRegister(dst), Mem(b, o)) => {
-      let tmp = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=tmp, base=b, offset=o),
-        builder.build_fmove(data_size, dst~, src=tmp),
-      ]
-    }
-    (Mem(b, o), FRegister(src)) => [builder.build_storef(data_size, src~, base=b, offset=o)]
     (FRegister(dst), IRegister(src)) => [builder.build_fmove_from_ireg(data_size, dst~, src~)]
     (IRegister(dst), FRegister(src)) => [builder.build_fmove_to_ireg(data_size, dst~, src~)]
     (FRegister(dst), Imm(src_imm)) => {
@@ -2175,9 +1621,9 @@ pub fn translate_bitcast(
         builder.build_fmove_to_ireg(data_size, dst~, src=freg)
       ]
     }
-    _ =>
+    (dst_op, from_op) =>
       raise IRTranslateError(
-        "BitCast: Unsupported operand types for bitcast",
+        "BitCast: Unsupported operand types for bitcast, got \{dst_op}, \{from_op}",
       )
   }
 }
@@ -2221,7 +1667,6 @@ pub fn translate_llvm_return_inst(
   llvm_inst : @IR.ReturnInst,
   builder : IRBuilder,
   func : Function,
-  data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
   func.terminal_blocks.push(builder.bb)
   let { retVal, .. } = llvm_inst
@@ -2259,28 +1704,13 @@ pub fn translate_llvm_return_inst(
         builder.build_ret(),
       ]
     }
-    Mem(b, o) if retVal.getType().isIEEELikeFPTy() => {
-      let data_size = data_layout.getTypeAllocSizeInBits(retVal.getType())
-      let freg = func.new_virtual_freg()
-      [
-        builder.build_loadf(data_size, dst=freg, base=b, offset=o),
-        builder.build_fmove(data_size, dst=FAReg(0), src=freg),
-        builder.build_ret(),
-      ]
-    }
-    Mem(b, o) => {
-      let data_size = data_layout.getTypeAllocSizeInBits(retVal.getType())
-      let reg = func.new_virtual_reg()
-      [
-        builder.build_loadi(data_size, dst=reg, base=b, offset=o),
-        builder.build_imove(data_size, dst=AReg(0), src=reg),
-        builder.build_ret(),
-      ]
-    }
     Label(label) => {
       let minst = builder.build_load_addr(AReg(0), label)
       [minst, builder.build_ret()]
     }
+    ret_op => raise IRTranslateError(
+      "ReturnInst: Unsupported operand type for return value \{ret_op}",
+    )
   }
 }
 
@@ -2431,49 +1861,7 @@ pub fn translate_llvm_call_inst(
         minsts.push(inst2)
         call_freg_cnt += 1
       }
-      (Mem(b, o), false) if call_ireg_cnt < num_arg_regs => {
-        let dst = AReg(call_ireg_cnt)
-        let inst = builder.build_loadi(64, dst~, base=b, offset=o)
-        minsts.push(inst)
-        call_ireg_cnt += 1
-      }
-      (Mem(b, o), false) => {
-        let _ = func.extend_var_stack(8L, 8L)
-        let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
-        let src = func.new_virtual_reg()
-        let inst1 = builder.build_loadi(64, dst=src, base=b, offset=o)
-        let inst2 = builder.build_storei(
-          64,
-          src~,
-          base=StackPtr,
-          offset=stack_offset,
-        )
-        minsts.push(inst1)
-        minsts.push(inst2)
-        call_ireg_cnt += 1
-      }
-      (Mem(b, o), true) if call_freg_cnt < num_arg_fregs => {
-        let dst = FAReg(call_freg_cnt)
-        let inst = builder.build_loadf(64, dst~, base=b, offset=o)
-        minsts.push(inst)
-        call_freg_cnt += 1
-      }
-      (Mem(b, o), true) => {
-        let _ = func.extend_var_stack(8L, 8L)
-        let stack_offset = 8L * (call_freg_cnt - num_arg_fregs).to_int64()
-        let src = func.new_virtual_reg()
-        let inst1 = builder.build_loadi(64, dst=src, base=b, offset=o)
-        let inst2 = builder.build_storei(
-          64,
-          src~,
-          base=StackPtr,
-          offset=stack_offset,
-        )
-        minsts.push(inst1)
-        minsts.push(inst2)
-        call_freg_cnt += 1
-      }
-      _ => raise IRTranslateError("CallInst: Unsupported argument operand type")
+      arg_op => raise IRTranslateError("CallInst: Unsupported argument operand type: \{arg_op}")
     }
   }
   minsts.push(builder.build_call(callee_name))
@@ -2570,39 +1958,9 @@ pub fn BasicBlock::phi_elimination(self : Self) -> Unit raise MIRError {
         let inst = builder.build_fmove(data_size, dst~, src~)
         self.push_inst_before_terminator(inst)
       }
-      (FRegister(dst), FImm(src)) => {
-        let ireg = func.new_virtual_reg()
-        let freg = func.new_virtual_freg()
-        let imove_inst = builder.build_imove_imm(
-          data_size,
-          dst=ireg,
-          src=src.reinterpret_as_int64(),
-        )
-        let fmove_inst = builder.build_fmove_from_ireg(
-          data_size,
-          dst=freg,
-          src=ireg,
-        )
-        let move_inst = builder.build_fmove(data_size, dst~, src=freg)
-        self.push_inst_before_terminator(imove_inst)
-        self.push_inst_before_terminator(fmove_inst)
-        self.push_inst_before_terminator(move_inst)
-      }
-      (FRegister(dst), Mem(b, o)) => {
-        let freg = func.new_virtual_freg()
-        let load_inst = builder.build_loadf(
-          data_size,
-          dst=freg,
-          base=b,
-          offset=o,
-        )
-        let move_inst = builder.build_fmove(data_size, dst~, src=freg)
-        self.push_inst_before_terminator(load_inst)
-        self.push_inst_before_terminator(move_inst)
-      }
-      _ =>
+      phi =>
         raise IRTranslateError(
-          "PHINode: Unsupported operand types for phi elimination",
+          "PHINode: Unsupported operand types for phi elimination \{phi}",
         )
     }
   }
