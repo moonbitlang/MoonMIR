@@ -1,24 +1,90 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Kaida-Amethyst/MoonMIR/gmir_riscv"
+package "Kaida-Amethyst/MoonMIR/riscv"
 
 import(
-  "Kaida-Amethyst/MoonMIR/GMIR"
+  "Kaida-Amethyst/MoonMIR"
 )
 
 // Values
-fn from_gmir_bb(@GMIR.BasicBlock, Int) -> Array[RvAsm] raise
+fn and_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
 
-fn from_gmir_func(@GMIR.Function) -> Array[RvAsm] raise
+fn branch_eq_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
 
-fn from_gmir_global(@GMIR.GlobalValue) -> Array[RvAsm]
+fn branch_ge_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
 
-fn from_gmir_inst(@GMIR.Instruction) -> Array[RvAsm] raise
+fn branch_geu_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
 
-fn from_gmir_module(@GMIR.Module) -> Array[RvAsm] raise
+fn branch_lt_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn branch_ltu_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn branch_ne_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn cmp_eq_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn cmp_gt_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn cmp_gtu_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn cmp_lt_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn cmp_ltu_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn cmp_ne_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_add_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_div_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_load_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_lshr_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_mul_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_not_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_rem_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_shl_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_store_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i32_sub_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_add_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_div_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_load_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_lshr_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_mul_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_not_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_rem_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_shl_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_store_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn i64_sub_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn jump_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn move_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn or_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+
+fn xor_mir_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
 
 // Errors
-pub suberror GMIRToRvAsmError String
-impl Show for GMIRToRvAsmError
+pub suberror MIRToRiscvError String
+impl Show for MIRToRiscvError
 
 // Types and methods
 pub(all) enum FReg {
@@ -55,7 +121,8 @@ pub(all) enum FReg {
   Ft10
   Ft11
 }
-fn FReg::from_mir_operand(@GMIR.Operand) -> Self raise
+#callsite(autofill(loc))
+fn FReg::from_mir_freg(@MoonMIR.FRegister, loc~ : SourceLoc) -> Self raise MIRToRiscvError
 impl Compare for FReg
 impl Eq for FReg
 impl Hash for FReg
@@ -105,7 +172,7 @@ pub(all) enum Reg {
   T6
 }
 #callsite(autofill(loc))
-fn Reg::from_mir_operand(@GMIR.Operand, loc~ : SourceLoc) -> Self raise
+fn Reg::from_mir_reg(@MoonMIR.IRegister, loc~ : SourceLoc) -> Self raise MIRToRiscvError
 impl Compare for Reg
 impl Eq for Reg
 impl Hash for Reg

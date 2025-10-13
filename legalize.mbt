@@ -505,7 +505,11 @@ pub fn Instruction::legalize_istore(
   }
 }
 
-pub fn Instruction::legalize_imove(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+///|
+pub fn Instruction::legalize_imove(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: IMove(bits), .. } else {
     println(
@@ -534,7 +538,11 @@ pub fn Instruction::legalize_imove(self: Instruction, builder: IRBuilder) -> Arr
   }
 }
 
-pub fn Instruction::legalize_branch(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+///|
+pub fn Instruction::legalize_branch(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: Branch(bop), .. } else {
     println(
@@ -543,7 +551,11 @@ pub fn Instruction::legalize_branch(self: Instruction, builder: IRBuilder) -> Ar
     panic()
   }
   match self {
-    { defs: [], uses: [Mem(b1, o1), Mem(b2, o2), Label(true_label), Label(false_label)], .. } => {
+    {
+      defs: [],
+      uses: [Mem(b1, o1), Mem(b2, o2), Label(true_label), Label(false_label)],
+      ..,
+    } => {
       let v1 = func.new_virtual_reg()
       let v2 = func.new_virtual_reg()
       [
@@ -552,30 +564,48 @@ pub fn Instruction::legalize_branch(self: Instruction, builder: IRBuilder) -> Ar
         builder.build_branch(bop, lhs=v1, rhs=v2, true_label~, false_label~),
       ]
     }
-    { defs: [], uses: [Mem(b1, o1), IRegister(r2), Label(true_label), Label(false_label)], .. } => {
+    {
+      defs: [],
+      uses: [Mem(b1, o1), IRegister(r2), Label(true_label), Label(false_label)],
+      ..,
+    } => {
       let v1 = func.new_virtual_reg()
       [
         builder.build_loadi(32, dst=v1, base=b1, offset=o1),
         builder.build_branch(bop, lhs=v1, rhs=r2, true_label~, false_label~),
       ]
     }
-    { defs: [], uses: [Mem(b1, o1), Imm(v2), Label(true_label), Label(false_label)], .. } => {
+    {
+      defs: [],
+      uses: [Mem(b1, o1), Imm(v2), Label(true_label), Label(false_label)],
+      ..,
+    } => {
       let v1 = func.new_virtual_reg()
       [
         builder.build_loadi(32, dst=v1, base=b1, offset=o1),
         builder.build_branch_imm(bop, lhs=v1, rhs=v2, true_label~, false_label~),
       ]
     }
-    { defs: [], uses: [IRegister(r1), Mem(b2, o2), Label(true_label), Label(false_label)], .. } => {
+    {
+      defs: [],
+      uses: [IRegister(r1), Mem(b2, o2), Label(true_label), Label(false_label)],
+      ..,
+    } => {
       let v2 = func.new_virtual_reg()
       [
         builder.build_loadi(32, dst=v2, base=b2, offset=o2),
         builder.build_branch(bop, lhs=r1, rhs=v2, true_label~, false_label~),
       ]
     }
-    { defs: [], uses: [IRegister(_), IRegister(_), Label(_), Label(_)], .. } as inst => [inst]
-    { defs: [], uses: [IRegister(_), Imm(_), Label(_), Label(_)], .. } as inst => [inst]
-    { defs: [], uses: [Imm(i1), Mem(b2, o2), Label(true_label), Label(false_label)], .. } => {
+    { defs: [], uses: [IRegister(_), IRegister(_), Label(_), Label(_)], .. } as inst =>
+      [inst]
+    { defs: [], uses: [IRegister(_), Imm(_), Label(_), Label(_)], .. } as inst =>
+      [inst]
+    {
+      defs: [],
+      uses: [Imm(i1), Mem(b2, o2), Label(true_label), Label(false_label)],
+      ..,
+    } => {
       let v1 = func.new_virtual_reg()
       let v2 = func.new_virtual_reg()
       [
@@ -584,14 +614,22 @@ pub fn Instruction::legalize_branch(self: Instruction, builder: IRBuilder) -> Ar
         builder.build_branch(bop, lhs=v1, rhs=v2, true_label~, false_label~),
       ]
     }
-    { defs: [], uses: [Imm(i1), IRegister(r2), Label(true_label), Label(false_label)], .. } => {
+    {
+      defs: [],
+      uses: [Imm(i1), IRegister(r2), Label(true_label), Label(false_label)],
+      ..,
+    } => {
       let v1 = func.new_virtual_reg()
       [
         builder.build_imove_imm(32, dst=v1, src=i1),
         builder.build_branch(bop, lhs=v1, rhs=r2, true_label~, false_label~),
       ]
     }
-    { defs: [], uses: [Imm(i1), Imm(i2), Label(true_label), Label(false_label)], .. } => {
+    {
+      defs: [],
+      uses: [Imm(i1), Imm(i2), Label(true_label), Label(false_label)],
+      ..,
+    } => {
       let v1 = func.new_virtual_reg()
       let v2 = func.new_virtual_reg()
       [
@@ -607,7 +645,12 @@ pub fn Instruction::legalize_branch(self: Instruction, builder: IRBuilder) -> Ar
 
 //
 // Note: fbinary is not support fimm operand, if it happens, raise error
-pub fn Instruction::legalize_fbinary(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+
+///|
+pub fn Instruction::legalize_fbinary(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: FBinary(binop, bits), .. } else {
     println(
@@ -675,12 +718,17 @@ pub fn Instruction::legalize_fbinary(self: Instruction, builder: IRBuilder) -> A
         builder.build_fbinary(binop, bits, dst=rdst, src1=r1, src2=v2),
       ]
     }
-    { defs: [FRegister(_)], uses: [FRegister(_), FRegister(_)], .. } as inst => [inst]
+    { defs: [FRegister(_)], uses: [FRegister(_), FRegister(_)], .. } as inst =>
+      [inst]
     _ => raise LegalizeError("Unhandled FBinary legalization case: \{self}")
   }
 }
 
-pub fn Instruction::legalize_funary(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+///|
+pub fn Instruction::legalize_funary(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: FUnary(unop, bits), .. } else {
     println(
@@ -717,7 +765,11 @@ pub fn Instruction::legalize_funary(self: Instruction, builder: IRBuilder) -> Ar
   }
 }
 
-pub fn Instruction::legalize_fcmp(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+///|
+pub fn Instruction::legalize_fcmp(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: FCmp(fcmpop, bits), .. } else {
     println(
@@ -726,7 +778,7 @@ pub fn Instruction::legalize_fcmp(self: Instruction, builder: IRBuilder) -> Arra
     panic()
   }
   match self {
-    {defs: [Mem(base, offset)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
+    { defs: [Mem(base, offset)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
       let v1 = func.new_virtual_freg()
       let v2 = func.new_virtual_freg()
       let vdst = func.new_virtual_reg()
@@ -785,19 +837,23 @@ pub fn Instruction::legalize_fcmp(self: Instruction, builder: IRBuilder) -> Arra
         builder.build_fcmp(fcmpop, bits, dst=rdst, src1=r1, src2=v2),
       ]
     }
-    { defs: [IRegister(_)], uses: [IRegister(_), IRegister(_)], .. } as inst => [inst]
+    { defs: [IRegister(_)], uses: [IRegister(_), IRegister(_)], .. } as inst =>
+      [inst]
     _ => raise LegalizeError("Unhandled FCmp legalization case: \{self}")
   }
 }
 
-    //FLoad(_) => self.legalize_fload(builder)
-    //FStore(_) => self.legalize_fstore(builder)
-    //FMove(_) => self.legalize_fmove(builder)
-    //FMoveI(_) => self.legalize_fmovei(builder)
-    //IMoveF(_) => self.legalize_imovef(builder)
+//FLoad(_) => self.legalize_fload(builder)
+//FStore(_) => self.legalize_fstore(builder)
+//FMove(_) => self.legalize_fmove(builder)
+//FMoveI(_) => self.legalize_fmovei(builder)
+//IMoveF(_) => self.legalize_imovef(builder)
 
-
-pub fn Instruction::legalize_fload(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+///|
+pub fn Instruction::legalize_fload(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: FLoad(bits), .. } else {
     println(
@@ -818,7 +874,11 @@ pub fn Instruction::legalize_fload(self: Instruction, builder: IRBuilder) -> Arr
   }
 }
 
-pub fn Instruction::legalize_fstore(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+///|
+pub fn Instruction::legalize_fstore(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: FStore(bits), .. } else {
     println(
@@ -839,7 +899,11 @@ pub fn Instruction::legalize_fstore(self: Instruction, builder: IRBuilder) -> Ar
   }
 }
 
-pub fn Instruction::legalize_fmove(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+///|
+pub fn Instruction::legalize_fmove(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: FMove(bits), .. } else {
     println(
@@ -874,7 +938,11 @@ pub fn Instruction::legalize_fmove(self: Instruction, builder: IRBuilder) -> Arr
   }
 }
 
-pub fn Instruction::legalize_fmovei(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+///|
+pub fn Instruction::legalize_fmovei(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: FMoveI(bits), .. } else {
     println(
@@ -906,7 +974,12 @@ pub fn Instruction::legalize_fmovei(self: Instruction, builder: IRBuilder) -> Ar
 }
 
 // imovef means move from freg to ireg
-pub fn Instruction::legalize_imovef(self: Instruction, builder: IRBuilder) -> Array[Instruction] raise MIRError {
+
+///|
+pub fn Instruction::legalize_imovef(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: IMoveF(bits), .. } else {
     println(

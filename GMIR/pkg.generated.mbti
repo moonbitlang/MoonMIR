@@ -1,0 +1,300 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Kaida-Amethyst/MoonMIR/GMIR"
+
+import(
+  "Kaida-Amethyst/MoonLLVM/IR"
+  "moonbitlang/core/set"
+)
+
+// Values
+fn live_analysis(Function) -> (Graph[Int], Graph[Int])
+
+fn rewrite_instruction(Instruction, vreg_operand_map~ : Map[Int, Operand], vfreg_operand_map~ : Map[Int, Operand]) -> Unit raise RegAllocError
+
+// Errors
+pub suberror IRTranslateError String
+impl Show for IRTranslateError
+
+pub suberror PostRAError String
+impl Show for PostRAError
+
+pub suberror RegAllocError String
+impl Show for RegAllocError
+
+// Types and methods
+pub(all) struct ArchConfig {
+  max_num_reg : Int
+  max_num_freg : Int
+  num_arg_regs : Int
+  num_arg_fregs : Int
+  num_temp_regs : Int
+  num_temp_fregs : Int
+  num_saved_regs : Int
+  num_saved_fregs : Int
+  support_select : Bool
+}
+fn ArchConfig::debug() -> Self
+fn ArchConfig::riscv64() -> Self
+
+pub(all) struct BasicBlock {
+  llvm_bb : @IR.BasicBlock
+  label : String
+  mut insts : Array[Instruction]
+  parent : Function
+  preds : Array[BasicBlock]
+  livein : @set.Set[Operand]
+  liveout : @set.Set[Operand]
+}
+fn BasicBlock::add_inst_before_terminator(Self, Instruction) -> Unit
+fn BasicBlock::legalize(Self) -> Unit
+fn BasicBlock::run_ir_translation(Self) -> Unit raise IRTranslateError
+impl Show for BasicBlock
+
+pub(all) struct Function {
+  mod : Module
+  name : String
+  params : Array[Operand]
+  body : Array[BasicBlock]
+  mut var_stack_size : Int64
+  mut reg_stack_size : Int64
+  terminal_basic_blocks : Array[BasicBlock]
+  llvm_func : @IR.Function
+  is_external : Bool
+  value_map : Map[&@IR.Value, Operand]
+  bbmap : Map[String, BasicBlock]
+  mut vreg_cnt : Int
+  mut vfreg_cnt : Int
+  phi_insts : Array[Instruction]
+  mut ir_translated : Bool
+  mut legalized : Bool
+  mut reg_allocated : Bool
+}
+fn Function::alloc_register(Self) -> Unit raise RegAllocError
+fn Function::from_llvm_function(@IR.Function, ArchConfig) -> Self raise IRTranslateError
+fn Function::getArchConfig(Self) -> ArchConfig
+fn Function::instIter(Self) -> Iter[Instruction]
+fn Function::legalize(Self) -> Unit
+fn Function::run_ir_translation(Self) -> Unit raise IRTranslateError
+impl Show for Function
+
+pub(all) struct GlobalValue {
+  label : String
+  content : GlobalValueContent
+  mod : Module
+  llvm_gv : &@IR.GlobalValue
+}
+fn GlobalValue::new(Module, &@IR.GlobalValue) -> Self raise IRTranslateError
+impl Show for GlobalValue
+
+pub(all) enum GlobalValueContent {
+  String(String)
+  Zero(UInt)
+  Data(Array[GlobalValueData])
+}
+
+pub(all) enum GlobalValueData {
+  Quad(UInt64)
+  Word(UInt)
+  Half(UInt16)
+  Byte(Byte)
+}
+
+pub struct Graph[T] {
+  nodes : @set.Set[T]
+  edges : Map[T, @set.Set[T]]
+}
+fn[T : Hash + Eq] Graph::add_edge(Self[T], T, T) -> Unit
+fn[T : Hash + Eq] Graph::add_node(Self[T], T) -> Unit
+fn[T : Hash + Eq] Graph::coloring(Self[T]) -> (Map[T, Int], Int)
+fn[T] Graph::new() -> Self[T]
+impl[T : Show] Show for Graph[T]
+
+pub(all) enum InstIterControl {
+  DefUse
+  UseDef
+  All
+}
+
+pub(all) struct Instruction {
+  opcode : OpCode
+  defs : Array[Operand]
+  uses : Array[Operand]
+  bb : BasicBlock?
+  mut livein : @set.Set[Operand]
+  mut liveout : @set.Set[Operand]
+}
+fn Instruction::legalize(Self) -> Array[Self]
+fn Instruction::new(OpCode, Array[Operand], Array[Operand], bb? : BasicBlock?) -> Self
+fn Instruction::op_iter(Self, InstIterControl) -> Iter[Operand]
+impl Show for Instruction
+
+pub(all) struct Module {
+  llvm_mod : @IR.Module
+  arch_config : ArchConfig
+  functions : Array[Function]
+  all_llvm_functions : Map[String, @IR.Function]
+  external_functions : Map[String, @IR.Function]
+  global_values : Array[GlobalValue]
+  mut ir_translated : Bool
+  mut legalized : Bool
+  mut reg_allocated : Bool
+}
+fn Module::alloc_register(Self) -> Self raise RegAllocError
+fn Module::legalize(Self) -> Unit
+fn Module::new(@IR.Module, ArchConfig) -> Self
+fn Module::peephole_optimizations(Self) -> Self
+fn Module::post_ra(Self) -> Self raise PostRAError
+fn Module::run_ir_translation(Self) -> Unit raise IRTranslateError
+impl Show for Module
+
+pub(all) enum OpCode {
+  Addb
+  Addw
+  Addl
+  Addq
+  Add(Int)
+  Subb
+  Subw
+  Subl
+  Subq
+  Sub(Int)
+  Mulb
+  Mulw
+  Mull
+  Mulq
+  Mul(Int)
+  Divb
+  Divw
+  Divl
+  Divq
+  Div(Int)
+  Remb
+  Remw
+  Reml
+  Remq
+  Rem(Int)
+  FAddS
+  FAddD
+  FSubS
+  FSubD
+  FMulS
+  FMulD
+  FDivS
+  FDivD
+  FRemS
+  FRemD
+  FNegS
+  FNegD
+  Loadb
+  Loadw
+  Loadl
+  Loadq
+  Load(Int)
+  FLoadS
+  FLoadD
+  Storeb
+  Storew
+  Storel
+  Storeq
+  Store(Int)
+  FStoreS
+  FStoreD
+  Movb
+  Movw
+  Movl
+  Movq
+  Mov(Int)
+  FMovS
+  FMovD
+  Beq
+  Bne
+  Bgt
+  Bge
+  Blt
+  Ble
+  Bequ
+  Bneu
+  Bgtu
+  Bgeu
+  Bltu
+  Bleu
+  Jmp
+  Eq
+  Ne
+  Gt
+  Ge
+  Lt
+  Le
+  Equ
+  Neu
+  Gtu
+  Geu
+  Ltu
+  Leu
+  FeqS
+  FneS
+  FgtS
+  FgeS
+  FltS
+  FleS
+  FeqD
+  FneD
+  FgtD
+  FgeD
+  FltD
+  FleD
+  And
+  Or
+  Xor
+  Shl
+  LShr
+  AShr
+  Trunc
+  ZExt
+  SExt
+  FPTrunc
+  FPExt
+  FPToSI(Int, Int)
+  FPToUI(Int, Int)
+  SIToFP(Int, Int)
+  UIToFP(Int, Int)
+  BitCast
+  Call
+  PHI
+  Select
+  Ret
+  Nop
+  Intrinsic(String)
+}
+impl Eq for OpCode
+impl Hash for OpCode
+impl Show for OpCode
+
+pub(all) enum Operand {
+  VReg(Int)
+  VFReg(Int)
+  Reg(Int)
+  FReg(Int)
+  Imm(Int64)
+  FImm(Double)
+  AReg(Int)
+  TReg(Int)
+  SReg(Int)
+  FAReg(Int)
+  FTReg(Int)
+  FSReg(Int)
+  Mem(Operand, Int64)
+  Label(String)
+  StackPtr
+  FramePtr
+  FramePtrPrim
+  ReturnAddr
+}
+impl Eq for Operand
+impl Hash for Operand
+impl Show for Operand
+
+// Type aliases
+
+// Traits
+

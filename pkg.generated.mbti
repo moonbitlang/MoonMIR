@@ -1,28 +1,65 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Kaida-Amethyst/GMIR"
+package "Kaida-Amethyst/MoonMIR"
 
 import(
   "Kaida-Amethyst/MoonLLVM/IR"
+  "moonbitlang/core/deque"
   "moonbitlang/core/set"
 )
 
 // Values
-fn live_analysis(Function) -> (Graph[Int], Graph[Int])
+fn translate_llvm_binary_inst(@IR.BinaryInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
 
-fn rewrite_instruction(Instruction, vreg_operand_map~ : Map[Int, Operand], vfreg_operand_map~ : Map[Int, Operand]) -> Unit raise RegAllocError
+fn translate_llvm_branch_inst(@IR.BranchInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_call_inst(@IR.CallInst, IRBuilder, Function) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_cast_inst(@IR.CastInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_conditional_branch(@IR.BranchInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_fcmp_inst(@IR.FCmpInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_float_binary_inst(@IR.BinaryInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_fneg_inst(@IR.FNegInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_gep_inst(@IR.GetElementPtrInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_icmp_inst(@IR.ICmpInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_inst(&@IR.Instruction, IRBuilder) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_int_binary_inst(@IR.BinaryInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_load_inst(@IR.LoadInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_phi_node(@IR.PHINode, Function) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_return_inst(@IR.ReturnInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_select_inst(@IR.SelectInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_store_inst(@IR.StoreInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_switch_inst(@IR.SwitchInst, IRBuilder, Function, @IR.DataLayout) -> Array[Instruction] raise MIRError
+
+fn translate_llvm_unconditional_branch(@IR.BranchInst, IRBuilder, Function) -> Array[Instruction] raise MIRError
 
 // Errors
-pub suberror IRTranslateError String
-impl Show for IRTranslateError
-
-pub suberror PostRAError String
-impl Show for PostRAError
+pub suberror MIRError {
+  IRTranslateError(String)
+  LegalizeError(String)
+  InValidBitWidthError(String)
+}
+impl Show for MIRError
 
 pub suberror RegAllocError String
 impl Show for RegAllocError
 
 // Types and methods
 pub(all) struct ArchConfig {
+  arch_name : String
   max_num_reg : Int
   max_num_freg : Int
   num_arg_regs : Int
@@ -36,19 +73,94 @@ pub(all) struct ArchConfig {
 fn ArchConfig::debug() -> Self
 fn ArchConfig::riscv64() -> Self
 
+pub(all) enum ArgPattern {
+  I
+  F
+}
+
 pub(all) struct BasicBlock {
-  llvm_bb : @IR.BasicBlock
+  mut llvm_bb : @IR.BasicBlock?
   label : String
   mut insts : Array[Instruction]
   parent : Function
   preds : Array[BasicBlock]
-  livein : @set.Set[Operand]
-  liveout : @set.Set[Operand]
+  succs : Array[BasicBlock]
+  phi_nodes : Array[(@IR.PHINode, Operand)]
+  mut live_in : @set.Set[Operand]
+  mut live_out : @set.Set[Operand]
 }
-fn BasicBlock::add_inst_before_terminator(Self, Instruction) -> Unit
-fn BasicBlock::legalize(Self) -> Unit
-fn BasicBlock::run_ir_translation(Self) -> Unit raise IRTranslateError
+fn BasicBlock::clear(Self) -> Unit
+fn BasicBlock::compute_live_out_from_succs(Self) -> @set.Set[Operand]
+fn BasicBlock::legalize(Self) -> Unit raise MIRError
+fn BasicBlock::live_analysis(Self) -> Bool
+fn BasicBlock::new(Function, String) -> Self
+fn BasicBlock::phi_elimination(Self) -> Unit raise MIRError
+fn BasicBlock::push(Self, Instruction) -> Unit
+fn BasicBlock::push_inst_before_terminator(Self, Instruction) -> Unit
+fn BasicBlock::rewrite_by_replacement_map(Self, Map[Operand, Operand]) -> Unit
+fn BasicBlock::translate_llvm_basic_block(Self, @IR.BasicBlock) -> Unit raise MIRError
+fn BasicBlock::update_live_in(Self, @set.Set[Operand]) -> Bool
+fn BasicBlock::update_live_out(Self, @set.Set[Operand]) -> Bool
+impl Eq for BasicBlock
 impl Show for BasicBlock
+
+pub(all) enum BranchOpCode {
+  Beq
+  Bne
+  Bgt
+  Bge
+  Blt
+  Ble
+  Bgtu
+  Bgeu
+  Bltu
+  Bleu
+  Jmp
+}
+
+pub(all) enum CastOpCode {
+  Trunc(Int, Int)
+  ZExt(Int, Int)
+  SExt(Int, Int)
+  FPTrunc(Int, Int)
+  FPExt(Int, Int)
+  FPToSI(Int, Int)
+  FPToUI(Int, Int)
+  SIToFP(Int, Int)
+  UIToFP(Int, Int)
+}
+
+pub(all) enum FBinaryOpCode {
+  FAdd
+  FSub
+  FMul
+  FDiv
+  FRem
+}
+fn FBinaryOpCode::is_commutative(Self) -> Bool
+
+pub(all) enum FCmpOpCode {
+  Feq
+  Fne
+  Fgt
+  Fge
+  Flt
+  Fle
+}
+
+pub(all) enum FRegister {
+  VFReg(Int)
+  FAReg(Int)
+  FTReg(Int)
+  FSReg(Int)
+}
+impl Eq for FRegister
+impl Hash for FRegister
+impl Show for FRegister
+
+pub(all) enum FUnaryOpCode {
+  FNeg
+}
 
 pub(all) struct Function {
   mod : Module
@@ -57,33 +169,47 @@ pub(all) struct Function {
   body : Array[BasicBlock]
   mut var_stack_size : Int64
   mut reg_stack_size : Int64
-  terminal_basic_blocks : Array[BasicBlock]
-  llvm_func : @IR.Function
+  terminal_blocks : Array[BasicBlock]
+  mut llvm_func : @IR.Function?
   is_external : Bool
   value_map : Map[&@IR.Value, Operand]
   bbmap : Map[String, BasicBlock]
   mut vreg_cnt : Int
   mut vfreg_cnt : Int
-  phi_insts : Array[Instruction]
-  mut ir_translated : Bool
-  mut legalized : Bool
-  mut reg_allocated : Bool
+  mut spilled_count : Int
 }
 fn Function::alloc_register(Self) -> Unit raise RegAllocError
-fn Function::from_llvm_function(@IR.Function, ArchConfig) -> Self raise IRTranslateError
-fn Function::getArchConfig(Self) -> ArchConfig
-fn Function::instIter(Self) -> Iter[Instruction]
-fn Function::legalize(Self) -> Unit
-fn Function::run_ir_translation(Self) -> Unit raise IRTranslateError
+#callsite(autofill(loc))
+fn Function::append_basic_block(Self, String, loc~ : SourceLoc) -> BasicBlock
+fn Function::bind_llvm_value_to_fregister(Self, &@IR.Value, FRegister) -> Unit
+fn Function::bind_llvm_value_to_mem(Self, &@IR.Value, IRegister, Int64) -> Unit
+fn Function::bind_llvm_value_to_register(Self, &@IR.Value, IRegister) -> Unit
+fn Function::build_interference_graph(Self) -> InterferenceGpaph
+fn Function::build_preference_list(Self) -> Map[Operand, @deque.Deque[Operand]]
+fn Function::clear(Self) -> Unit
+fn Function::get_operand_from_llvm_value(Self, &@IR.Value) -> Operand?
+fn Function::get_param(Self, Int) -> Operand?
+fn Function::inst_iter(Self) -> Iter[Instruction]
+fn Function::legalize(Self) -> Unit raise MIRError
+fn Function::live_analysis(Self) -> Unit
+fn Function::new(Module, String) -> Self
+fn Function::new_virtual_freg(Self) -> FRegister
+fn Function::new_virtual_reg(Self) -> IRegister
+fn Function::phi_elimination(Self) -> Unit raise MIRError
+fn Function::rewrite_by_replacement_map(Self, Map[Operand, Operand]) -> Unit
+fn Function::translate_llvm_function(Self, @IR.Function) -> Unit raise MIRError
+#callsite(autofill(loc))
+fn Function::translate_params(Self, loc~ : SourceLoc) -> Unit
+#callsite(autofill(loc))
+fn Function::traverse_llvm_basic_blocks(Self, loc~ : SourceLoc) -> Array[(@IR.BasicBlock, BasicBlock)]
 impl Show for Function
 
 pub(all) struct GlobalValue {
   label : String
   content : GlobalValueContent
   mod : Module
-  llvm_gv : &@IR.GlobalValue
+  mut llvm_gv : &@IR.GlobalValue?
 }
-fn GlobalValue::new(Module, &@IR.GlobalValue) -> Self raise IRTranslateError
 impl Show for GlobalValue
 
 pub(all) enum GlobalValueContent {
@@ -99,196 +225,200 @@ pub(all) enum GlobalValueData {
   Byte(Byte)
 }
 
-pub struct Graph[T] {
-  nodes : @set.Set[T]
-  edges : Map[T, @set.Set[T]]
-}
-fn[T : Hash + Eq] Graph::add_edge(Self[T], T, T) -> Unit
-fn[T : Hash + Eq] Graph::add_node(Self[T], T) -> Unit
-fn[T : Hash + Eq] Graph::coloring(Self[T]) -> (Map[T, Int], Int)
-fn[T] Graph::new() -> Self[T]
-impl[T : Show] Show for Graph[T]
-
-pub(all) enum InstIterControl {
-  DefUse
-  UseDef
-  All
-}
-
-pub(all) struct Instruction {
-  opcode : OpCode
-  defs : Array[Operand]
-  uses : Array[Operand]
-  bb : BasicBlock?
-  mut livein : @set.Set[Operand]
-  mut liveout : @set.Set[Operand]
-}
-fn Instruction::legalize(Self) -> Array[Self]
-fn Instruction::new(OpCode, Array[Operand], Array[Operand], bb? : BasicBlock?) -> Self
-fn Instruction::op_iter(Self, InstIterControl) -> Iter[Operand]
-impl Show for Instruction
-
-pub(all) struct Module {
-  llvm_mod : @IR.Module
-  arch_config : ArchConfig
-  functions : Array[Function]
-  all_llvm_functions : Map[String, @IR.Function]
-  external_functions : Map[String, @IR.Function]
-  global_values : Array[GlobalValue]
-  mut ir_translated : Bool
-  mut legalized : Bool
-  mut reg_allocated : Bool
-}
-fn Module::alloc_register(Self) -> Self raise RegAllocError
-fn Module::legalize(Self) -> Unit
-fn Module::new(@IR.Module, ArchConfig) -> Self
-fn Module::peephole_optimizations(Self) -> Self
-fn Module::post_ra(Self) -> Self raise PostRAError
-fn Module::run_ir_translation(Self) -> Unit raise IRTranslateError
-impl Show for Module
-
-pub(all) enum OpCode {
-  Addb
-  Addw
-  Addl
-  Addq
-  Add(Int)
-  Subb
-  Subw
-  Subl
-  Subq
-  Sub(Int)
-  Mulb
-  Mulw
-  Mull
-  Mulq
-  Mul(Int)
-  Divb
-  Divw
-  Divl
-  Divq
-  Div(Int)
-  Remb
-  Remw
-  Reml
-  Remq
-  Rem(Int)
-  FAddS
-  FAddD
-  FSubS
-  FSubD
-  FMulS
-  FMulD
-  FDivS
-  FDivD
-  FRemS
-  FRemD
-  FNegS
-  FNegD
-  Loadb
-  Loadw
-  Loadl
-  Loadq
-  Load(Int)
-  FLoadS
-  FLoadD
-  Storeb
-  Storew
-  Storel
-  Storeq
-  Store(Int)
-  FStoreS
-  FStoreD
-  Movb
-  Movw
-  Movl
-  Movq
-  Mov(Int)
-  FMovS
-  FMovD
-  Beq
-  Bne
-  Bgt
-  Bge
-  Blt
-  Ble
-  Bequ
-  Bneu
-  Bgtu
-  Bgeu
-  Bltu
-  Bleu
-  Jmp
-  Eq
-  Ne
-  Gt
-  Ge
-  Lt
-  Le
-  Equ
-  Neu
-  Gtu
-  Geu
-  Ltu
-  Leu
-  FeqS
-  FneS
-  FgtS
-  FgeS
-  FltS
-  FleS
-  FeqD
-  FneD
-  FgtD
-  FgeD
-  FltD
-  FleD
+pub(all) enum IBinaryOpCode {
+  Add
+  Sub
+  Mul
+  Div
+  Rem
   And
   Or
   Xor
   Shl
   LShr
   AShr
-  Trunc
-  ZExt
-  SExt
-  FPTrunc
-  FPExt
-  FPToSI(Int, Int)
-  FPToUI(Int, Int)
-  SIToFP(Int, Int)
-  UIToFP(Int, Int)
-  BitCast
+}
+fn IBinaryOpCode::is_commutative(Self) -> Bool
+
+pub(all) enum ICmpOpCode {
+  Eq
+  Ne
+  Gt
+  Ge
+  Lt
+  Le
+  Gtu
+  Geu
+  Ltu
+  Leu
+}
+
+pub struct IRBuilder {
+  func : Function
+  bb : BasicBlock
+}
+fn IRBuilder::build_branch(Self, BranchOpCode, lhs~ : IRegister, rhs~ : IRegister, true_label~ : String, false_label~ : String) -> Instruction
+fn IRBuilder::build_branch_imm(Self, BranchOpCode, lhs~ : IRegister, rhs~ : Int64, true_label~ : String, false_label~ : String) -> Instruction
+fn IRBuilder::build_call(Self, String) -> Instruction
+#callsite(autofill(loc))
+fn IRBuilder::build_fbinary(Self, FBinaryOpCode, Int, dst~ : FRegister, src1~ : FRegister, src2~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_fcmp(Self, FCmpOpCode, Int, dst~ : IRegister, src1~ : FRegister, src2~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_fmove(Self, Int, dst~ : FRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_fmove_from_ireg(Self, Int, dst~ : FRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_fmove_imm(Self, Int, dst~ : FRegister, src~ : Double, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_fmove_to_ireg(Self, Int, dst~ : IRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_fneg(Self, Int, dst~ : FRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_funary(Self, FUnaryOpCode, Int, dst~ : FRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_ibinary(Self, IBinaryOpCode, Int, dst~ : IRegister, src1~ : IRegister, src2~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_ibinary_imm(Self, IBinaryOpCode, Int, dst~ : IRegister, src1~ : IRegister, src2~ : Int64, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_icmp(Self, ICmpOpCode, Int, dst~ : IRegister, src1~ : IRegister, src2~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_imove(Self, Int, dst~ : IRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_imove_imm(Self, Int, dst~ : IRegister, src~ : Int64, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_iunary(Self, IUnaryOpCode, Int, dst~ : IRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+fn IRBuilder::build_jmp(Self, target_label~ : String) -> Instruction
+fn IRBuilder::build_load_addr(Self, IRegister, String) -> Instruction
+#callsite(autofill(loc))
+fn IRBuilder::build_loadf(Self, Int, dst~ : FRegister, base~ : IRegister, offset~ : Int64, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_loadi(Self, Int, dst~ : IRegister, base~ : IRegister, offset~ : Int64, loc~ : SourceLoc) -> Instruction raise MIRError
+fn IRBuilder::build_ret(Self) -> Instruction
+#callsite(autofill(loc))
+fn IRBuilder::build_storef(Self, Int, src~ : FRegister, base~ : IRegister, offset~ : Int64, loc~ : SourceLoc) -> Instruction raise MIRError
+#callsite(autofill(loc))
+fn IRBuilder::build_storei(Self, Int, src~ : IRegister, base~ : IRegister, offset~ : Int64, loc~ : SourceLoc) -> Instruction raise MIRError
+fn IRBuilder::new(Function, BasicBlock) -> Self
+
+pub(all) enum IRegister {
+  VReg(Int)
+  AReg(Int)
+  TReg(Int)
+  SReg(Int)
+  StackPtr
+  FramePtr
+  FramePtrPrim
+  ReturnAddr
+}
+impl Eq for IRegister
+impl Hash for IRegister
+impl Show for IRegister
+
+pub(all) enum IUnaryOpCode {
+  Not
+}
+
+pub(all) struct Instruction {
+  opcode : OpCode
+  defs : Array[Operand]
+  uses : Array[Operand]
+  bb : BasicBlock
+  func : Function
+  mut live_in : @set.Set[Operand]
+  mut live_out : @set.Set[Operand]
+}
+fn Instruction::legalize(Self) -> Array[Self] raise MIRError
+fn Instruction::legalize_branch(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_fbinary(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_fcmp(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_fload(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_fmove(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_fmovei(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_fstore(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_funary(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_icmp(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_iload(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_imove(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_imovef(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_istore(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_iunary(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::live_analysis(Self) -> Bool
+fn Instruction::rewrite_by_replacement_map(Self, Map[Operand, Operand]) -> Unit
+fn Instruction::update_live_in(Self, @set.Set[Operand]) -> Bool
+fn Instruction::update_live_out(Self, @set.Set[Operand]) -> Bool
+impl Show for Instruction
+
+pub struct InterferenceGpaph {
+  nodes : @set.Set[Operand]
+  edges : Map[Operand, @set.Set[Operand]]
+  color_map : Map[Operand, Operand]
+  available_int_colors : @set.Set[Operand]
+  available_fp_colors : @set.Set[Operand]
+  mut spilled_count : Int
+}
+fn InterferenceGpaph::add_edge(Self, Operand, Operand) -> Unit
+fn InterferenceGpaph::add_node(Self, Operand) -> Unit
+fn InterferenceGpaph::coloring(Self, Map[Operand, @deque.Deque[Operand]]) -> (Map[Operand, Operand], Int)
+fn InterferenceGpaph::find_uncolored_vfreg_with_greatest_uncolored_degree(Self) -> Operand?
+fn InterferenceGpaph::find_uncolored_vreg_with_greatest_uncolored_degree(Self) -> Operand?
+fn InterferenceGpaph::new(ArchConfig, Int) -> Self
+
+pub(all) struct Module {
+  source_file : String
+  mut llvm_mod : @IR.Module?
+  arch_config : ArchConfig
+  functions : Map[String, Function]
+  all_llvm_functions : Map[String, @IR.Function]
+  external_functions : Map[String, @IR.Function]
+  global_values : Array[GlobalValue]
+}
+fn Module::add_function(Self, String, Array[ArgPattern]) -> Function
+fn Module::add_global_data(Self, String, Array[GlobalValueData]) -> GlobalValue
+fn Module::add_global_string(Self, label~ : String, content~ : String) -> GlobalValue
+fn Module::add_global_zero_data(Self, String, UInt) -> GlobalValue
+fn Module::alloc_register(Self) -> Unit raise RegAllocError
+fn Module::clear(Self) -> Unit
+fn Module::get_function(Self, String) -> Function?
+fn Module::legalize(Self) -> Unit raise MIRError
+fn Module::new(ArchConfig, source_file? : String) -> Self
+fn Module::translate_llvm_module(Self, @IR.Module) -> Unit raise MIRError
+impl Show for Module
+
+pub(all) enum OpCode {
+  IBinary(IBinaryOpCode, Int)
+  IUnary(IUnaryOpCode, Int)
+  ICmp(ICmpOpCode, Int)
+  ILoad(Int)
+  IStore(Int)
+  IMove(Int)
+  Branch(BranchOpCode)
+  FBinary(FBinaryOpCode, Int)
+  FUnary(FUnaryOpCode, Int)
+  FCmp(FCmpOpCode, Int)
+  FLoad(Int)
+  FStore(Int)
+  FMove(Int)
+  FMoveI(Int)
+  IMoveF(Int)
+  LoadAddr
+  Cast(CastOpCode)
   Call
-  PHI
   Select
   Ret
   Nop
   Intrinsic(String)
 }
-impl Eq for OpCode
-impl Hash for OpCode
+fn OpCode::is_terminator(Self) -> Bool
 impl Show for OpCode
 
 pub(all) enum Operand {
-  VReg(Int)
-  VFReg(Int)
-  Reg(Int)
-  FReg(Int)
+  IRegister(IRegister)
+  FRegister(FRegister)
+  Mem(IRegister, Int64)
   Imm(Int64)
   FImm(Double)
-  AReg(Int)
-  TReg(Int)
-  SReg(Int)
-  FAReg(Int)
-  FTReg(Int)
-  FSReg(Int)
-  Mem(Operand, Int64)
   Label(String)
-  StackPtr
-  FramePtr
-  FramePtrPrim
-  ReturnAddr
 }
 impl Eq for Operand
 impl Hash for Operand

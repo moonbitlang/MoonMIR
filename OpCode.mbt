@@ -88,6 +88,7 @@ pub(all) enum FCmpOpCode {
   Fle
 }
 
+///|
 pub(all) enum CastOpCode {
   Trunc(Int, Int)
   ZExt(Int, Int)
