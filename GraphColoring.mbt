@@ -56,6 +56,7 @@ pub fn InterferenceGpaph::new(
   }
 }
 
+///|
 pub impl Show for InterferenceGpaph with output(self, logger) {
   logger.write_string("Interference Graph:\n")
   logger.write_string("Nodes:\n")

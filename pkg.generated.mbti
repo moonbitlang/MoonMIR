@@ -54,9 +54,6 @@ pub suberror MIRError {
 }
 impl Show for MIRError
 
-pub suberror RegAllocError String
-impl Show for RegAllocError
-
 // Types and methods
 pub(all) struct ArchConfig {
   arch_name : String
@@ -178,7 +175,7 @@ pub(all) struct Function {
   mut vfreg_cnt : Int
   mut spilled_count : Int
 }
-fn Function::alloc_register(Self) -> Unit raise RegAllocError
+fn Function::alloc_register(Self) -> Unit raise MIRError
 #callsite(autofill(loc))
 fn Function::append_basic_block(Self, String, loc~ : SourceLoc) -> BasicBlock
 fn Function::bind_llvm_value_to_fregister(Self, &@IR.Value, FRegister) -> Unit
@@ -344,6 +341,7 @@ fn Instruction::legalize_imovef(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::legalize_istore(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::legalize_iunary(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::live_analysis(Self) -> Bool
+fn Instruction::new(OpCode, Array[Operand], Array[Operand], BasicBlock) -> Self
 fn Instruction::rewrite_by_replacement_map(Self, Map[Operand, Operand]) -> Unit
 fn Instruction::update_live_in(Self, @set.Set[Operand]) -> Bool
 fn Instruction::update_live_out(Self, @set.Set[Operand]) -> Bool
@@ -363,6 +361,7 @@ fn InterferenceGpaph::coloring(Self, Map[Operand, @deque.Deque[Operand]]) -> (Ma
 fn InterferenceGpaph::find_uncolored_vfreg_with_greatest_uncolored_degree(Self) -> Operand?
 fn InterferenceGpaph::find_uncolored_vreg_with_greatest_uncolored_degree(Self) -> Operand?
 fn InterferenceGpaph::new(ArchConfig, Int) -> Self
+impl Show for InterferenceGpaph
 
 pub(all) struct Module {
   source_file : String
@@ -377,7 +376,7 @@ fn Module::add_function(Self, String, Array[ArgPattern]) -> Function
 fn Module::add_global_data(Self, String, Array[GlobalValueData]) -> GlobalValue
 fn Module::add_global_string(Self, label~ : String, content~ : String) -> GlobalValue
 fn Module::add_global_zero_data(Self, String, UInt) -> GlobalValue
-fn Module::alloc_register(Self) -> Unit raise RegAllocError
+fn Module::alloc_register(Self) -> Unit raise MIRError
 fn Module::clear(Self) -> Unit
 fn Module::get_function(Self, String) -> Function?
 fn Module::legalize(Self) -> Unit raise MIRError

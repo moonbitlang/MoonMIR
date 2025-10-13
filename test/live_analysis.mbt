@@ -76,8 +76,9 @@ test "Cond Branch Insts Live Analysis" {
   inspect(mir_func, content=expected)
 }
 
+///|
 test "While Live Analysis" {
-  let code = 
+  let code =
     #|fn sum_to_n(n: Int) -> Int {
     #|  let mut sum = 0;
     #|  let mut i = 1;
@@ -87,7 +88,6 @@ test "While Live Analysis" {
     #|  }
     #|  sum
     #|}
-
   let llvm_mod = @TinyMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
@@ -95,8 +95,7 @@ test "While Live Analysis" {
   let mir_func = mir_mod.get_function("sum_to_n").unwrap()
   // Live Analysis
   mir_func.live_analysis()
-
-  let expected = 
+  let expected =
     #|func sum_to_n(a0) {
     #|entry:                           ; live in: a0
     #|  v8 = move.i32 0                # live in: a0
@@ -128,6 +127,5 @@ test "While Live Analysis" {
     #|  ret
     #|}
     #|
-
   inspect(mir_func, content=expected)
 }

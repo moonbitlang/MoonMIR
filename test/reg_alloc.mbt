@@ -30,4 +30,3 @@ test "Simple Insts Live Analysis" {
     #|
   inspect(mir_func, content=expected)
 }
-

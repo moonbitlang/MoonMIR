@@ -1,4 +1,3 @@
-
 ///|
 pub fn Module::alloc_register(self : Module) -> Unit raise MIRError {
   for func in self.functions.values() {
@@ -32,7 +31,7 @@ pub fn Function::alloc_register(self : Function) -> Unit raise MIRError {
   // otherwise we're done.
   if need_rewrite {
     self.rewrite_by_replacement_map(replacement_map)
-    self.legalize() 
+    self.legalize()
     self.alloc_register()
   }
 }
