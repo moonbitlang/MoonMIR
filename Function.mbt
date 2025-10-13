@@ -70,20 +70,6 @@ pub fn Function::inst_iter(self : Self) -> Iter[Instruction] {
 }
 
 ///|
-pub fn Function::clear(self : Self) -> Unit {
-  self.params.clear()
-  self.body.clear()
-  self.var_stack_size = 0
-  self.reg_stack_size = 0
-  //self.terminal_basic_blocks.clear()
-  self.llvm_func = None
-  self.value_map.clear()
-  self.bbmap.clear()
-  self.vreg_cnt = 0
-  self.vfreg_cnt = 0
-}
-
-///|
 fn Function::set_params_by_patterns(
   self : Self,
   arg_patterns : Array[ArgPattern],

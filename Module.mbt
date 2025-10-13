@@ -174,15 +174,6 @@ pub fn Module::add_global_data(
 }
 
 ///|
-pub fn Module::clear(self : Self) -> Unit {
-  self.llvm_mod = None
-  self.functions.clear()
-  self.all_llvm_functions.clear()
-  self.external_functions.clear()
-  self.global_values.clear()
-}
-
-///|
 pub impl Show for Module with output(self, logger) {
   logger.write_string("; Source File: \{self.source_file}\n")
   logger.write_string("; Architecture: \{self.arch_config.arch_name}\n\n")

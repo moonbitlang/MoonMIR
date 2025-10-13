@@ -32,14 +32,6 @@ pub fn BasicBlock::new(func : Function, label : String) -> BasicBlock {
 }
 
 ///|
-pub fn BasicBlock::clear(self : Self) -> Unit {
-  self.insts.clear()
-  self.preds.clear()
-  self.live_in.clear()
-  self.live_out.clear()
-}
-
-///|
 pub fn BasicBlock::push(self : Self, inst : Instruction) -> Unit {
   self.insts.push(inst)
 }
