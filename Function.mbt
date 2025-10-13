@@ -227,6 +227,38 @@ pub fn Function::get_operand_from_llvm_value(
   self.value_map.get(val)
 }
 
+pub fn Function::has_inst_with_opcode(
+  self : Self,
+  opcode : OpCode,
+) -> Bool {
+  for inst in self.inst_iter() {
+    if inst.opcode == opcode {
+      return true
+    }
+  }
+  false
+}
+
+pub fn Function::collect_blocks_with_opcode(
+  self : Self,
+  opcode : OpCode,
+) -> Array[BasicBlock] {
+  let mut blocks = Array::new()
+  for bb in self.body {
+    for inst in bb.insts {
+      if inst.opcode == opcode {
+        blocks.push(bb)
+        break
+      }
+    }
+  }
+  blocks
+}
+
+pub fn Function::get_entry_block(self : Self) -> BasicBlock? {
+  self.body.get(0)
+}
+
 ///|
 pub impl Show for Function with output(self, logger) {
   logger.write_string("func \{self.name}(")

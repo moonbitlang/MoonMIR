@@ -11,7 +11,7 @@ pub(all) enum IBinaryOpCode {
   Shl
   LShr
   AShr
-}
+} derive(Eq)
 
 ///|
 pub fn IBinaryOpCode::is_commutative(self : Self) -> Bool {
@@ -25,7 +25,7 @@ pub fn IBinaryOpCode::is_commutative(self : Self) -> Bool {
 ///|
 pub(all) enum IUnaryOpCode {
   Not
-}
+} derive(Eq)
 
 ///|
 pub(all) enum ICmpOpCode {
@@ -39,7 +39,7 @@ pub(all) enum ICmpOpCode {
   Geu
   Ltu
   Leu
-}
+} derive(Eq)
 
 ///|
 pub(all) enum BranchOpCode {
@@ -54,7 +54,7 @@ pub(all) enum BranchOpCode {
   Bltu
   Bleu
   Jmp
-}
+} derive(Eq)
 
 ///|
 pub(all) enum FBinaryOpCode {
@@ -63,7 +63,7 @@ pub(all) enum FBinaryOpCode {
   FMul
   FDiv
   FRem
-}
+} derive(Eq)
 
 ///|
 pub fn FBinaryOpCode::is_commutative(self : Self) -> Bool {
@@ -76,7 +76,7 @@ pub fn FBinaryOpCode::is_commutative(self : Self) -> Bool {
 ///|
 pub(all) enum FUnaryOpCode {
   FNeg
-}
+} derive(Eq)
 
 ///|
 pub(all) enum FCmpOpCode {
@@ -86,7 +86,7 @@ pub(all) enum FCmpOpCode {
   Fge
   Flt
   Fle
-}
+} derive(Eq)
 
 ///|
 pub(all) enum CastOpCode {
@@ -99,7 +99,7 @@ pub(all) enum CastOpCode {
   FPToUI(Int, Int)
   SIToFP(Int, Int)
   UIToFP(Int, Int)
-}
+} derive(Eq)
 
 ///|
 pub(all) enum OpCode {
@@ -125,7 +125,7 @@ pub(all) enum OpCode {
   Ret
   Nop
   Intrinsic(String)
-}
+} derive(Eq)
 
 ///|
 pub fn OpCode::is_terminator(self : Self) -> Bool {
