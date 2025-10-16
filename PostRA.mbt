@@ -38,8 +38,19 @@ pub fn Function::post_ra(self : Function) -> Unit {
 fn Function::store_load_caller_saved_registers(self : Self) -> Unit {
   fn is_caller_saved_register(op : Operand) -> Bool {
     match op {
-      IRegister(TReg(_)) => true
-      FRegister(FTReg(_)) => true
+      IRegister(AReg(_)) => true // Argument registers are caller-saved in RISC-V
+      IRegister(TReg(_)) => true // Temporary registers are caller-saved
+      FRegister(FAReg(_)) => true // Float argument registers are caller-saved
+      FRegister(FTReg(_)) => true // Float temporary registers are caller-saved
+      _ => false
+    }
+  }
+
+  // Check if a register is used to return values from function calls
+  fn is_return_register(op : Operand) -> Bool {
+    match op {
+      IRegister(AReg(0)) => true // a0 is the integer return register
+      FRegister(FAReg(0)) => true // fa0 is the float return register
       _ => false
     }
   }
@@ -48,6 +59,11 @@ fn Function::store_load_caller_saved_registers(self : Self) -> Unit {
   let call_insts = self.collect_insts_with_opcode(Call)
   for inst in call_insts {
     for op in inst.live_out.iter().filter(is_caller_saved_register) {
+      // Skip return registers - they should not be restored after the call
+      // as they contain the return value
+      if is_return_register(op) {
+        continue
+      }
       let { func, bb, .. } = inst
       let builder = IRBuilder::new(func, bb)
       if !reg_stack_map.contains(op) {
