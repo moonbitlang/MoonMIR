@@ -968,7 +968,7 @@ fn i32_store_mir_to_riscv(
     panic()
   }
   match inst {
-    { defs: [], uses: [IRegister(r), Mem(base, offset)], .. } => {
+    { defs: [], uses: [Mem(base, offset), IRegister(r) ], .. } => {
       let src = Reg::from_mir_reg(r)
       let base = Reg::from_mir_reg(base)
       let mem = Mem::{ base, offset }
@@ -990,7 +990,7 @@ fn i64_store_mir_to_riscv(
     panic()
   }
   match inst {
-    { defs: [], uses: [IRegister(r), Mem(base, offset)], .. } => {
+    { defs: [], uses: [Mem(base, offset), IRegister(r)], .. } => {
       let src = Reg::from_mir_reg(r)
       let base = Reg::from_mir_reg(base)
       let mem = Mem::{ base, offset }

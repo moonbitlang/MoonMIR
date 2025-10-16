@@ -172,14 +172,16 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
   }
 
   // Step 5. Calculate total stack size, insert sp, fp modification instructions
-  let total_stack_size = self.var_stack_size + self.reg_stack_size
-  if total_stack_size == 0 {
+  if self.var_stack_size == 0 && self.reg_stack_size == 0 {
     return
   }
+  // need space for fp
+  let offset = -self.extend_reg_stack(8L, 8L)
+  let total_stack_size = self.var_stack_size + self.reg_stack_size
   let builder = IRBuilder::new(self, entry_bb)
   let alloc_stack_inst = try! builder.build_ibinary_imm(Add, 64, dst=StackPtr, src1=StackPtr, src2=-total_stack_size)
-  let store_fp_inst = try! builder.build_storei(64, src=FramePtr, base=StackPtr, offset=self.var_stack_size)
-  let set_fp_inst = try! builder.build_ibinary_imm(Add, 64, dst=FramePtr, src1=StackPtr, src2=self.var_stack_size)
+  let store_fp_inst = try! builder.build_storei(64, src=FramePtr, base=FramePtr, offset~)
+  let set_fp_inst = try! builder.build_ibinary_imm(Add, 64, dst=FramePtr, src1=StackPtr, src2=total_stack_size)
   entry_bb.insts.insert(0, set_fp_inst)
   entry_bb.insts.insert(0, store_fp_inst)
   entry_bb.insts.insert(0, alloc_stack_inst)

@@ -64,8 +64,9 @@ pub fn Module::add_function(
   self : Self,
   name : String,
   arg_patterns : Array[ArgPattern],
+  is_external : Bool,
 ) -> Function {
-  let func = Function::new(self, name)
+  let func = Function::new(self, name, is_external)
   self.functions.set(name, func)
   if arg_patterns.is_empty() {
     return func

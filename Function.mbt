@@ -36,7 +36,7 @@ pub(all) struct Function {
 }
 
 ///|
-pub fn Function::new(mod : Module, name : String) -> Function {
+pub fn Function::new(mod : Module, name : String, is_external: Bool) -> Function {
   Function::{
     mod,
     name,
@@ -46,7 +46,7 @@ pub fn Function::new(mod : Module, name : String) -> Function {
     reg_stack_size: 0,
     terminal_blocks: Array::new(),
     llvm_func: None,
-    is_external: false,
+    is_external,
     value_map: Map::new(),
     bbmap: Map::new(),
     vreg_cnt: 0,

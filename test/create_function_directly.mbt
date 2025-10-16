@@ -11,7 +11,7 @@ typealias @MoonMIR.(
 ///|
 test "simple two int arg adding" {
   let mod = Module::new(ArchConfig::riscv64())
-  let func = mod.add_function("add", [I, I])
+  let func = mod.add_function("add", [I, I], false)
   let entry_bb = func.append_basic_block("entry")
   let builder = IRBuilder::new(func, entry_bb)
   let a0 = func.get_param(0).unwrap()
