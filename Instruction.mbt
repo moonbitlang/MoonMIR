@@ -62,6 +62,20 @@ pub fn Instruction::update_live_in(self : Self, live_in : Set[Operand]) -> Bool 
   true
 }
 
+pub fn Instruction::contains_virtual_reg(self: Self) -> Bool {
+  for op in self.defs {
+    if op.is_virtual_reg() {
+      return true
+    }
+  }
+  for op in self.uses {
+    if op.is_virtual_reg() {
+      return true
+    }
+  }
+  false
+}
+
 ///|
 pub impl Show for Instruction with output(self, logger) {
   match self.defs {

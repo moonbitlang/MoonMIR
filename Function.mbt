@@ -282,6 +282,15 @@ pub fn Function::get_entry_block(self : Self) -> BasicBlock? {
   self.body.get(0)
 }
 
+pub fn Function::contains_virtual_reg(self: Self) -> Bool {
+  for bb in self.body {
+    if bb.contains_virtual_reg() {
+      return true
+    }
+  }
+  false
+}
+
 ///|
 pub impl Show for Function with output(self, logger) {
   logger.write_string("func \{self.name}(")

@@ -77,6 +77,15 @@ pub fn BasicBlock::insert_inst_after(self: Self, inst: Instruction, after~: Inst
   Some(())
 }
 
+pub fn BasicBlock::contains_virtual_reg(self: Self) -> Bool {
+  for inst in self.insts {
+    if inst.contains_virtual_reg() {
+      return true
+    }
+  }
+  false
+}
+
 
 ///|
 ///
