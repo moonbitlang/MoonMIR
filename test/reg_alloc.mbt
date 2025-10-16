@@ -56,8 +56,9 @@ test "Cond Branch Insts Register Allocation" {
   mir_func.alloc_register()
   let expected =
     #|func foo(a0, a1, a2) {
-    #|entry:                             ; live in: a0, a1, a2
-    #|  bne a2, 0, foo_L1, foo_L2        # live in: a0, a1, a2
+    #|entry:                              ; live in: a0, a1, a2
+    #|  t5 = move.i32 0                   # live in: a0, a1, a2
+    #|  bne a2, t5, foo_L1, foo_L2        # live in: a0, a1, a2, t5
     #|
     #|; preds: entry
     #|foo_L1:                      ; live in: a0, a1

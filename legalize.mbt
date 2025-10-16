@@ -590,8 +590,13 @@ pub fn Instruction::legalize_branch(
     }
     { defs: [], uses: [IRegister(_), IRegister(_), Label(_), Label(_)], .. } as inst =>
       [inst]
-    { defs: [], uses: [IRegister(_), Imm(_), Label(_), Label(_)], .. } as inst =>
-      [inst]
+    { defs: [], uses: [IRegister(r1), Imm(i2), Label(true_label), Label(false_label)], .. } => {
+      let v2 = func.keeped_treg1()
+      [
+        builder.build_imove_imm(32, dst=v2, src=i2),
+        builder.build_branch(bop, lhs=r1, rhs=v2, true_label~, false_label~),
+      ]
+    }
     {
       defs: [],
       uses: [Imm(i1), Mem(b2, o2), Label(true_label), Label(false_label)],
