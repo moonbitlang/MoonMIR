@@ -1,5 +1,5 @@
-
-pub fn Function::post_ra(self: Function) -> Unit {
+///|
+pub fn Function::post_ra(self : Function) -> Unit {
   // Step 1. Prologue/Epilogue Insertion
   // 1-1. Collect Callee-Saved Registers
   // 1-2. If callee-saved registers are used, save them in prologue
@@ -21,9 +21,8 @@ pub fn Function::post_ra(self: Function) -> Unit {
   self.adjust_mem_operands()
 }
 
-fn Function::collect_callee_saved_registers(
-  self: Function
-) -> Array[Operand] {
+///|
+fn Function::collect_callee_saved_registers(self : Function) -> Array[Operand] {
   let callee_saved_reg : Set[Operand] = Set::new()
   for inst in self.inst_iter() {
     for def in inst.defs {
@@ -40,9 +39,8 @@ fn Function::collect_callee_saved_registers(
   callee_saved_reg.to_array()
 }
 
-fn Function::prologue_epilogue_insertion(
-  self: Function
-) -> Unit {
+///|
+fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
   // Step 1. Collect Callee-Saved Registers
   let callee_saved_regs = self.collect_callee_saved_registers()
   let callee_saved_reg_locs : Map[Operand, Int64] = Map::new()
@@ -53,17 +51,29 @@ fn Function::prologue_epilogue_insertion(
     let offset = -self.extend_reg_stack(8L, 8L)
     match r {
       IRegister(src) => {
-        let inst = Instruction::new(IStore(64), [IRegister(src)], [Mem(FramePtr, offset)], entry_bb)
+        let inst = Instruction::new(
+          IStore(64),
+          [IRegister(src)],
+          [Mem(FramePtr, offset)],
+          entry_bb,
+        )
         callee_saved_reg_locs.set(r, offset)
         entry_bb.insts.insert(0, inst)
       }
       FRegister(src) => {
-        let inst = Instruction::new(FStore(64), [FRegister(src)], [Mem(FramePtr, offset)], entry_bb)
+        let inst = Instruction::new(
+          FStore(64),
+          [FRegister(src)],
+          [Mem(FramePtr, offset)],
+          entry_bb,
+        )
         callee_saved_reg_locs.set(r, offset)
         entry_bb.insts.insert(0, inst)
       }
       _ => {
-        println("Compiler ICE: Unexpected register type in callee-saved registers")
+        println(
+          "Compiler ICE: Unexpected register type in callee-saved registers",
+        )
         panic()
       }
     }
@@ -76,15 +86,27 @@ fn Function::prologue_epilogue_insertion(
       let offset = callee_saved_reg_locs.get(r).unwrap()
       match r {
         IRegister(dst) => {
-          let inst = Instruction::new(ILoad(64), [Mem(FramePtr, offset)], [IRegister(dst)], term_bb)
+          let inst = Instruction::new(
+            ILoad(64),
+            [Mem(FramePtr, offset)],
+            [IRegister(dst)],
+            term_bb,
+          )
           term_bb.push_inst_before_terminator(inst)
         }
         FRegister(dst) => {
-          let inst = Instruction::new(FLoad(64), [Mem(FramePtr, offset)], [FRegister(dst)], term_bb)
+          let inst = Instruction::new(
+            FLoad(64),
+            [Mem(FramePtr, offset)],
+            [FRegister(dst)],
+            term_bb,
+          )
           term_bb.push_inst_before_terminator(inst)
         }
         _ => {
-          println("Compiler ICE: Unexpected register type in callee-saved registers")
+          println(
+            "Compiler ICE: Unexpected register type in callee-saved registers",
+          )
           panic()
         }
       }
@@ -99,15 +121,16 @@ fn Function::prologue_epilogue_insertion(
       IStore(64),
       [IRegister(ReturnAddr)],
       [Mem(FramePtr, offset)],
-      entry_bb)
+      entry_bb,
+    )
     entry_bb.insts.insert(0, store_ra_inst)
-
     for term_bb in terminal_bbs {
       let load_ra_inst = Instruction::new(
         ILoad(64),
         [Mem(FramePtr, offset)],
         [IRegister(ReturnAddr)],
-        term_bb)
+        term_bb,
+      )
       term_bb.push_inst_before_terminator(load_ra_inst)
     }
   }
@@ -121,17 +144,20 @@ fn Function::prologue_epilogue_insertion(
     IBinary(Add, 64),
     [IRegister(StackPtr)],
     [IRegister(StackPtr), Imm(-total_stack_size)],
-    entry_bb)
+    entry_bb,
+  )
   let store_fp_inst = Instruction::new(
     IStore(64),
     [IRegister(FramePtr)],
     [Mem(StackPtr, self.var_stack_size)],
-    entry_bb)
+    entry_bb,
+  )
   let set_fp_inst = Instruction::new(
     IBinary(Add, 64),
     [IRegister(FramePtr)],
     [IRegister(StackPtr), Imm(self.var_stack_size)],
-    entry_bb)
+    entry_bb,
+  )
   entry_bb.insts.insert(0, set_fp_inst)
   entry_bb.insts.insert(0, store_fp_inst)
   entry_bb.insts.insert(0, alloc_stack_inst)
@@ -140,32 +166,39 @@ fn Function::prologue_epilogue_insertion(
       IBinary(Add, 64),
       [IRegister(StackPtr)],
       [IRegister(StackPtr), Imm(total_stack_size)],
-      term_bb)
+      term_bb,
+    )
     let load_fp_inst = Instruction::new(
       ILoad(64),
       [Mem(StackPtr, self.var_stack_size)],
       [IRegister(FramePtr)],
-      term_bb)
+      term_bb,
+    )
     term_bb.push_inst_before_terminator(dealloc_stack_inst)
     term_bb.push_inst_before_terminator(load_fp_inst)
   }
 }
 
-pub fn Function::adjust_mem_operands(self: Function) -> Unit {
+///|
+pub fn Function::adjust_mem_operands(self : Function) -> Unit {
   let { var_stack_size, reg_stack_size, .. } = self
   let total_stack_size = var_stack_size + reg_stack_size
   for inst in self.inst_iter() {
     for i, def in inst.defs {
       match def {
-        Mem(FramePtr, offset) => inst.defs[i] = Mem(StackPtr, offset + total_stack_size)
-        Mem(FramePtrPrim, offset) => inst.defs[i] = Mem(StackPtr, offset + var_stack_size)
+        Mem(FramePtr, offset) =>
+          inst.defs[i] = Mem(StackPtr, offset + total_stack_size)
+        Mem(FramePtrPrim, offset) =>
+          inst.defs[i] = Mem(StackPtr, offset + var_stack_size)
         _ => ()
       }
     }
     for i, use_ in inst.uses {
       match use_ {
-        Mem(FramePtr, offset) => inst.uses[i] = Mem(StackPtr, offset + total_stack_size)
-        Mem(FramePtrPrim, offset) => inst.uses[i] = Mem(StackPtr, offset + var_stack_size)
+        Mem(FramePtr, offset) =>
+          inst.uses[i] = Mem(StackPtr, offset + total_stack_size)
+        Mem(FramePtrPrim, offset) =>
+          inst.uses[i] = Mem(StackPtr, offset + var_stack_size)
         _ => ()
       }
     }

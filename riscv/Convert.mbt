@@ -86,9 +86,15 @@ fn FReg::from_mir_freg(
   }
 }
 
-pub fn mir_module_to_riscv(mod: @MoonMIR.Module) -> Array[RvAsm] raise MIRToRiscvError {
-  let insts: Array[RvAsm] = Array::new()
-  mod.functions.values().filter(f => f.is_external).each(f => insts.push(Global(f.name)))
+///|
+pub fn mir_module_to_riscv(
+  mod : @MoonMIR.Module,
+) -> Array[RvAsm] raise MIRToRiscvError {
+  let insts : Array[RvAsm] = Array::new()
+  mod.functions
+  .values()
+  .filter(f => f.is_external)
+  .each(f => insts.push(Global(f.name)))
   for gv in mod.global_values {
     let gv_insts = mir_global_to_riscv(gv)
     insts.append(gv_insts)
@@ -100,8 +106,9 @@ pub fn mir_module_to_riscv(mod: @MoonMIR.Module) -> Array[RvAsm] raise MIRToRisc
   insts
 }
 
-pub fn mir_global_to_riscv(global_value: @MoonMIR.GlobalValue) -> Array[RvAsm] {
-  let insts: Array[RvAsm] = Array::new()
+///|
+pub fn mir_global_to_riscv(global_value : @MoonMIR.GlobalValue) -> Array[RvAsm] {
+  let insts : Array[RvAsm] = Array::new()
   insts.push(Global(global_value.label))
   match global_value.content {
     String(s) => insts.push(Asciz(s))
@@ -119,10 +126,11 @@ pub fn mir_global_to_riscv(global_value: @MoonMIR.GlobalValue) -> Array[RvAsm] {
   insts
 }
 
+///|
 pub fn mir_function_to_riscv(
   func : @MoonMIR.Function,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  let riscv_insts: Array[RvAsm] = Array::new()
+  let riscv_insts : Array[RvAsm] = Array::new()
   let fname = func.name
   riscv_insts.push(Label(fname))
   for i, bb in func.body {
@@ -132,7 +140,11 @@ pub fn mir_function_to_riscv(
   riscv_insts
 }
 
-pub fn mir_block_to_riscv(bb: @MoonMIR.BasicBlock, i: Int) -> Array[RvAsm] raise MIRToRiscvError {
+///|
+pub fn mir_block_to_riscv(
+  bb : @MoonMIR.BasicBlock,
+  i : Int,
+) -> Array[RvAsm] raise MIRToRiscvError {
   let insts : Array[RvAsm] = Array::new()
   let label = bb.label
   if i != 0 {

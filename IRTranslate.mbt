@@ -21,33 +21,38 @@ pub fn Module::translate_llvm_module(
   }
 }
 
+///|
 pub fn Module::translate_global_values(
-  self: Self,
-  llvm_mod: @IR.Module
+  self : Self,
+  llvm_mod : @IR.Module,
 ) -> Unit raise MIRError {
   let data_layout = llvm_mod.getDataLayout()
-
   for global_name, gv in llvm_mod.globals {
     match gv.asGlobalValueEnum() {
       Function(_) => ()
-      GlobalVariable({ initializer: None, initializerTy, ..}) => {
-        let size = data_layout.getTypeAllocSize(initializerTy).reinterpret_as_uint()
+      GlobalVariable({ initializer: None, initializerTy, .. }) => {
+        let size = data_layout
+          .getTypeAllocSize(initializerTy)
+          .reinterpret_as_uint()
         let _ = self.add_global_zero_data(global_name, size)
+
       }
-      GlobalVariable({ initializer: Some(initializer), ..}) => 
+      GlobalVariable({ initializer: Some(initializer), .. }) =>
         self.translate_llvm_global_constant(global_name, initializer)
-      GlobalConstant({ value, ..}) => self.translate_llvm_global_constant(global_name, value)
+      GlobalConstant({ value, .. }) =>
+        self.translate_llvm_global_constant(global_name, value)
     }
   }
 }
 
+///|
 pub fn Module::translate_llvm_global_constant(
-  self: Self,
-  global_name: String,
-  global_constant: &@IR.Constant
+  self : Self,
+  global_name : String,
+  global_constant : &@IR.Constant,
 ) -> Unit raise MIRError {
   let gv = match global_constant.asConstantEnum() {
-    ConstantInt({ vty, value, ..}) => {
+    ConstantInt({ vty, value, .. }) =>
       match vty.asIntegerTypeEnum() {
         Int1Type(_) => {
           let data = [Byte(value.to_byte())]
@@ -70,8 +75,7 @@ pub fn Module::translate_llvm_global_constant(
           self.add_global_data(global_name, data)
         }
       }
-    }
-    ConstantFP({ vty, value, ..}) => {
+    ConstantFP({ vty, value, .. }) =>
       match vty.asFPTypeEnum() {
         FloatType(_) => {
           let bits = value.to_float().reinterpret_as_uint()
@@ -88,14 +92,12 @@ pub fn Module::translate_llvm_global_constant(
             "Unsupported floating point type \{ty} in global constant.",
           )
       }
-    }
     ConstantPointerNull(_) => {
       let data = [Quad(0)]
       self.add_global_data(global_name, data)
     }
-    ConstantString({ data, .. }) => {
+    ConstantString({ data, .. }) =>
       self.add_global_string(label=global_name, content=data)
-    }
     ConstantArray(_) =>
       raise IRTranslateError(
         "ConstantArray in global constant is not supported yet.",
@@ -104,12 +106,10 @@ pub fn Module::translate_llvm_global_constant(
       raise IRTranslateError(
         "ConstantStruct in global constant is not supported yet.",
       )
-    _ =>
-      raise IRTranslateError(
-        "Unsupported constant type in global constant.",
-      )
+    _ => raise IRTranslateError("Unsupported constant type in global constant.")
   }
   let _ = gv
+
 }
 
 ///|
@@ -171,14 +171,16 @@ pub fn Function::translate_params(self : Self, loc~ : SourceLoc) -> Unit {
     guard param is Mem(base, offset)
     if is_fp {
       let tmp = self.new_virtual_freg()
-      let load_inst =
-        buiilder.build_loadf(64, dst=tmp, base=base, offset=offset) catch { _ => abort("") }
+      let load_inst = buiilder.build_loadf(64, dst=tmp, base~, offset~) catch {
+        _ => abort("")
+      }
       entry_bb.push(load_inst)
       self.value_map.set(arg, FRegister(tmp))
     } else {
       let tmp = self.new_virtual_reg()
-      let load_inst =
-        buiilder.build_loadi(64, dst=tmp, base=base, offset=offset) catch { _ => abort("") }
+      let load_inst = buiilder.build_loadi(64, dst=tmp, base~, offset~) catch {
+        _ => abort("")
+      }
       entry_bb.push(load_inst)
       self.value_map.set(arg, IRegister(tmp))
     }
@@ -321,8 +323,7 @@ pub fn translate_llvm_inst(
       translate_llvm_gep_inst(gep_inst, builder, func, data_layout)
     SelectInst(select_inst) =>
       translate_llvm_select_inst(select_inst, builder, func, data_layout)
-    ReturnInst(ret_inst) =>
-      translate_llvm_return_inst(ret_inst, builder, func)
+    ReturnInst(ret_inst) => translate_llvm_return_inst(ret_inst, builder, func)
     CallInst(call_inst) => translate_llvm_call_inst(call_inst, builder, func)
     PHINode(phi_node) => translate_llvm_phi_node(phi_node, func)
     ExtractValueInst(_) =>
@@ -477,9 +478,10 @@ pub fn translate_llvm_store_inst(
         builder.build_storei(data_size, src=tmp, base~, offset~),
       ]
     }
-    src_op => raise IRTranslateError(
-      "StoreInst: value operand is not a register, immediate, or label: \{src_op}",
-    )
+    src_op =>
+      raise IRTranslateError(
+        "StoreInst: value operand is not a register, immediate, or label: \{src_op}",
+      )
   }
 }
 
@@ -969,7 +971,9 @@ pub fn translate_llvm_icmp_inst(
       [builder.build_imove_imm(data_size, dst~, src~)]
     }
     opcode =>
-      raise IRTranslateError("Unsupported operand types for integer comparison: \{opcode}")
+      raise IRTranslateError(
+        "Unsupported operand types for integer comparison: \{opcode}",
+      )
   }
 }
 
@@ -1436,24 +1440,38 @@ pub fn translate_llvm_cast_inst(
   let from_ty_size = data_layout.getTypeAllocSizeInBits(from_val.getType())
   let to_ty_size = data_layout.getTypeAllocSizeInBits(to_ty)
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError("CastInst: destination operand not found in value_map")
+    raise IRTranslateError(
+      "CastInst: destination operand not found in value_map",
+    )
   }
   match opcode {
-    Trunc => translate_trunc(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
-    SExt => translate_sext(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
-    ZExt => translate_zext(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
-    FPTrunc => translate_fptrunc(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
-    FPExt => translate_fpext(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
-    UIToFP => translate_uitofp(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
-    SIToFP => translate_sitofp(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
-    FPToUI => translate_fptoui(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
-    FPToSI => translate_fptosi(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    Trunc =>
+      translate_trunc(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    SExt =>
+      translate_sext(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    ZExt =>
+      translate_zext(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    FPTrunc =>
+      translate_fptrunc(
+        from_ty_size, to_ty_size, from_op, dst_op, builder, func,
+      )
+    FPExt =>
+      translate_fpext(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    UIToFP =>
+      translate_uitofp(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    SIToFP =>
+      translate_sitofp(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    FPToUI =>
+      translate_fptoui(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
+    FPToSI =>
+      translate_fptosi(from_ty_size, to_ty_size, from_op, dst_op, builder, func)
     PtrToInt => translate_bitcast(64, from_op, dst_op, builder, func)
     IntToPtr => translate_bitcast(64, from_op, dst_op, builder, func)
     BitCast => translate_bitcast(from_ty_size, from_op, dst_op, builder, func)
   }
 }
 
+///|
 pub fn translate_trunc(
   from_ty_size : Int,
   to_ty_size : Int,
@@ -1463,7 +1481,8 @@ pub fn translate_trunc(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (IRegister(dst), IRegister(src)) => [builder.build_trunc(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), IRegister(src)) =>
+      [builder.build_trunc(from_ty_size~, to_ty_size~, dst~, src~)]
     (IRegister(dst), Imm(src_imm)) => {
       let src = func.new_virtual_reg()
       [
@@ -1478,6 +1497,7 @@ pub fn translate_trunc(
   }
 }
 
+///|
 pub fn translate_sext(
   from_ty_size : Int,
   to_ty_size : Int,
@@ -1487,7 +1507,8 @@ pub fn translate_sext(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (IRegister(dst), IRegister(src)) => [builder.build_sext(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), IRegister(src)) =>
+      [builder.build_sext(from_ty_size~, to_ty_size~, dst~, src~)]
     (IRegister(dst), Imm(src_imm)) => {
       let src = func.new_virtual_reg()
       [
@@ -1502,6 +1523,7 @@ pub fn translate_sext(
   }
 }
 
+///|
 pub fn translate_zext(
   from_ty_size : Int,
   to_ty_size : Int,
@@ -1511,7 +1533,8 @@ pub fn translate_zext(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (IRegister(dst), IRegister(src)) => [builder.build_zext(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), IRegister(src)) =>
+      [builder.build_zext(from_ty_size~, to_ty_size~, dst~, src~)]
     (IRegister(dst), Imm(src_imm)) => {
       let src = func.new_virtual_reg()
       [
@@ -1526,6 +1549,7 @@ pub fn translate_zext(
   }
 }
 
+///|
 pub fn translate_fptrunc(
   from_ty_size : Int,
   to_ty_size : Int,
@@ -1535,12 +1559,17 @@ pub fn translate_fptrunc(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (FRegister(dst), FRegister(src)) => [builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src~)]
+    (FRegister(dst), FRegister(src)) =>
+      [builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src~)]
     (FRegister(dst), FImm(src_imm)) => {
       let src = func.new_virtual_freg()
       let ireg = func.new_virtual_reg()
       [
-        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_imove_imm(
+          from_ty_size,
+          dst=ireg,
+          src=src_imm.reinterpret_as_int64(),
+        ),
         builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
         builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src~),
       ]
@@ -1552,6 +1581,7 @@ pub fn translate_fptrunc(
   }
 }
 
+///|
 pub fn translate_fpext(
   from_ty_size : Int,
   to_ty_size : Int,
@@ -1561,12 +1591,17 @@ pub fn translate_fpext(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (FRegister(dst), FRegister(src)) => [builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src~)]
+    (FRegister(dst), FRegister(src)) =>
+      [builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src~)]
     (FRegister(dst), FImm(src_imm)) => {
       let src = func.new_virtual_freg()
       let ireg = func.new_virtual_reg()
       [
-        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_imove_imm(
+          from_ty_size,
+          dst=ireg,
+          src=src_imm.reinterpret_as_int64(),
+        ),
         builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
         builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src~),
       ]
@@ -1578,6 +1613,7 @@ pub fn translate_fpext(
   }
 }
 
+///|
 pub fn translate_uitofp(
   from_ty_size : Int,
   to_ty_size : Int,
@@ -1587,7 +1623,8 @@ pub fn translate_uitofp(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (FRegister(dst), IRegister(src)) => [builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst~, src~)]
+    (FRegister(dst), IRegister(src)) =>
+      [builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst~, src~)]
     (FRegister(dst), Imm(src_imm)) => {
       let src = func.new_virtual_reg()
       [
@@ -1602,6 +1639,7 @@ pub fn translate_uitofp(
   }
 }
 
+///|
 pub fn translate_sitofp(
   from_ty_size : Int,
   to_ty_size : Int,
@@ -1611,7 +1649,8 @@ pub fn translate_sitofp(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (FRegister(dst), IRegister(src)) => [builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst~, src~)]
+    (FRegister(dst), IRegister(src)) =>
+      [builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst~, src~)]
     (FRegister(dst), Imm(src_imm)) => {
       let src = func.new_virtual_reg()
       [
@@ -1623,9 +1662,10 @@ pub fn translate_sitofp(
       raise IRTranslateError(
         "SIToFP: Unsupported operand types for signed integer to floating-point conversion, got \{dst_op}, \{from_op}",
       )
-  }  
+  }
 }
 
+///|
 pub fn translate_fptoui(
   from_ty_size : Int,
   to_ty_size : Int,
@@ -1635,12 +1675,17 @@ pub fn translate_fptoui(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (IRegister(dst), FRegister(src)) => [builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), FRegister(src)) =>
+      [builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~)]
     (IRegister(dst), FImm(src_imm)) => {
       let src = func.new_virtual_freg()
       let ireg = func.new_virtual_reg()
       [
-        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_imove_imm(
+          from_ty_size,
+          dst=ireg,
+          src=src_imm.reinterpret_as_int64(),
+        ),
         builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
         builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~),
       ]
@@ -1652,6 +1697,7 @@ pub fn translate_fptoui(
   }
 }
 
+///|
 pub fn translate_fptosi(
   from_ty_size : Int,
   to_ty_size : Int,
@@ -1661,12 +1707,17 @@ pub fn translate_fptosi(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (IRegister(dst), FRegister(src)) => [builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~)]
+    (IRegister(dst), FRegister(src)) =>
+      [builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~)]
     (IRegister(dst), FImm(src_imm)) => {
       let src = func.new_virtual_freg()
       let ireg = func.new_virtual_reg()
       [
-        builder.build_imove_imm(from_ty_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_imove_imm(
+          from_ty_size,
+          dst=ireg,
+          src=src_imm.reinterpret_as_int64(),
+        ),
         builder.build_fmove_from_ireg(from_ty_size, dst=src, src=ireg),
         builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~),
       ]
@@ -1680,26 +1731,37 @@ pub fn translate_fptosi(
 
 // MIR has no bitcast instruction
 // Use Move, FMoveI, IMoveF, Load, Store, etc. to implement BitCast
+
+///|
 pub fn translate_bitcast(
-  data_size: Int,
+  data_size : Int,
   from_op : Operand,
   dst_op : Operand,
   builder : IRBuilder,
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   match (dst_op, from_op) {
-    (IRegister(dst), IRegister(src)) => [builder.build_imove(data_size, dst~, src~)]
-    (IRegister(dst), Imm(src_imm)) => [builder.build_imove_imm(data_size, dst~, src=src_imm)]
-    (FRegister(dst), FRegister(src)) => [builder.build_fmove(data_size, dst~, src~)]
+    (IRegister(dst), IRegister(src)) =>
+      [builder.build_imove(data_size, dst~, src~)]
+    (IRegister(dst), Imm(src_imm)) =>
+      [builder.build_imove_imm(data_size, dst~, src=src_imm)]
+    (FRegister(dst), FRegister(src)) =>
+      [builder.build_fmove(data_size, dst~, src~)]
     (FRegister(dst), FImm(src_imm)) => {
       let ireg = func.new_virtual_reg()
       [
-        builder.build_imove_imm(data_size, dst=ireg, src=src_imm.reinterpret_as_int64()),
+        builder.build_imove_imm(
+          data_size,
+          dst=ireg,
+          src=src_imm.reinterpret_as_int64(),
+        ),
         builder.build_fmove_from_ireg(data_size, dst~, src=ireg),
       ]
     }
-    (FRegister(dst), IRegister(src)) => [builder.build_fmove_from_ireg(data_size, dst~, src~)]
-    (IRegister(dst), FRegister(src)) => [builder.build_fmove_to_ireg(data_size, dst~, src~)]
+    (FRegister(dst), IRegister(src)) =>
+      [builder.build_fmove_from_ireg(data_size, dst~, src~)]
+    (IRegister(dst), FRegister(src)) =>
+      [builder.build_fmove_to_ireg(data_size, dst~, src~)]
     (FRegister(dst), Imm(src_imm)) => {
       let ireg = func.new_virtual_reg()
       [
@@ -1710,8 +1772,12 @@ pub fn translate_bitcast(
     (IRegister(dst), FImm(src_imm)) => {
       let freg = func.new_virtual_freg()
       [
-        builder.build_imove_imm(data_size, dst~, src=src_imm.reinterpret_as_int64()),
-        builder.build_fmove_to_ireg(data_size, dst~, src=freg)
+        builder.build_imove_imm(
+          data_size,
+          dst~,
+          src=src_imm.reinterpret_as_int64(),
+        ),
+        builder.build_fmove_to_ireg(data_size, dst~, src=freg),
       ]
     }
     (dst_op, from_op) =>
@@ -1801,9 +1867,10 @@ pub fn translate_llvm_return_inst(
       let minst = builder.build_load_addr(AReg(0), label)
       [minst, builder.build_ret()]
     }
-    ret_op => raise IRTranslateError(
-      "ReturnInst: Unsupported operand type for return value \{ret_op}",
-    )
+    ret_op =>
+      raise IRTranslateError(
+        "ReturnInst: Unsupported operand type for return value \{ret_op}",
+      )
   }
 }
 
@@ -1954,7 +2021,10 @@ pub fn translate_llvm_call_inst(
         minsts.push(inst2)
         call_freg_cnt += 1
       }
-      arg_op => raise IRTranslateError("CallInst: Unsupported argument operand type: \{arg_op}")
+      arg_op =>
+        raise IRTranslateError(
+          "CallInst: Unsupported argument operand type: \{arg_op}",
+        )
     }
   }
   minsts.push(builder.build_call(callee_name))

@@ -48,6 +48,7 @@ pub fn Function::live_analysis(self : Self) -> Unit {
     .filter(pred_bb => !bb_queue.contains(pred_bb))
     .each(pred_bb => bb_queue.push_back(pred_bb))
   }
+
   while !bb_queue.is_empty() {
     let bb = bb_queue.pop_front().unwrap()
     // If the basic block does not use any registers, skip it.
@@ -103,10 +104,12 @@ pub fn Instruction::live_analysis(self : Self) -> Bool {
   is_changed
 }
 
+///|
 fn BasicBlock::utilize_any_register(self : Self) -> Bool {
   self.insts.iter().any(inst => inst.def_and_use_any_register())
 }
 
+///|
 fn Instruction::def_and_use_any_register(self : Self) -> Bool {
   self.defs.iter().any(d => d is (IRegister(_) | FRegister(_))) ||
   self.uses.iter().any(u => u is (IRegister(_) | FRegister(_)))

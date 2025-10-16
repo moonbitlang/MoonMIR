@@ -53,7 +53,7 @@ test "Cond Branch Insts Register Allocation" {
   let mir_func = mir_mod.get_function("foo").unwrap()
   // Live Analysis
   mir_func.alloc_register()
-  let expected = 
+  let expected =
     #|func foo(a0, a1, a2) {
     #|entry:                             ; live in: a0, a1, a2
     #|  bne a2, 0, foo_L1, foo_L2        # live in: a0, a1, a2
@@ -77,7 +77,5 @@ test "Cond Branch Insts Register Allocation" {
     #|  ret
     #|}
     #|
-
   inspect(mir_func, content=expected)
 }
-

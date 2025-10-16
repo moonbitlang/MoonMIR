@@ -1,4 +1,3 @@
-
 //test "Register Allocation Spill" {
 //  let code =
 //    #|fn add12(a1: Int, a2: Int, a3: Int, a4: Int,
@@ -59,8 +58,9 @@
 //}
 //
 
+///|
 test "Register Allocation Spill" {
-  let code = 
+  let code =
     #|fn add4(a1: Int, a2: Int, a3: Int) -> Int {
     #|  let x1 = a1 + a1;
     #|  let x2 = a1 + a2;
@@ -76,7 +76,6 @@ test "Register Allocation Spill" {
     #|  let zr = z1 + z2 + z3;
     #|  xr + yr + zr
     #|}
-
   let llvm_mod = @TinyMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(ArchConfig::debug())

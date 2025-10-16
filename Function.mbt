@@ -163,27 +163,29 @@ pub fn Function::new_virtual_freg(self : Self) -> FRegister {
   vfreg
 }
 
+///|
 pub fn Function::keeped_treg1(self : Self) -> IRegister {
   let num_tregs = self.mod.arch_config.num_temp_regs
   TReg(num_tregs - 1)
 }
 
-pub fn Function::keeped_tfreg1(self : Self) -> FRegister {
+///|
+pub fn Function::keeped_ftreg1(self : Self) -> FRegister {
   let num_tfregs = self.mod.arch_config.num_temp_fregs
   FTReg(num_tfregs - 1)
 }
 
+///|
 pub fn Function::keeped_treg2(self : Self) -> (IRegister, IRegister) {
   let num_tregs = self.mod.arch_config.num_temp_regs
   (TReg(num_tregs - 1), TReg(num_tregs - 2))
 }
 
-pub fn Function::keeped_tfreg2(self : Self) -> (FRegister, FRegister) {
+///|
+pub fn Function::keeped_ftreg2(self : Self) -> (FRegister, FRegister) {
   let num_tfregs = self.mod.arch_config.num_temp_fregs
   (FTReg(num_tfregs - 1), FTReg(num_tfregs - 2))
 }
-
-
 
 ///|
 pub fn Function::bind_llvm_value_to_register(
@@ -235,10 +237,8 @@ pub fn Function::get_operand_from_llvm_value(
   self.value_map.get(val)
 }
 
-pub fn Function::has_inst_with_opcode(
-  self : Self,
-  opcode : OpCode,
-) -> Bool {
+///|
+pub fn Function::has_inst_with_opcode(self : Self, opcode : OpCode) -> Bool {
   for inst in self.inst_iter() {
     if inst.opcode == opcode {
       return true
@@ -247,6 +247,7 @@ pub fn Function::has_inst_with_opcode(
   false
 }
 
+///|
 pub fn Function::collect_blocks_with_opcode(
   self : Self,
   opcode : OpCode,
@@ -263,6 +264,7 @@ pub fn Function::collect_blocks_with_opcode(
   blocks
 }
 
+///|
 pub fn Function::get_entry_block(self : Self) -> BasicBlock? {
   self.body.get(0)
 }
