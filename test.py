@@ -156,7 +156,7 @@ def main():
     print(f"{Style.MAGENTA}=========================================={Style.RESET}")
 
     if failed_count == 0:
-        print(f"{Style.GREEN}{Style.CELEBRATE} All {total_tests} tests passed! Congratulations! {Style.RESET}")
+        print(f"{Style.GREEN}{Style.CELEBRATE} All {total_tests} tests passed! {Style.RESET}")
     else:
         print(f"{Style.YELLOW}Tested: {total_tests}, Passed: {passed_count}, Failed: {failed_count}{Style.RESET}")
         print(f"\n{Style.RED}The following tests failed:{Style.RESET}")
