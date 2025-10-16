@@ -2331,12 +2331,17 @@ fn loadaddr_mir_to_riscv(
 fn call_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Call, uses: [f], .. } else {
+  guard inst is { opcode: Call, .. } else {
     println(
       "Compiler ICE: call_mir_to_riscv called with non-call instruction: \{inst}",
     )
     panic()
   }
+  // The first use is the function to call, followed by argument registers
+  guard inst.uses.length() > 0 else {
+    raise MIRToRiscvError("Error: Call instruction has no target")
+  }
+  let f = inst.uses[0]
   match f {
     Label(func_name) => [Call(func_name)]
     IRegister(r) => {

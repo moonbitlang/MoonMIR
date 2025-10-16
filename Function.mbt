@@ -1,10 +1,11 @@
 ///|
-///
+///  {args passed in stack }
 ///  ---------- fp
 ///     reg_stack
 ///  { callee-saved registers }
 ///  { spilled registers }
 ///  { temporary space for registers }
+///  { ra, fp saved by callee }
 ///  ---------- fp'
 ///     var_stack
 ///  { local variables }

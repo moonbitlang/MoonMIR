@@ -264,6 +264,7 @@ pub fn Function::adjust_mem_operands(self : Function) -> Unit {
     for i, def in inst.defs {
       match def {
         Mem(FramePtr, offset) =>
+          // Local variables and saved registers, negative offset from fp
           inst.defs[i] = Mem(StackPtr, offset + total_stack_size)
         Mem(FramePtrPrim, offset) =>
           inst.defs[i] = Mem(StackPtr, offset + var_stack_size)
@@ -273,6 +274,7 @@ pub fn Function::adjust_mem_operands(self : Function) -> Unit {
     for i, use_ in inst.uses {
       match use_ {
         Mem(FramePtr, offset) =>
+          // Local variables and saved registers, negative offset from fp
           inst.uses[i] = Mem(StackPtr, offset + total_stack_size)
         Mem(FramePtrPrim, offset) =>
           inst.uses[i] = Mem(StackPtr, offset + var_stack_size)

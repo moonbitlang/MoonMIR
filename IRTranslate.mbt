@@ -1927,18 +1927,18 @@ pub fn translate_llvm_return_inst(
 /// let mir_mod = Module::new(rv64)
 /// mir_mod.translate_llvm_module(llvm_mod)
 /// let mir_func = mir_mod.get_function("demo").unwrap()
-/// let expected =
+/// inspect(mir_func, content=(
 ///   #|func demo() {
 ///   #|entry:
 ///   #|  a0 = move.i64 10
 ///   #|  a1 = move.i64 20
-///   #|  call add
+///   #|  call add, a0, a1
 ///   #|  v0 = move.i64 a0
 ///   #|  a0 = move.i64 v0
 ///   #|  ret
 ///   #|}
 ///   #|
-/// inspect(mir_func, content=expected)
+/// ))
 ///
 /// ```
 pub fn translate_llvm_call_inst(
@@ -2075,13 +2075,75 @@ pub fn translate_llvm_call_inst(
         minsts.push(inst2)
         call_ireg_cnt += 1
       }
+      (Mem(base, offset), false) if call_ireg_cnt < num_arg_regs => {
+        // Memory address as argument - compute effective address and pass in register
+        let dst = AReg(call_ireg_cnt)
+        let vreg = func.new_virtual_reg()
+        // Compute effective address: base + offset
+        if offset == 0L {
+          let inst = builder.build_imove(64, dst~, src=base)
+          minsts.push(inst)
+        } else {
+          let inst1 = builder.build_ibinary_imm(
+            Add,
+            64,
+            dst=vreg,
+            src1=base,
+            src2=offset,
+          )
+          let inst2 = builder.build_imove(64, dst~, src=vreg)
+          minsts.push(inst1)
+          minsts.push(inst2)
+        }
+        call_ireg_cnt += 1
+      }
+      (Mem(base, offset), false) => {
+        // Memory address as stack argument
+        let _ = func.extend_var_stack(8L, 8L)
+        let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
+        let vreg = func.new_virtual_reg()
+        // Compute effective address: base + offset
+        if offset == 0L {
+          let inst = builder.build_storei(
+            64,
+            src=base,
+            base=StackPtr,
+            offset=stack_offset,
+          )
+          minsts.push(inst)
+        } else {
+          let inst1 = builder.build_ibinary_imm(
+            Add,
+            64,
+            dst=vreg,
+            src1=base,
+            src2=offset,
+          )
+          let inst2 = builder.build_storei(
+            64,
+            src=vreg,
+            base=StackPtr,
+            offset=stack_offset,
+          )
+          minsts.push(inst1)
+          minsts.push(inst2)
+        }
+        call_ireg_cnt += 1
+      }
       arg_op =>
         raise IRTranslateError(
           "CallInst: Unsupported argument operand type: \{arg_op}",
         )
     }
   }
-  minsts.push(builder.build_call(callee_name))
+  let call_inst = builder.build_call(callee_name)
+  for i = 0; i < call_ireg_cnt && i < num_arg_regs; i = i + 1 {
+    call_inst.uses.push(IRegister(AReg(i)))
+  }
+  for i = 0; i < call_freg_cnt && i < num_arg_fregs; i = i + 1 {
+    call_inst.uses.push(FRegister(FAReg(i)))
+  }
+  minsts.push(call_inst)
   if !(llvm_inst.getType().asTypeEnum() is VoidType(_)) {
     guard func.get_operand_from_llvm_value(llvm_inst) is Some(ret_op) else {
       raise IRTranslateError(
