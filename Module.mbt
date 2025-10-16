@@ -181,7 +181,7 @@ pub impl Show for Module with output(self, logger) {
     logger.write_object(gv)
     logger.write_string("\n")
   }
-  for func in self.functions {
+  for _, func in self.functions {
     logger.write_object(func)
     logger.write_string("\n")
   }

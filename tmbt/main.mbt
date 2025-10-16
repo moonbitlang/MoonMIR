@@ -2,7 +2,7 @@
 fn main {
   let rv64_config = @MoonMIR.ArchConfig::riscv64()
   let help_info =
-    #|Usage: mbtcc [options] <input_file>
+    #|Usage: tmbt [options] <input_file>
     #|
     #|Options:
     #|  -h, --help                Show this help message
@@ -28,35 +28,18 @@ fn main {
     println(help_info)
     return
   }
-  let parser_ctx = @parser.ParserContext::create_by_file(input_file)
-  parser_ctx.tokenize() catch {
+  let code = @fs.read_file_to_string(input_file) catch {
     err => {
-      println("Tokenization error: \{err}")
+      println("Error reading file '\{input_file}': \{err}")
       return
     }
   }
-  parser_ctx.preprocess() catch {
-    err => {
-      println("Preprocessing error: \{err}")
+  let llvm_mod = @TinyMoonBit.compile(code) catch {
+    e => {
+      println("Error during TinyMoonBit compilation: \{e}")
       return
     }
   }
-  parser_ctx.parse() catch {
-    @parser.ParseError((idx, msg)) => {
-      let msg = parser_ctx.get_error_msg(idx, msg)
-      println("Parse error: " + msg)
-      return
-    }
-    _ => ()
-  }
-  let codegen = @codegen.CodeGenContext::from_parser(parser_ctx)
-  codegen.run() catch {
-    err => {
-      println("Code generation error: \{err}")
-      return
-    }
-  }
-  let llvm_mod = codegen.llvm_mod
   if args.contains("-emit-llvm") {
     if args.search("-o") is Some(idx) && idx + 1 < args.length() {
       let output_file = args[idx + 1]

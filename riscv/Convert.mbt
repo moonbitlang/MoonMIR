@@ -86,6 +86,15 @@ fn FReg::from_mir_freg(
   }
 }
 
+pub fn llvm_module_to_riscv(mod: @IR.Module) -> Array[RvAsm] raise {
+  let mir_mod = @MoonMIR.Module::new(@MoonMIR.ArchConfig::riscv64())
+  mir_mod.translate_llvm_module(mod)
+  mir_mod.legalize()
+  mir_mod.alloc_register()
+  mir_mod.post_ra()
+  mir_module_to_riscv(mir_mod)
+}
+
 ///|
 pub fn mir_module_to_riscv(
   mod : @MoonMIR.Module,
