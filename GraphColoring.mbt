@@ -1,5 +1,5 @@
 ///|
-pub struct InterferenceGpaph {
+pub struct InterferenceGraph {
   nodes : Set[Operand]
   edges : Map[Operand, Set[Operand]]
   color_map : Map[Operand, Operand]
@@ -9,10 +9,10 @@ pub struct InterferenceGpaph {
 }
 
 ///|
-pub fn InterferenceGpaph::new(
+pub fn InterferenceGraph::new(
   config : ArchConfig,
   spilled_count : Int,
-) -> InterferenceGpaph {
+) -> InterferenceGraph {
   let {
     num_arg_regs,
     num_temp_regs,
@@ -46,7 +46,7 @@ pub fn InterferenceGpaph::new(
     available_int_colors.add(Mem(FramePtrPrim, i.to_int64() * 8))
     available_fp_colors.add(Mem(FramePtrPrim, i.to_int64() * 8))
   }
-  InterferenceGpaph::{
+  InterferenceGraph::{
     nodes: Set::new(),
     edges: Map::new(),
     color_map: Map::new(),
@@ -57,7 +57,7 @@ pub fn InterferenceGpaph::new(
 }
 
 ///|
-pub impl Show for InterferenceGpaph with output(self, logger) {
+pub impl Show for InterferenceGraph with output(self, logger) {
   logger.write_string("Interference Graph:\n")
   logger.write_string("Nodes:\n")
   for i, node in self.nodes.iter() {
@@ -77,8 +77,8 @@ pub impl Show for InterferenceGpaph with output(self, logger) {
 }
 
 ///|
-pub fn InterferenceGpaph::add_node(
-  self : InterferenceGpaph,
+pub fn InterferenceGraph::add_node(
+  self : InterferenceGraph,
   node : Operand,
 ) -> Unit {
   // No need to check if nodes contains node.
@@ -89,8 +89,8 @@ pub fn InterferenceGpaph::add_node(
 }
 
 ///|
-pub fn InterferenceGpaph::add_edge(
-  self : InterferenceGpaph,
+pub fn InterferenceGraph::add_edge(
+  self : InterferenceGraph,
   node1 : Operand,
   node2 : Operand,
 ) -> Unit {
@@ -104,8 +104,8 @@ pub fn InterferenceGpaph::add_edge(
 }
 
 ///|
-pub fn InterferenceGpaph::find_uncolored_vreg_with_greatest_uncolored_degree(
-  self : InterferenceGpaph,
+pub fn InterferenceGraph::find_uncolored_vreg_with_greatest_uncolored_degree(
+  self : InterferenceGraph,
 ) -> Operand? {
   let mut max_degree = -1
   let mut candidate : Operand? = None
@@ -130,8 +130,8 @@ pub fn InterferenceGpaph::find_uncolored_vreg_with_greatest_uncolored_degree(
 }
 
 ///|
-pub fn InterferenceGpaph::find_uncolored_vfreg_with_greatest_uncolored_degree(
-  self : InterferenceGpaph,
+pub fn InterferenceGraph::find_uncolored_vfreg_with_greatest_uncolored_degree(
+  self : InterferenceGraph,
 ) -> Operand? {
   let mut max_degree = -1
   let mut candidate : Operand? = None
@@ -156,9 +156,9 @@ pub fn InterferenceGpaph::find_uncolored_vfreg_with_greatest_uncolored_degree(
 }
 
 ///|
-pub fn Function::build_interference_graph(self : Function) -> InterferenceGpaph {
+pub fn Function::build_interference_graph(self : Function) -> InterferenceGraph {
   let config = self.mod.arch_config
-  let graph = InterferenceGpaph::new(config, self.spilled_count)
+  let graph = InterferenceGraph::new(config, self.spilled_count)
   for inst in self.inst_iter() {
     for op1 in inst.live_in {
       for op2 in inst.live_in {
@@ -207,7 +207,7 @@ pub fn Function::build_preference_list(
 // Return color_map and number of spills
 
 ///|
-pub fn InterferenceGpaph::coloring(
+pub fn InterferenceGraph::coloring(
   self : Self,
   preference_list : Map[Operand, Deque[Operand]],
 ) -> (Map[Operand, Operand], Int) {
