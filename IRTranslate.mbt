@@ -1827,9 +1827,7 @@ pub fn translate_llvm_gep_inst(
   func : Function,
   data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
-  if false {
-    raise IRTranslateError("GetElementPtrInst translation not implemented yet")
-  }
+  raise IRTranslateError("GetElementPtrInst translation not implemented yet")
   ignore(llvm_inst)
   ignore(builder)
   ignore(func)
@@ -1844,9 +1842,7 @@ pub fn translate_llvm_select_inst(
   func : Function,
   data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
-  if false {
-    raise IRTranslateError("SelectInst translation not implemented yet")
-  }
+  raise IRTranslateError("SelectInst translation not implemented yet")
   ignore(llvm_inst)
   ignore(builder)
   ignore(func)
