@@ -30,3 +30,54 @@ test "Simple Insts Live Analysis" {
     #|
   inspect(mir_func, content=expected)
 }
+
+///|
+test "Cond Branch Insts Live Analysis" {
+  let code =
+    #|fn foo(a: Int, b: Int, c: Bool) -> Int{
+    #|  if c {
+    #|    let x = a + b
+    #|    let y = a - b
+    #|    x * y
+    #|  } else {
+    #|    let x = a * b
+    #|    let y = a / b
+    #|    x - y
+    #|  }
+    #|}
+  let llvm_mod = @TinyMoonBit.compile(code)
+
+  // IRTranslate
+  let mir_mod = Module::new(rv64)
+  mir_mod.translate_llvm_module(llvm_mod)
+  let mir_func = mir_mod.get_function("foo").unwrap()
+  // Live Analysis
+  mir_func.alloc_register()
+  let expected = 
+    #|func foo(a0, a1, a2) {
+    #|entry:                             ; live in: a0, a1, a2
+    #|  bne a2, 0, foo_L1, foo_L2        # live in: a0, a1, a2
+    #|
+    #|; preds: entry
+    #|foo_L1:                      ; live in: a0, a1
+    #|  a2 = add.i32 a0, a1        # live in: a0, a1
+    #|  a0 = sub.i32 a0, a1        # live in: a2, a0, a1
+    #|  a0 = mul.i32 a2, a0        # live in: a2, a0
+    #|  jmp foo_L3
+    #|
+    #|; preds: entry
+    #|foo_L2:                      ; live in: a0, a1
+    #|  a2 = mul.i32 a0, a1        # live in: a0, a1
+    #|  a0 = div.i32 a0, a1        # live in: a2, a0, a1
+    #|  a0 = sub.i32 a2, a0        # live in: a2, a0
+    #|  jmp foo_L3
+    #|
+    #|; preds: foo_L1, foo_L2
+    #|foo_L3:
+    #|  ret
+    #|}
+    #|
+
+  inspect(mir_func, content=expected)
+}
+

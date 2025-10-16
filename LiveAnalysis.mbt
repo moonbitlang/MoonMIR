@@ -43,13 +43,21 @@ typealias @deque.Deque
 pub fn Function::live_analysis(self : Self) -> Unit {
   let bb_queue : Deque[BasicBlock] = Deque::new()
   self.terminal_blocks.each(bb => bb_queue.push_back(bb))
+  fn append_preds(bb : BasicBlock) {
+    bb.preds
+    .filter(pred_bb => !bb_queue.contains(pred_bb))
+    .each(pred_bb => bb_queue.push_back(pred_bb))
+  }
   while !bb_queue.is_empty() {
     let bb = bb_queue.pop_front().unwrap()
+    // If the basic block does not use any registers, skip it.
+    if !bb.utilize_any_register() {
+      append_preds(bb)
+      continue
+    }
     let bb_is_changed = bb.live_analysis()
     if bb_is_changed {
-      bb.preds
-      .filter(pred_bb => !bb_queue.contains(pred_bb))
-      .each(pred_bb => bb_queue.push_back(pred_bb))
+      append_preds(bb)
     }
   }
 }
@@ -93,4 +101,13 @@ pub fn Instruction::live_analysis(self : Self) -> Bool {
   // update_live_in returns true if changed
   let is_changed = self.update_live_in(live_in)
   is_changed
+}
+
+fn BasicBlock::utilize_any_register(self : Self) -> Bool {
+  self.insts.iter().any(inst => inst.def_and_use_any_register())
+}
+
+fn Instruction::def_and_use_any_register(self : Self) -> Bool {
+  self.defs.iter().any(d => d is (IRegister(_) | FRegister(_))) ||
+  self.uses.iter().any(u => u is (IRegister(_) | FRegister(_)))
 }
