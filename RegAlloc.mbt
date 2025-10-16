@@ -67,13 +67,23 @@ pub fn Instruction::rewrite_by_replacement_map(
   replacement_map : Map[Operand, Operand],
 ) -> Unit {
   for i, def in self.defs {
-    if replacement_map.get(def) is Some(repl) {
-      self.defs[i] = repl
+    match def {
+      Mem(base, offset) =>
+        // Check if the base register needs replacement
+        if replacement_map.get(IRegister(base)) is Some(IRegister(new_base)) {
+          self.defs[i] = Mem(new_base, offset)
+        }
+      _ => if replacement_map.get(def) is Some(repl) { self.defs[i] = repl }
     }
   }
   for i, use_ in self.uses {
-    if replacement_map.get(use_) is Some(repl) {
-      self.uses[i] = repl
+    match use_ {
+      Mem(base, offset) =>
+        // Check if the base register needs replacement
+        if replacement_map.get(IRegister(base)) is Some(IRegister(new_base)) {
+          self.uses[i] = Mem(new_base, offset)
+        }
+      _ => if replacement_map.get(use_) is Some(repl) { self.uses[i] = repl }
     }
   }
   self.live_in.clear()
