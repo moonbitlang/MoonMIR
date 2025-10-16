@@ -52,7 +52,7 @@ test "Cond Branch Insts Live Analysis" {
   let mir_func = mir_mod.get_function("foo").unwrap()
   // Live Analysis
   mir_func.live_analysis()
-  let expected = 
+  let expected =
     #|func foo(a0, a1, a2) {
     #|entry:                             ; live in: a2, a1, a0
     #|  v0 = move.i64 a0                 # live in: a2, a1, a0

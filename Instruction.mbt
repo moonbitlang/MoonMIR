@@ -1,8 +1,9 @@
+///|
 let inst_id : Ref[Int] = Ref::new(0)
 
 ///|
 pub(all) struct Instruction {
-  id: Int
+  id : Int
   opcode : OpCode
   defs : Array[Operand]
   uses : Array[Operand]
@@ -19,8 +20,8 @@ pub fn Instruction::new(
   uses : Array[Operand],
   bb : BasicBlock,
 ) -> Instruction {
-  let id = inst_id.val;
-  inst_id.val += 1;
+  let id = inst_id.val
+  inst_id.val += 1
   Instruction::{
     id,
     opcode,
@@ -33,6 +34,7 @@ pub fn Instruction::new(
   }
 }
 
+///|
 pub impl Eq for Instruction with equal(self, other) {
   self.id == other.id
 }
@@ -62,7 +64,8 @@ pub fn Instruction::update_live_in(self : Self, live_in : Set[Operand]) -> Bool 
   true
 }
 
-pub fn Instruction::contains_virtual_reg(self: Self) -> Bool {
+///|
+pub fn Instruction::contains_virtual_reg(self : Self) -> Bool {
   for op in self.defs {
     if op.is_virtual_reg() {
       return true

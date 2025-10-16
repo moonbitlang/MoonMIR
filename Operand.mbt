@@ -63,6 +63,7 @@ fn Operand::is_fp_operand(self : Self) -> Bool {
   }
 }
 
+///|
 fn Operand::is_virtual_reg(self : Self) -> Bool {
   match self {
     IRegister(VReg(_)) => true

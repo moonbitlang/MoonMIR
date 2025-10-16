@@ -53,7 +53,12 @@ pub fn BasicBlock::push_inst_before_terminator(
   }
 }
 
-pub fn BasicBlock::insert_inst_before(self: Self, inst: Instruction, before~: Instruction) -> Unit? {
+///|
+pub fn BasicBlock::insert_inst_before(
+  self : Self,
+  inst : Instruction,
+  before~ : Instruction,
+) -> Unit? {
   if inst.bb != before.bb {
     return None
   }
@@ -65,7 +70,12 @@ pub fn BasicBlock::insert_inst_before(self: Self, inst: Instruction, before~: In
   Some(())
 }
 
-pub fn BasicBlock::insert_inst_after(self: Self, inst: Instruction, after~: Instruction) -> Unit? {
+///|
+pub fn BasicBlock::insert_inst_after(
+  self : Self,
+  inst : Instruction,
+  after~ : Instruction,
+) -> Unit? {
   if inst.bb != after.bb {
     return None
   }
@@ -77,7 +87,8 @@ pub fn BasicBlock::insert_inst_after(self: Self, inst: Instruction, after~: Inst
   Some(())
 }
 
-pub fn BasicBlock::contains_virtual_reg(self: Self) -> Bool {
+///|
+pub fn BasicBlock::contains_virtual_reg(self : Self) -> Bool {
   for inst in self.insts {
     if inst.contains_virtual_reg() {
       return true
@@ -85,7 +96,6 @@ pub fn BasicBlock::contains_virtual_reg(self: Self) -> Bool {
   }
   false
 }
-
 
 ///|
 ///

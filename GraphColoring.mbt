@@ -36,7 +36,7 @@ pub fn InterferenceGraph::new(
   for i in 0..<num_arg_fregs {
     available_fp_colors.add(FRegister(FAReg(i)))
   }
-  for i in 0..<(num_temp_fregs -2) {
+  for i in 0..<(num_temp_fregs - 2) {
     available_fp_colors.add(FRegister(FTReg(i)))
   }
   for i in 0..<num_saved_fregs {

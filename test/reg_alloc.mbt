@@ -82,6 +82,7 @@ test "Cond Branch Insts Register Allocation" {
   inspect(mir_func, content=expected)
 }
 
+///|
 test "Register Allocation Spill" {
   let code =
     #|fn add12(a1: Int, a2: Int, a3: Int, a4: Int,
@@ -128,7 +129,6 @@ test "Register Allocation Spill" {
     #|  let zr = zr + z8 + z9;
     #|  xr + yr + zr
     #|}
-
   let llvm_mod = @TinyMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)

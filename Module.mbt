@@ -99,10 +99,10 @@ pub fn Module::add_global_string(
   label~ : String,
   content~ : String,
 ) -> GlobalValue {
-  let content =
-    content.replace(old="\n", new="\\n")
-           .replace(old="\t", new="\\t")
-           .replace(old="\r", new="\\r")
+  let content = content
+    .replace(old="\n", new="\\n")
+    .replace(old="\t", new="\\t")
+    .replace(old="\r", new="\\r")
   let gv = GlobalValue::{
     label,
     content: GlobalValueContent::String(content),

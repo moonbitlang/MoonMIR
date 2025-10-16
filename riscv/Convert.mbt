@@ -86,7 +86,8 @@ fn FReg::from_mir_freg(
   }
 }
 
-pub fn llvm_module_to_riscv(mod: @IR.Module) -> Array[RvAsm] raise {
+///|
+pub fn llvm_module_to_riscv(mod : @IR.Module) -> Array[RvAsm] raise {
   let mir_mod = @MoonMIR.Module::new(@MoonMIR.ArchConfig::riscv64())
   mir_mod.translate_llvm_module(mod)
   mir_mod.legalize()
@@ -968,7 +969,7 @@ fn i32_store_mir_to_riscv(
     panic()
   }
   match inst {
-    { defs: [], uses: [Mem(base, offset), IRegister(r) ], .. } => {
+    { defs: [], uses: [Mem(base, offset), IRegister(r)], .. } => {
       let src = Reg::from_mir_reg(r)
       let base = Reg::from_mir_reg(base)
       let mem = Mem::{ base, offset }

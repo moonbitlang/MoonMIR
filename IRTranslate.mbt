@@ -164,7 +164,7 @@ pub fn Function::translate_params(self : Self, loc~ : SourceLoc) -> Unit {
   let entry_bb = self.get_entry_block().unwrap()
   let buiilder = IRBuilder::new(self, entry_bb)
   for arg, param in llvm_func.arguments.zip_to_iter2(self.params) {
-    let data_size = 64; // Riscv64
+    let data_size = 64 // Riscv64
     if param is IRegister(r) {
       let tmp = self.new_virtual_reg()
       let move_inst = buiilder.build_imove(data_size, dst=tmp, src=r) catch {

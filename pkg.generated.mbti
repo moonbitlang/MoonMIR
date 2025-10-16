@@ -72,6 +72,8 @@ pub suberror MIRError {
   LegalizeError(String)
   InValidBitWidthError(String)
 }
+fn MIRError::output(Self, &Logger) -> Unit // from trait `Show`
+fn MIRError::to_string(Self) -> String // from trait `Show`
 impl Show for MIRError
 
 // Types and methods
@@ -107,13 +109,21 @@ pub(all) struct BasicBlock {
   mut live_out : @set.Set[Operand]
 }
 fn BasicBlock::compute_live_out_from_succs(Self) -> @set.Set[Operand]
+fn BasicBlock::contains_virtual_reg(Self) -> Bool
+fn BasicBlock::equal(Self, Self) -> Bool // from trait `Eq`
+fn BasicBlock::insert_inst_after(Self, Instruction, after~ : Instruction) -> Unit?
+fn BasicBlock::insert_inst_before(Self, Instruction, before~ : Instruction) -> Unit?
 fn BasicBlock::legalize(Self) -> Unit raise MIRError
 fn BasicBlock::live_analysis(Self) -> Bool
 fn BasicBlock::new(Function, String) -> Self
+#deprecated
+fn BasicBlock::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn BasicBlock::output(Self, &Logger) -> Unit // from trait `Show`
 fn BasicBlock::phi_elimination(Self) -> Unit raise MIRError
 fn BasicBlock::push(Self, Instruction) -> Unit
 fn BasicBlock::push_inst_before_terminator(Self, Instruction) -> Unit
 fn BasicBlock::rewrite_by_replacement_map(Self, Map[Operand, Operand]) -> Unit
+fn BasicBlock::to_string(Self) -> String // from trait `Show`
 fn BasicBlock::translate_llvm_basic_block(Self, @IR.BasicBlock) -> Unit raise MIRError
 fn BasicBlock::update_live_in(Self, @set.Set[Operand]) -> Bool
 fn BasicBlock::update_live_out(Self, @set.Set[Operand]) -> Bool
@@ -133,6 +143,9 @@ pub(all) enum BranchOpCode {
   Bleu
   Jmp
 }
+fn BranchOpCode::equal(Self, Self) -> Bool // from trait `Eq`
+#deprecated
+fn BranchOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
 impl Eq for BranchOpCode
 
 pub(all) enum CastOpCode {
@@ -146,6 +159,9 @@ pub(all) enum CastOpCode {
   SIToFP(Int, Int)
   UIToFP(Int, Int)
 }
+fn CastOpCode::equal(Self, Self) -> Bool // from trait `Eq`
+#deprecated
+fn CastOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
 impl Eq for CastOpCode
 
 pub(all) enum FBinaryOpCode {
@@ -155,7 +171,10 @@ pub(all) enum FBinaryOpCode {
   FDiv
   FRem
 }
+fn FBinaryOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 fn FBinaryOpCode::is_commutative(Self) -> Bool
+#deprecated
+fn FBinaryOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
 impl Eq for FBinaryOpCode
 
 pub(all) enum FCmpOpCode {
@@ -166,6 +185,9 @@ pub(all) enum FCmpOpCode {
   Flt
   Fle
 }
+fn FCmpOpCode::equal(Self, Self) -> Bool // from trait `Eq`
+#deprecated
+fn FCmpOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
 impl Eq for FCmpOpCode
 
 pub(all) enum FRegister {
@@ -174,6 +196,13 @@ pub(all) enum FRegister {
   FTReg(Int)
   FSReg(Int)
 }
+fn FRegister::equal(Self, Self) -> Bool // from trait `Eq`
+fn FRegister::hash(Self) -> Int // from trait `Hash`
+fn FRegister::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn FRegister::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn FRegister::output(Self, &Logger) -> Unit // from trait `Show`
+fn FRegister::to_string(Self) -> String // from trait `Show`
 impl Eq for FRegister
 impl Hash for FRegister
 impl Show for FRegister
@@ -181,6 +210,9 @@ impl Show for FRegister
 pub(all) enum FUnaryOpCode {
   FNeg
 }
+fn FUnaryOpCode::equal(Self, Self) -> Bool // from trait `Eq`
+#deprecated
+fn FUnaryOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
 impl Eq for FUnaryOpCode
 
 pub(all) struct Function {
@@ -209,23 +241,27 @@ fn Function::bind_llvm_value_to_register(Self, &@IR.Value, IRegister) -> Unit
 fn Function::build_interference_graph(Self) -> InterferenceGraph
 fn Function::build_preference_list(Self) -> Map[Operand, @deque.Deque[Operand]]
 fn Function::collect_blocks_with_opcode(Self, OpCode) -> Array[BasicBlock]
+fn Function::collect_insts_with_opcode(Self, OpCode) -> Array[Instruction]
+fn Function::contains_virtual_reg(Self) -> Bool
 fn Function::get_entry_block(Self) -> BasicBlock?
 fn Function::get_operand_from_llvm_value(Self, &@IR.Value) -> Operand?
 fn Function::get_param(Self, Int) -> Operand?
 fn Function::has_inst_with_opcode(Self, OpCode) -> Bool
 fn Function::inst_iter(Self) -> Iter[Instruction]
-fn Function::keeped_tfreg1(Self) -> FRegister
-fn Function::keeped_tfreg2(Self) -> (FRegister, FRegister)
+fn Function::keeped_ftreg1(Self) -> FRegister
+fn Function::keeped_ftreg2(Self) -> (FRegister, FRegister)
 fn Function::keeped_treg1(Self) -> IRegister
 fn Function::keeped_treg2(Self) -> (IRegister, IRegister)
 fn Function::legalize(Self) -> Unit raise MIRError
 fn Function::live_analysis(Self) -> Unit
-fn Function::new(Module, String) -> Self
+fn Function::new(Module, String, Bool) -> Self
 fn Function::new_virtual_freg(Self) -> FRegister
 fn Function::new_virtual_reg(Self) -> IRegister
+fn Function::output(Self, &Logger) -> Unit // from trait `Show`
 fn Function::phi_elimination(Self) -> Unit raise MIRError
 fn Function::post_ra(Self) -> Unit
 fn Function::rewrite_by_replacement_map(Self, Map[Operand, Operand]) -> Unit
+fn Function::to_string(Self) -> String // from trait `Show`
 fn Function::translate_llvm_function(Self, @IR.Function) -> Unit raise MIRError
 #callsite(autofill(loc))
 fn Function::translate_params(Self, loc~ : SourceLoc) -> Unit
@@ -239,6 +275,8 @@ pub(all) struct GlobalValue {
   mod : Module
   mut llvm_gv : &@IR.GlobalValue?
 }
+fn GlobalValue::output(Self, &Logger) -> Unit // from trait `Show`
+fn GlobalValue::to_string(Self) -> String // from trait `Show`
 impl Show for GlobalValue
 
 pub(all) enum GlobalValueContent {
@@ -267,7 +305,10 @@ pub(all) enum IBinaryOpCode {
   LShr
   AShr
 }
+fn IBinaryOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 fn IBinaryOpCode::is_commutative(Self) -> Bool
+#deprecated
+fn IBinaryOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
 impl Eq for IBinaryOpCode
 
 pub(all) enum ICmpOpCode {
@@ -282,6 +323,9 @@ pub(all) enum ICmpOpCode {
   Ltu
   Leu
 }
+fn ICmpOpCode::equal(Self, Self) -> Bool // from trait `Eq`
+#deprecated
+fn ICmpOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
 impl Eq for ICmpOpCode
 
 pub struct IRBuilder {
@@ -360,6 +404,13 @@ pub(all) enum IRegister {
   FramePtrPrim
   ReturnAddr
 }
+fn IRegister::equal(Self, Self) -> Bool // from trait `Eq`
+fn IRegister::hash(Self) -> Int // from trait `Hash`
+fn IRegister::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn IRegister::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn IRegister::output(Self, &Logger) -> Unit // from trait `Show`
+fn IRegister::to_string(Self) -> String // from trait `Show`
 impl Eq for IRegister
 impl Hash for IRegister
 impl Show for IRegister
@@ -367,9 +418,13 @@ impl Show for IRegister
 pub(all) enum IUnaryOpCode {
   Not
 }
+fn IUnaryOpCode::equal(Self, Self) -> Bool // from trait `Eq`
+#deprecated
+fn IUnaryOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
 impl Eq for IUnaryOpCode
 
 pub(all) struct Instruction {
+  id : Int
   opcode : OpCode
   defs : Array[Operand]
   uses : Array[Operand]
@@ -378,6 +433,8 @@ pub(all) struct Instruction {
   mut live_in : @set.Set[Operand]
   mut live_out : @set.Set[Operand]
 }
+fn Instruction::contains_virtual_reg(Self) -> Bool
+fn Instruction::equal(Self, Self) -> Bool // from trait `Eq`
 fn Instruction::legalize(Self) -> Array[Self] raise MIRError
 fn Instruction::legalize_branch(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::legalize_fbinary(Self, IRBuilder) -> Array[Self] raise MIRError
@@ -393,11 +450,17 @@ fn Instruction::legalize_imove(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::legalize_imovef(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::legalize_istore(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::legalize_iunary(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_load_addr(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::live_analysis(Self) -> Bool
 fn Instruction::new(OpCode, Array[Operand], Array[Operand], BasicBlock) -> Self
+#deprecated
+fn Instruction::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn Instruction::output(Self, &Logger) -> Unit // from trait `Show`
 fn Instruction::rewrite_by_replacement_map(Self, Map[Operand, Operand]) -> Unit
+fn Instruction::to_string(Self) -> String // from trait `Show`
 fn Instruction::update_live_in(Self, @set.Set[Operand]) -> Bool
 fn Instruction::update_live_out(Self, @set.Set[Operand]) -> Bool
+impl Eq for Instruction
 impl Show for Instruction
 
 pub struct InterferenceGraph {
@@ -414,6 +477,8 @@ fn InterferenceGraph::coloring(Self, Map[Operand, @deque.Deque[Operand]]) -> (Ma
 fn InterferenceGraph::find_uncolored_vfreg_with_greatest_uncolored_degree(Self) -> Operand?
 fn InterferenceGraph::find_uncolored_vreg_with_greatest_uncolored_degree(Self) -> Operand?
 fn InterferenceGraph::new(ArchConfig, Int) -> Self
+fn InterferenceGraph::output(Self, &Logger) -> Unit // from trait `Show`
+fn InterferenceGraph::to_string(Self) -> String // from trait `Show`
 impl Show for InterferenceGraph
 
 pub(all) struct Module {
@@ -425,7 +490,7 @@ pub(all) struct Module {
   external_functions : Map[String, @IR.Function]
   global_values : Array[GlobalValue]
 }
-fn Module::add_function(Self, String, Array[ArgPattern]) -> Function
+fn Module::add_function(Self, String, Array[ArgPattern], Bool) -> Function
 fn Module::add_global_data(Self, String, Array[GlobalValueData]) -> GlobalValue
 fn Module::add_global_string(Self, label~ : String, content~ : String) -> GlobalValue
 fn Module::add_global_zero_data(Self, String, UInt) -> GlobalValue
@@ -433,6 +498,9 @@ fn Module::alloc_register(Self) -> Unit raise MIRError
 fn Module::get_function(Self, String) -> Function?
 fn Module::legalize(Self) -> Unit raise MIRError
 fn Module::new(ArchConfig, source_file? : String) -> Self
+fn Module::output(Self, &Logger) -> Unit // from trait `Show`
+fn Module::post_ra(Self) -> Unit
+fn Module::to_string(Self) -> String // from trait `Show`
 fn Module::translate_global_values(Self, @IR.Module) -> Unit raise MIRError
 fn Module::translate_llvm_global_constant(Self, String, &@IR.Constant) -> Unit raise MIRError
 fn Module::translate_llvm_module(Self, @IR.Module) -> Unit raise MIRError
@@ -462,7 +530,12 @@ pub(all) enum OpCode {
   Nop
   Intrinsic(String)
 }
+fn OpCode::equal(Self, Self) -> Bool // from trait `Eq`
 fn OpCode::is_terminator(Self) -> Bool
+#deprecated
+fn OpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn OpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn OpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for OpCode
 impl Show for OpCode
 
@@ -474,6 +547,13 @@ pub(all) enum Operand {
   FImm(Double)
   Label(String)
 }
+fn Operand::equal(Self, Self) -> Bool // from trait `Eq`
+fn Operand::hash(Self) -> Int // from trait `Hash`
+fn Operand::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn Operand::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn Operand::output(Self, &Logger) -> Unit // from trait `Show`
+fn Operand::to_string(Self) -> String // from trait `Show`
 impl Eq for Operand
 impl Hash for Operand
 impl Show for Operand

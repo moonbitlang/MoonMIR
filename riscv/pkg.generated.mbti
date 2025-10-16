@@ -2,10 +2,13 @@
 package "Kaida-Amethyst/MoonMIR/riscv"
 
 import(
+  "Kaida-Amethyst/MoonLLVM/IR"
   "Kaida-Amethyst/MoonMIR"
 )
 
 // Values
+fn llvm_module_to_riscv(@IR.Module) -> Array[RvAsm] raise
+
 fn mir_block_to_riscv(@MoonMIR.BasicBlock, Int) -> Array[RvAsm] raise MIRToRiscvError
 
 fn mir_function_to_riscv(@MoonMIR.Function) -> Array[RvAsm] raise MIRToRiscvError
@@ -18,6 +21,8 @@ fn mir_module_to_riscv(@MoonMIR.Module) -> Array[RvAsm] raise MIRToRiscvError
 
 // Errors
 pub suberror MIRToRiscvError String
+fn MIRToRiscvError::output(Self, &Logger) -> Unit // from trait `Show`
+fn MIRToRiscvError::to_string(Self) -> String // from trait `Show`
 impl Show for MIRToRiscvError
 
 // Types and methods
@@ -55,6 +60,14 @@ pub(all) enum FReg {
   Ft10
   Ft11
 }
+fn FReg::compare(Self, Self) -> Int // from trait `Compare`
+fn FReg::equal(Self, Self) -> Bool // from trait `Eq`
+fn FReg::hash(Self) -> Int // from trait `Hash`
+fn FReg::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn FReg::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn FReg::output(Self, &Logger) -> Unit // from trait `Show`
+fn FReg::to_string(Self) -> String // from trait `Show`
 impl Compare for FReg
 impl Eq for FReg
 impl Hash for FReg
@@ -64,6 +77,14 @@ pub(all) struct Mem {
   base : Reg
   offset : Int64
 }
+fn Mem::compare(Self, Self) -> Int // from trait `Compare`
+fn Mem::equal(Self, Self) -> Bool // from trait `Eq`
+fn Mem::hash(Self) -> Int // from trait `Hash`
+fn Mem::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn Mem::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn Mem::output(Self, &Logger) -> Unit // from trait `Show`
+fn Mem::to_string(Self) -> String // from trait `Show`
 impl Compare for Mem
 impl Eq for Mem
 impl Hash for Mem
@@ -103,6 +124,14 @@ pub(all) enum Reg {
   T5
   T6
 }
+fn Reg::compare(Self, Self) -> Int // from trait `Compare`
+fn Reg::equal(Self, Self) -> Bool // from trait `Eq`
+fn Reg::hash(Self) -> Int // from trait `Hash`
+fn Reg::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn Reg::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn Reg::output(Self, &Logger) -> Unit // from trait `Show`
+fn Reg::to_string(Self) -> String // from trait `Show`
 impl Compare for Reg
 impl Eq for Reg
 impl Hash for Reg
@@ -255,6 +284,8 @@ pub(all) enum RvAsm {
   Label(String)
   Comment(String)
 }
+fn RvAsm::output(Self, &Logger) -> Unit // from trait `Show`
+fn RvAsm::to_string(Self) -> String // from trait `Show`
 impl Show for RvAsm
 
 // Type aliases

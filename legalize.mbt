@@ -591,7 +591,11 @@ pub fn Instruction::legalize_branch(
     }
     { defs: [], uses: [IRegister(_), IRegister(_), Label(_), Label(_)], .. } as inst =>
       [inst]
-    { defs: [], uses: [IRegister(r1), Imm(i2), Label(true_label), Label(false_label)], .. } => {
+    {
+      defs: [],
+      uses: [IRegister(r1), Imm(i2), Label(true_label), Label(false_label)],
+      ..,
+    } => {
       let v2 = func.keeped_treg1()
       [
         builder.build_imove_imm(32, dst=v2, src=i2),
@@ -999,7 +1003,10 @@ pub fn Instruction::legalize_imovef(
 ///|
 ///loadaddr means load address of a variable (in memory) into a register
 ///def must be IRegister, use must be label
-pub fn Instruction::legalize_load_addr(self: Instruction, builder : IRBuilder) -> Array[Instruction] raise MIRError {
+pub fn Instruction::legalize_load_addr(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
   let { func, .. } = builder
   guard self is { opcode: LoadAddr, .. } else {
     println(

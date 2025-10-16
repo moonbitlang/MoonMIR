@@ -13,12 +13,18 @@ fn rewrite_instruction(Instruction, vreg_operand_map~ : Map[Int, Operand], vfreg
 
 // Errors
 pub suberror IRTranslateError String
+fn IRTranslateError::output(Self, &Logger) -> Unit // from trait `Show`
+fn IRTranslateError::to_string(Self) -> String // from trait `Show`
 impl Show for IRTranslateError
 
 pub suberror PostRAError String
+fn PostRAError::output(Self, &Logger) -> Unit // from trait `Show`
+fn PostRAError::to_string(Self) -> String // from trait `Show`
 impl Show for PostRAError
 
 pub suberror RegAllocError String
+fn RegAllocError::output(Self, &Logger) -> Unit // from trait `Show`
+fn RegAllocError::to_string(Self) -> String // from trait `Show`
 impl Show for RegAllocError
 
 // Types and methods
@@ -47,7 +53,9 @@ pub(all) struct BasicBlock {
 }
 fn BasicBlock::add_inst_before_terminator(Self, Instruction) -> Unit
 fn BasicBlock::legalize(Self) -> Unit
+fn BasicBlock::output(Self, &Logger) -> Unit // from trait `Show`
 fn BasicBlock::run_ir_translation(Self) -> Unit raise IRTranslateError
+fn BasicBlock::to_string(Self) -> String // from trait `Show`
 impl Show for BasicBlock
 
 pub(all) struct Function {
@@ -74,7 +82,9 @@ fn Function::from_llvm_function(@IR.Function, ArchConfig) -> Self raise IRTransl
 fn Function::getArchConfig(Self) -> ArchConfig
 fn Function::instIter(Self) -> Iter[Instruction]
 fn Function::legalize(Self) -> Unit
+fn Function::output(Self, &Logger) -> Unit // from trait `Show`
 fn Function::run_ir_translation(Self) -> Unit raise IRTranslateError
+fn Function::to_string(Self) -> String // from trait `Show`
 impl Show for Function
 
 pub(all) struct GlobalValue {
@@ -84,6 +94,8 @@ pub(all) struct GlobalValue {
   llvm_gv : &@IR.GlobalValue
 }
 fn GlobalValue::new(Module, &@IR.GlobalValue) -> Self raise IRTranslateError
+fn GlobalValue::output(Self, &Logger) -> Unit // from trait `Show`
+fn GlobalValue::to_string(Self) -> String // from trait `Show`
 impl Show for GlobalValue
 
 pub(all) enum GlobalValueContent {
@@ -107,6 +119,8 @@ fn[T : Hash + Eq] Graph::add_edge(Self[T], T, T) -> Unit
 fn[T : Hash + Eq] Graph::add_node(Self[T], T) -> Unit
 fn[T : Hash + Eq] Graph::coloring(Self[T]) -> (Map[T, Int], Int)
 fn[T] Graph::new() -> Self[T]
+fn[T : Show] Graph::output(Self[T], &Logger) -> Unit // from trait `Show`
+fn[T : Show] Graph::to_string(Self[T]) -> String // from trait `Show`
 impl[T : Show] Show for Graph[T]
 
 pub(all) enum InstIterControl {
@@ -126,6 +140,8 @@ pub(all) struct Instruction {
 fn Instruction::legalize(Self) -> Array[Self]
 fn Instruction::new(OpCode, Array[Operand], Array[Operand], bb? : BasicBlock?) -> Self
 fn Instruction::op_iter(Self, InstIterControl) -> Iter[Operand]
+fn Instruction::output(Self, &Logger) -> Unit // from trait `Show`
+fn Instruction::to_string(Self) -> String // from trait `Show`
 impl Show for Instruction
 
 pub(all) struct Module {
@@ -142,9 +158,11 @@ pub(all) struct Module {
 fn Module::alloc_register(Self) -> Self raise RegAllocError
 fn Module::legalize(Self) -> Unit
 fn Module::new(@IR.Module, ArchConfig) -> Self
+fn Module::output(Self, &Logger) -> Unit // from trait `Show`
 fn Module::peephole_optimizations(Self) -> Self
 fn Module::post_ra(Self) -> Self raise PostRAError
 fn Module::run_ir_translation(Self) -> Unit raise IRTranslateError
+fn Module::to_string(Self) -> String // from trait `Show`
 impl Show for Module
 
 pub(all) enum OpCode {
@@ -266,6 +284,13 @@ pub(all) enum OpCode {
   Nop
   Intrinsic(String)
 }
+fn OpCode::equal(Self, Self) -> Bool // from trait `Eq`
+fn OpCode::hash(Self) -> Int // from trait `Hash`
+fn OpCode::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn OpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn OpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn OpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for OpCode
 impl Hash for OpCode
 impl Show for OpCode
@@ -290,6 +315,13 @@ pub(all) enum Operand {
   FramePtrPrim
   ReturnAddr
 }
+fn Operand::equal(Self, Self) -> Bool // from trait `Eq`
+fn Operand::hash(Self) -> Int // from trait `Hash`
+fn Operand::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn Operand::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn Operand::output(Self, &Logger) -> Unit // from trait `Show`
+fn Operand::to_string(Self) -> String // from trait `Show`
 impl Eq for Operand
 impl Hash for Operand
 impl Show for Operand

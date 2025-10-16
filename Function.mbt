@@ -36,7 +36,11 @@ pub(all) struct Function {
 }
 
 ///|
-pub fn Function::new(mod : Module, name : String, is_external: Bool) -> Function {
+pub fn Function::new(
+  mod : Module,
+  name : String,
+  is_external : Bool,
+) -> Function {
   Function::{
     mod,
     name,
@@ -252,6 +256,7 @@ pub fn Function::has_inst_with_opcode(self : Self, opcode : OpCode) -> Bool {
   false
 }
 
+///|
 pub fn Function::collect_insts_with_opcode(
   self : Self,
   opcode : OpCode,
@@ -287,7 +292,8 @@ pub fn Function::get_entry_block(self : Self) -> BasicBlock? {
   self.body.get(0)
 }
 
-pub fn Function::contains_virtual_reg(self: Self) -> Bool {
+///|
+pub fn Function::contains_virtual_reg(self : Self) -> Bool {
   for bb in self.body {
     if bb.contains_virtual_reg() {
       return true

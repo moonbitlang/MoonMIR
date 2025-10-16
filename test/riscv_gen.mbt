@@ -29,8 +29,7 @@ test "Simple Insts RiscV" {
     #|    divw a0, a0, a2
     #|    remw a0, a1, a0
     #|    ret
-    
-  inspect(rvasm, content = expetced)
+  inspect(rvasm, content=expetced)
 }
 
 //test "Simple Call" {
