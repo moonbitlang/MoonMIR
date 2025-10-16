@@ -493,14 +493,14 @@ pub fn Instruction::legalize_istore(
     panic()
   }
   match self {
-    { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
+    { defs: [], uses: [Mem(base, offset), Mem(b1, o1)], .. } => {
       let v1 = func.new_virtual_reg()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_storei(bits, src=v1, base~, offset~),
       ]
     }
-    { defs: [Mem(_)], uses: [IRegister(_)], .. } as inst => [inst]
+    { defs: [], uses: [Mem(_), IRegister(_)], .. } as inst => [inst]
     _ => raise LegalizeError("Unhandled IStore legalization case: \{self}")
   }
 }
