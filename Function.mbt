@@ -163,6 +163,28 @@ pub fn Function::new_virtual_freg(self : Self) -> FRegister {
   vfreg
 }
 
+pub fn Function::keeped_treg1(self : Self) -> IRegister {
+  let num_tregs = self.mod.arch_config.num_temp_regs
+  TReg(num_tregs - 1)
+}
+
+pub fn Function::keeped_tfreg1(self : Self) -> FRegister {
+  let num_tfregs = self.mod.arch_config.num_temp_fregs
+  FTReg(num_tfregs - 1)
+}
+
+pub fn Function::keeped_treg2(self : Self) -> (IRegister, IRegister) {
+  let num_tregs = self.mod.arch_config.num_temp_regs
+  (TReg(num_tregs - 1), TReg(num_tregs - 2))
+}
+
+pub fn Function::keeped_tfreg2(self : Self) -> (FRegister, FRegister) {
+  let num_tfregs = self.mod.arch_config.num_temp_fregs
+  (FTReg(num_tfregs - 1), FTReg(num_tfregs - 2))
+}
+
+
+
 ///|
 pub fn Function::bind_llvm_value_to_register(
   self : Self,

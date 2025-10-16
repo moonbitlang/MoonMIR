@@ -63,91 +63,82 @@ fn Instruction::legalize_ibinary(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
-        builder.build_ibinary(binop, bits, dst=vdst, src1=v1, src2=v2),
-        builder.build_storei(bits, src=vdst, base~, offset~),
+        builder.build_ibinary(binop, bits, dst=v1, src1=v1, src2=v2),
+        builder.build_storei(bits, src=v1, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1), IRegister(r2)], .. } => {
-      let v1 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
-        builder.build_ibinary(binop, bits, dst=vdst, src1=v1, src2=r2),
-        builder.build_storei(bits, src=vdst, base~, offset~),
+        builder.build_ibinary(binop, bits, dst=v1, src1=v1, src2=r2),
+        builder.build_storei(bits, src=v1, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1), Imm(i2)], .. } => {
-      let v1 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
-        builder.build_ibinary_imm(binop, bits, dst=vdst, src1=v1, src2=i2),
-        builder.build_storei(bits, src=vdst, base~, offset~),
+        builder.build_ibinary_imm(binop, bits, dst=v1, src1=v1, src2=i2),
+        builder.build_storei(bits, src=v1, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [IRegister(r1), Mem(b2, o2)], .. } => {
-      let v2 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let v2 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
-        builder.build_ibinary(binop, bits, dst=vdst, src1=r1, src2=v2),
-        builder.build_storei(bits, src=vdst, base~, offset~),
+        builder.build_ibinary(binop, bits, dst=v2, src1=r1, src2=v2),
+        builder.build_storei(bits, src=v2, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [IRegister(r1), IRegister(r2)], .. } => {
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_ibinary(binop, bits, dst=vdst, src1=r1, src2=r2),
         builder.build_storei(bits, src=vdst, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [IRegister(r1), Imm(i2)], .. } => {
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_ibinary_imm(binop, bits, dst=vdst, src1=r1, src2=i2),
         builder.build_storei(bits, src=vdst, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1), Mem(b2, o2)], .. } if binop.is_commutative() => {
-      let v2 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let v = func.keeped_treg1()
       [
-        builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
-        builder.build_ibinary_imm(binop, bits, dst=vdst, src1=v2, src2=i1),
-        builder.build_storei(bits, src=vdst, base~, offset~),
+        builder.build_loadi(bits, dst=v, base=b2, offset=o2),
+        builder.build_ibinary_imm(binop, bits, dst=v, src1=v, src2=i1),
+        builder.build_storei(bits, src=v, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1), Mem(b2, o2)], .. } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
       [
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
         builder.build_imove_imm(bits, dst=v1, src=i1),
-        builder.build_ibinary(binop, bits, dst=vdst, src1=v1, src2=v2),
-        builder.build_storei(bits, src=vdst, base~, offset~),
+        builder.build_ibinary(binop, bits, dst=v1, src1=v1, src2=v2),
+        builder.build_storei(bits, src=v1, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1), IRegister(r2)], .. } if binop.is_commutative() => {
-      let vdst = func.new_virtual_reg()
+      let v = func.keeped_treg1()
       [
-        builder.build_ibinary_imm(binop, bits, dst=vdst, src1=r2, src2=i1),
-        builder.build_storei(bits, src=vdst, base~, offset~),
+        builder.build_ibinary_imm(binop, bits, dst=v, src1=r2, src2=i1),
+        builder.build_storei(bits, src=v, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1), IRegister(r2)], .. } => {
-      let v1 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_imove_imm(bits, dst=v1, src=i1),
-        builder.build_ibinary(binop, bits, dst=vdst, src1=v1, src2=r2),
-        builder.build_storei(bits, src=vdst, base~, offset~),
+        builder.build_ibinary(binop, bits, dst=v1, src1=v1, src2=r2),
+        builder.build_storei(bits, src=v1, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1), Imm(i2)], .. } => {
@@ -165,7 +156,7 @@ fn Instruction::legalize_ibinary(
           (i1.reinterpret_as_uint64() >> i2.to_int()).reinterpret_as_int64()
         AShr => i1 >> i2.to_int()
       }
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_imove_imm(bits, dst=vdst, src=i),
         builder.build_storei(bits, src=vdst, base~, offset~),
