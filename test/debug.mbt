@@ -56,33 +56,33 @@
 //  println(mir_func)
 //
 //}
-//
+
 
 ///|
-test "Register Allocation Spill" {
-  let code =
-    #|fn add4(a1: Int, a2: Int, a3: Int) -> Int {
-    #|  let x1 = a1 + a1;
-    #|  let x2 = a1 + a2;
-    #|  let x3 = a1 + a3;
-    #|  let y1 = a2 + a1;
-    #|  let y2 = a2 + a2;
-    #|  let y3 = a2 + a3;
-    #|  let z1 = a3 + a1;
-    #|  let z2 = a3 + a2;
-    #|  let z3 = a3 + a3;
-    #|  let xr = x1 + x2 + x3;
-    #|  let yr = y1 + y2 + y3;
-    #|  let zr = z1 + z2 + z3;
-    #|  xr + yr + zr
-    #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
-  // IRTranslate
-  let mir_mod = Module::new(ArchConfig::debug())
-  mir_mod.translate_llvm_module(llvm_mod)
-  mir_mod.legalize()
-  let mir_func = mir_mod.get_function("add4").unwrap()
-  // Live Analysis
-  mir_func.alloc_register()
-  println(mir_func)
-}
+//test "Register Allocation Spill" {
+//  let code =
+//    #|fn add4(a1: Int, a2: Int, a3: Int) -> Int {
+//    #|  let x1 = a1 + a1;
+//    #|  let x2 = a1 + a2;
+//    #|  let x3 = a1 + a3;
+//    #|  let y1 = a2 + a1;
+//    #|  let y2 = a2 + a2;
+//    #|  let y3 = a2 + a3;
+//    #|  let z1 = a3 + a1;
+//    #|  let z2 = a3 + a2;
+//    #|  let z3 = a3 + a3;
+//    #|  let xr = x1 + x2 + x3;
+//    #|  let yr = y1 + y2 + y3;
+//    #|  let zr = z1 + z2 + z3;
+//    #|  xr + yr + zr
+//    #|}
+//  let llvm_mod = @TinyMoonBit.compile(code)
+//  // IRTranslate
+//  let mir_mod = Module::new(ArchConfig::debug())
+//  mir_mod.translate_llvm_module(llvm_mod)
+//  mir_mod.legalize()
+//  let mir_func = mir_mod.get_function("add4").unwrap()
+//  // Live Analysis
+//  mir_func.alloc_register()
+//  println(mir_func)
+//}

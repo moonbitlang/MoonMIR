@@ -247,6 +247,19 @@ pub fn Function::has_inst_with_opcode(self : Self, opcode : OpCode) -> Bool {
   false
 }
 
+pub fn Function::collect_insts_with_opcode(
+  self : Self,
+  opcode : OpCode,
+) -> Array[Instruction] {
+  let insts = Array::new()
+  for inst in self.inst_iter() {
+    if inst.opcode == opcode {
+      insts.push(inst)
+    }
+  }
+  insts
+}
+
 ///|
 pub fn Function::collect_blocks_with_opcode(
   self : Self,

@@ -53,9 +53,22 @@ pub fn BasicBlock::push_inst_before_terminator(
   }
 }
 
-// Return True is the live_out set was changed
+pub fn BasicBlock::insert_inst_before_inst(self: Self, inst: Instruction, before~: Instruction) -> Unit? {
+  if inst.bb != before.bb {
+    return None
+  }
+  let index = self.insts.search_by(i => i == before)
+  if index is None {
+    return None
+  }
+  self.insts.insert(index.unwrap(), inst)
+  Some(())
+}
+
 
 ///|
+///
+/// Return True is the live_out set was changed
 pub fn BasicBlock::update_live_out(
   self : Self,
   live_out : Set[Operand],

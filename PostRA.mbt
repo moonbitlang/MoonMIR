@@ -1,6 +1,9 @@
 ///|
 pub fn Function::post_ra(self : Function) -> Unit {
-  // Step 1. Prologue/Epilogue Insertion
+  // Step 1. Store and Load Caller-Saved Registers
+  self.store_load_caller_saved_registers()
+
+  // Step 2. Prologue/Epilogue Insertion
   // 1-1. Collect Callee-Saved Registers
   // 1-2. If callee-saved registers are used, save them in prologue
   //      and restore them in epilogue.
@@ -8,7 +11,7 @@ pub fn Function::post_ra(self : Function) -> Unit {
   // 1-4. Insert sp, fp modification instructions.
   self.prologue_epilogue_insertion()
 
-  // Step 2. Adjust Stack Offsets, StackPtr and FramePtr
+  // Step 3. Adjust Stack Offsets, StackPtr and FramePtr
   // We now have three kinds of mem
   // 1. Mem(FromePtr, offset)
   // 2. Mem(StackPtr, offset)
@@ -19,6 +22,17 @@ pub fn Function::post_ra(self : Function) -> Unit {
   // Mem(FramePtr, offset) -> Mem(StackPtr, offset + var_stack_size + reg_stack_size)
   // Mem(FramePtrPrim, offset) -> Mem(StackPtr, offset + var_stack_size)
   self.adjust_mem_operands()
+}
+
+// For each call instruction, if it's live-out registers contain
+// caller-saved registers, like a0, a1, ..., t0, t1, ..., fa0, ...
+// store them in reg_stack before the call instruction
+// and load them back after the call instruction.
+fn Function::store_load_caller_saved_registers(self: Self) -> Unit {
+  // Register -> Mem(_, _)
+  //let reg_stack_map: Map[Operand, Operand] = Map::new()
+  //let call_insts = self.collect_insts_with_opcode(Call)
+
 }
 
 ///|

@@ -163,8 +163,7 @@ fn Instruction::legalize_ibinary(
       ]
     }
     { defs: [IRegister(rdst)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
@@ -172,21 +171,21 @@ fn Instruction::legalize_ibinary(
       ]
     }
     { defs: [IRegister(rdst)], uses: [Mem(b1, o1), IRegister(r2)], .. } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_ibinary(binop, bits, dst=rdst, src1=v1, src2=r2),
       ]
     }
     { defs: [IRegister(rdst)], uses: [Mem(b1, o1), Imm(i2)], .. } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_ibinary_imm(binop, bits, dst=rdst, src1=v1, src2=i2),
       ]
     }
     { defs: [IRegister(rdst)], uses: [IRegister(r1), Mem(b2, o2)], .. } => {
-      let v2 = func.new_virtual_reg()
+      let v2 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
         builder.build_ibinary(binop, bits, dst=rdst, src1=r1, src2=v2),
@@ -202,7 +201,7 @@ fn Instruction::legalize_ibinary(
     } if binop.is_commutative() =>
       [builder.build_ibinary_imm(binop, bits, dst=rdst, src1=r2, src2=i)]
     { defs: [IRegister(rdst)], uses: [Imm(i), IRegister(r2)], .. } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_imove_imm(bits, dst=v1, src=i),
         builder.build_ibinary(binop, bits, dst=rdst, src1=v1, src2=r2),
@@ -226,8 +225,7 @@ pub fn Instruction::legalize_iunary(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let (v1, vdst) = func.keeped_treg2()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_iunary(unop, bits, dst=vdst, src=v1),
@@ -235,7 +233,7 @@ pub fn Instruction::legalize_iunary(
       ]
     }
     { defs: [Mem(base, offset)], uses: [IRegister(r1)], .. } => {
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_iunary(unop, bits, dst=vdst, src=r1),
         builder.build_storei(bits, src=vdst, base~, offset~),
@@ -245,14 +243,14 @@ pub fn Instruction::legalize_iunary(
       let i = match unop {
         Not => i1.lnot()
       }
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_imove_imm(bits, dst=vdst, src=i),
         builder.build_storei(bits, src=vdst, base~, offset~),
       ]
     }
     { defs: [IRegister(rdst)], uses: [Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_iunary(unop, bits, dst=rdst, src=v1),
@@ -263,7 +261,7 @@ pub fn Instruction::legalize_iunary(
       let i = match unop {
         Not => i1.lnot()
       }
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_imove_imm(bits, dst=vdst, src=i),
         builder.build_imove(bits, dst=rdst, src=vdst),
@@ -292,9 +290,8 @@ pub fn Instruction::legalize_icmp(
       uses: [Mem(b1, o1), Mem(b2, o2)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
+      let vdst = v1 // Reuse v1 for the result
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
@@ -308,8 +305,8 @@ pub fn Instruction::legalize_icmp(
       uses: [Mem(b1, o1), IRegister(r2)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
+      let vdst = v1 // Reuse v1 for the result
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_icmp(cmpop, bits, dst=vdst, src1=v1, src2=r2),
@@ -322,9 +319,8 @@ pub fn Instruction::legalize_icmp(
       uses: [Mem(b1, o1), Imm(i2)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
+      let vdst = v1 // Reuse v1 for the result
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_imove_imm(bits, dst=v2, src=i2),
@@ -338,8 +334,8 @@ pub fn Instruction::legalize_icmp(
       uses: [IRegister(r1), Mem(b2, o2)],
       ..,
     } => {
-      let v2 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let v2 = func.keeped_treg1()
+      let vdst = v2 // Reuse v2 for the result
       [
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
         builder.build_icmp(cmpop, bits, dst=vdst, src1=r1, src2=v2),
@@ -352,7 +348,7 @@ pub fn Instruction::legalize_icmp(
       uses: [IRegister(r1), IRegister(r2)],
       ..,
     } => {
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_icmp(cmpop, bits, dst=vdst, src1=r1, src2=r2),
         builder.build_storei(32, src=vdst, base~, offset~),
@@ -364,8 +360,7 @@ pub fn Instruction::legalize_icmp(
       uses: [IRegister(r1), Imm(i2)],
       ..,
     } => {
-      let v2 = func.new_virtual_reg()
-      let vdst = func.new_virtual_reg()
+      let (vdst, v2) = func.keeped_treg2()
       [
         builder.build_imove_imm(bits, dst=v2, src=i2),
         builder.build_icmp(cmpop, bits, dst=vdst, src1=r1, src2=v2),
@@ -378,8 +373,7 @@ pub fn Instruction::legalize_icmp(
       uses: [Mem(b1, o1), Mem(b2, o2)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
@@ -392,7 +386,7 @@ pub fn Instruction::legalize_icmp(
       uses: [Mem(b1, o1), IRegister(r2)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_icmp(cmpop, bits, dst=rdst, src1=v1, src2=r2),
@@ -404,8 +398,7 @@ pub fn Instruction::legalize_icmp(
       uses: [Mem(b1, o1), Imm(i2)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_imove_imm(bits, dst=v2, src=i2),
@@ -418,7 +411,7 @@ pub fn Instruction::legalize_icmp(
       uses: [IRegister(r1), Mem(b2, o2)],
       ..,
     } => {
-      let v2 = func.new_virtual_reg()
+      let v2 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
         builder.build_icmp(cmpop, bits, dst=rdst, src1=r1, src2=v2),
@@ -436,7 +429,7 @@ pub fn Instruction::legalize_icmp(
       uses: [IRegister(r1), Imm(i2)],
       ..,
     } => {
-      let v2 = func.new_virtual_reg()
+      let v2 = func.keeped_treg1()
       [
         builder.build_imove_imm(bits, dst=v2, src=i2),
         builder.build_icmp(cmpop, bits, dst=rdst, src1=r1, src2=v2),
@@ -460,7 +453,7 @@ pub fn Instruction::legalize_iload(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_storei(bits, src=v1, base~, offset~),
@@ -485,7 +478,7 @@ pub fn Instruction::legalize_istore(
   }
   match self {
     { defs: [], uses: [Mem(base, offset), Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_storei(bits, src=v1, base~, offset~),
@@ -510,14 +503,14 @@ pub fn Instruction::legalize_imove(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_storei(bits, src=v1, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1)], .. } => {
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_imove_imm(bits, dst=vdst, src=i1),
         builder.build_storei(bits, src=vdst, base~, offset~),
@@ -548,8 +541,7 @@ pub fn Instruction::legalize_branch(
       uses: [Mem(b1, o1), Mem(b2, o2), Label(true_label), Label(false_label)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
       [
         builder.build_loadi(32, dst=v1, base=b1, offset=o1),
         builder.build_loadi(32, dst=v2, base=b2, offset=o2),
@@ -561,7 +553,7 @@ pub fn Instruction::legalize_branch(
       uses: [Mem(b1, o1), IRegister(r2), Label(true_label), Label(false_label)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(32, dst=v1, base=b1, offset=o1),
         builder.build_branch(bop, lhs=v1, rhs=r2, true_label~, false_label~),
@@ -572,7 +564,7 @@ pub fn Instruction::legalize_branch(
       uses: [Mem(b1, o1), Imm(v2), Label(true_label), Label(false_label)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(32, dst=v1, base=b1, offset=o1),
         builder.build_branch_imm(bop, lhs=v1, rhs=v2, true_label~, false_label~),
@@ -583,7 +575,7 @@ pub fn Instruction::legalize_branch(
       uses: [IRegister(r1), Mem(b2, o2), Label(true_label), Label(false_label)],
       ..,
     } => {
-      let v2 = func.new_virtual_reg()
+      let v2 = func.keeped_treg1()
       [
         builder.build_loadi(32, dst=v2, base=b2, offset=o2),
         builder.build_branch(bop, lhs=r1, rhs=v2, true_label~, false_label~),
@@ -598,8 +590,7 @@ pub fn Instruction::legalize_branch(
       uses: [Imm(i1), Mem(b2, o2), Label(true_label), Label(false_label)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
       [
         builder.build_loadi(32, dst=v2, base=b2, offset=o2),
         builder.build_imove_imm(32, dst=v1, src=i1),
@@ -611,7 +602,7 @@ pub fn Instruction::legalize_branch(
       uses: [Imm(i1), IRegister(r2), Label(true_label), Label(false_label)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
+      let v1 = func.keeped_treg1()
       [
         builder.build_imove_imm(32, dst=v1, src=i1),
         builder.build_branch(bop, lhs=v1, rhs=r2, true_label~, false_label~),
@@ -622,8 +613,7 @@ pub fn Instruction::legalize_branch(
       uses: [Imm(i1), Imm(i2), Label(true_label), Label(false_label)],
       ..,
     } => {
-      let v1 = func.new_virtual_reg()
-      let v2 = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_treg2()
       [
         builder.build_imove_imm(32, dst=v1, src=i1),
         builder.build_imove_imm(32, dst=v2, src=i2),
@@ -652,9 +642,8 @@ pub fn Instruction::legalize_fbinary(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
-      let v1 = func.new_virtual_freg()
-      let v2 = func.new_virtual_freg()
-      let vdst = func.new_virtual_freg()
+      let (v1, v2) = func.keeped_ftreg2()
+      let vdst = v1 // Reuse v1 for the result
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
@@ -663,8 +652,8 @@ pub fn Instruction::legalize_fbinary(
       ]
     }
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1), FRegister(r2)], .. } => {
-      let v1 = func.new_virtual_freg()
-      let vdst = func.new_virtual_freg()
+      let v1 = func.keeped_ftreg1()
+      let vdst = v1 // Reuse v1 for the result
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_fbinary(binop, bits, dst=vdst, src1=v1, src2=r2),
@@ -672,8 +661,8 @@ pub fn Instruction::legalize_fbinary(
       ]
     }
     { defs: [Mem(base, offset)], uses: [FRegister(r1), Mem(b2, o2)], .. } => {
-      let v2 = func.new_virtual_freg()
-      let vdst = func.new_virtual_freg()
+      let v2 = func.keeped_ftreg1()
+      let vdst = v2 // Reuse v2 for the result
       [
         builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
         builder.build_fbinary(binop, bits, dst=vdst, src1=r1, src2=v2),
@@ -681,15 +670,14 @@ pub fn Instruction::legalize_fbinary(
       ]
     }
     { defs: [Mem(base, offset)], uses: [FRegister(r1), FRegister(r2)], .. } => {
-      let vdst = func.new_virtual_freg()
+      let vdst = func.keeped_ftreg1()
       [
         builder.build_fbinary(binop, bits, dst=vdst, src1=r1, src2=r2),
         builder.build_storef(bits, src=vdst, base~, offset~),
       ]
     }
     { defs: [FRegister(rdst)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
-      let v1 = func.new_virtual_freg()
-      let v2 = func.new_virtual_freg()
+      let (v1, v2) = func.keeped_ftreg2()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
@@ -697,14 +685,14 @@ pub fn Instruction::legalize_fbinary(
       ]
     }
     { defs: [FRegister(rdst)], uses: [Mem(b1, o1), FRegister(r2)], .. } => {
-      let v1 = func.new_virtual_freg()
+      let v1 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_fbinary(binop, bits, dst=rdst, src1=v1, src2=r2),
       ]
     }
     { defs: [FRegister(rdst)], uses: [FRegister(r1), Mem(b2, o2)], .. } => {
-      let v2 = func.new_virtual_freg()
+      let v2 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
         builder.build_fbinary(binop, bits, dst=rdst, src1=r1, src2=v2),
@@ -730,8 +718,7 @@ pub fn Instruction::legalize_funary(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_freg()
-      let vdst = func.new_virtual_freg()
+      let (v1, vdst) = func.keeped_ftreg2()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_funary(unop, bits, dst=vdst, src=v1),
@@ -739,14 +726,14 @@ pub fn Instruction::legalize_funary(
       ]
     }
     { defs: [Mem(base, offset)], uses: [FRegister(r1)], .. } => {
-      let vdst = func.new_virtual_freg()
+      let vdst = func.keeped_ftreg1()
       [
         builder.build_funary(unop, bits, dst=vdst, src=r1),
         builder.build_storef(bits, src=vdst, base~, offset~),
       ]
     }
     { defs: [FRegister(rdst)], uses: [Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_freg()
+      let v1 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_funary(unop, bits, dst=rdst, src=v1),
@@ -771,9 +758,8 @@ pub fn Instruction::legalize_fcmp(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
-      let v1 = func.new_virtual_freg()
-      let v2 = func.new_virtual_freg()
-      let vdst = func.new_virtual_reg()
+      let (v1, v2) = func.keeped_ftreg2()
+      let vdst = func.keeped_treg1()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
@@ -782,8 +768,8 @@ pub fn Instruction::legalize_fcmp(
       ]
     }
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1), FRegister(r2)], .. } => {
-      let v1 = func.new_virtual_freg()
-      let vdst = func.new_virtual_reg()
+      let v1 = func.keeped_ftreg1()
+      let vdst = func.keeped_treg1()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_fcmp(fcmpop, bits, dst=vdst, src1=v1, src2=r2),
@@ -791,8 +777,8 @@ pub fn Instruction::legalize_fcmp(
       ]
     }
     { defs: [Mem(base, offset)], uses: [FRegister(r1), Mem(b2, o2)], .. } => {
-      let v2 = func.new_virtual_freg()
-      let vdst = func.new_virtual_reg()
+      let v2 = func.keeped_ftreg1()
+      let vdst = func.keeped_treg1()
       [
         builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
         builder.build_fcmp(fcmpop, bits, dst=vdst, src1=r1, src2=v2),
@@ -800,15 +786,14 @@ pub fn Instruction::legalize_fcmp(
       ]
     }
     { defs: [Mem(base, offset)], uses: [FRegister(r1), FRegister(r2)], .. } => {
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_fcmp(fcmpop, bits, dst=vdst, src1=r1, src2=r2),
         builder.build_storei(32, src=vdst, base~, offset~),
       ]
     }
     { defs: [IRegister(rdst)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
-      let v1 = func.new_virtual_freg()
-      let v2 = func.new_virtual_freg()
+      let (v1, v2) = func.keeped_ftreg2()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
@@ -816,14 +801,14 @@ pub fn Instruction::legalize_fcmp(
       ]
     }
     { defs: [IRegister(rdst)], uses: [Mem(b1, o1), FRegister(r2)], .. } => {
-      let v1 = func.new_virtual_freg()
+      let v1 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_fcmp(fcmpop, bits, dst=rdst, src1=v1, src2=r2),
       ]
     }
     { defs: [IRegister(rdst)], uses: [FRegister(r1), Mem(b2, o2)], .. } => {
-      let v2 = func.new_virtual_freg()
+      let v2 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v2, base=b2, offset=o2),
         builder.build_fcmp(fcmpop, bits, dst=rdst, src1=r1, src2=v2),
@@ -855,7 +840,7 @@ pub fn Instruction::legalize_fload(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_freg()
+      let v1 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_storef(bits, src=v1, base~, offset~),
@@ -880,7 +865,7 @@ pub fn Instruction::legalize_fstore(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_freg()
+      let v1 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_storef(bits, src=v1, base~, offset~),
@@ -905,25 +890,25 @@ pub fn Instruction::legalize_fmove(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
-      let v1 = func.new_virtual_freg()
+      let v1 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_storef(bits, src=v1, base~, offset~),
       ]
     }
     { defs: [Mem(base, offset)], uses: [FRegister(r1)], .. } => {
-      let vdst = func.new_virtual_freg()
+      let vdst = func.keeped_ftreg1()
       [
         builder.build_fmove(bits, dst=vdst, src=r1),
         builder.build_storef(bits, src=vdst, base~, offset~),
       ]
     }
     { defs: [FRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
-    { defs: [FRegister(_)], uses: [Mem(base, offset)], .. } => {
-      let v1 = func.new_virtual_freg()
+    { defs: [FRegister(rdst)], uses: [Mem(base, offset)], .. } => {
+      let v1 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v1, base~, offset~),
-        builder.build_fmove(bits, dst=func.new_virtual_freg(), src=v1),
+        builder.build_fmove(bits, dst=rdst, src=v1),
       ]
     }
     _ => raise LegalizeError("Unhandled FMove legalization case: \{self}")
@@ -944,8 +929,8 @@ pub fn Instruction::legalize_fmovei(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [IRegister(r1)], .. } => {
-      let v1 = func.new_virtual_reg()
-      let vdst = func.new_virtual_freg()
+      let v1 = func.keeped_treg1()
+      let vdst = func.keeped_ftreg1()
       [
         builder.build_imove(bits, dst=v1, src=r1),
         builder.build_fmove_from_ireg(bits, dst=vdst, src=v1),
@@ -953,12 +938,11 @@ pub fn Instruction::legalize_fmovei(
       ]
     }
     { defs: [FRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
-    { defs: [FRegister(_)], uses: [Mem(base, offset)], .. } => {
-      let v1 = func.new_virtual_reg()
-      let vdst = func.new_virtual_freg()
+    { defs: [FRegister(rdst)], uses: [Mem(base, offset)], .. } => {
+      let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base~, offset~),
-        builder.build_fmove_from_ireg(bits, dst=vdst, src=v1),
+        builder.build_fmove_from_ireg(bits, dst=rdst, src=v1),
       ]
     }
     _ => raise LegalizeError("Unhandled FMoveI legalization case: \{self}")
@@ -981,19 +965,18 @@ pub fn Instruction::legalize_imovef(
   }
   match self {
     { defs: [Mem(base, offset)], uses: [FRegister(r1)], .. } => {
-      let vdst = func.new_virtual_reg()
+      let vdst = func.keeped_treg1()
       [
         builder.build_fmove_to_ireg(bits, dst=vdst, src=r1),
         builder.build_storei(bits, src=vdst, base~, offset~),
       ]
     }
     { defs: [IRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
-    { defs: [IRegister(_)], uses: [Mem(base, offset)], .. } => {
-      let v1 = func.new_virtual_freg()
-      let vdst = func.new_virtual_reg()
+    { defs: [IRegister(rdst)], uses: [Mem(base, offset)], .. } => {
+      let v1 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v1, base~, offset~),
-        builder.build_fmove_to_ireg(bits, dst=vdst, src=v1),
+        builder.build_fmove_to_ireg(bits, dst=rdst, src=v1),
       ]
     }
     _ => raise LegalizeError("Unhandled IMoveF legalization case: \{self}")

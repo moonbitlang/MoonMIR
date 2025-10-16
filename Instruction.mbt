@@ -1,5 +1,8 @@
+let inst_id : Ref[Int] = Ref::new(0)
+
 ///|
 pub(all) struct Instruction {
+  id: Int
   opcode : OpCode
   defs : Array[Operand]
   uses : Array[Operand]
@@ -16,7 +19,10 @@ pub fn Instruction::new(
   uses : Array[Operand],
   bb : BasicBlock,
 ) -> Instruction {
+  let id = inst_id.val;
+  inst_id.val += 1;
   Instruction::{
+    id,
     opcode,
     defs,
     uses,
@@ -25,6 +31,10 @@ pub fn Instruction::new(
     live_in: Set::new(),
     live_out: Set::new(),
   }
+}
+
+pub impl Eq for Instruction with equal(self, other) {
+  self.id == other.id
 }
 
 ///|
