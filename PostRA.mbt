@@ -1,9 +1,6 @@
 ///|
 pub fn Module::post_ra(self : Module) -> Unit {
-  self
-  .functions
-  .values()
-  .each(f => f.post_ra())
+  self.functions.values().each(f => f.post_ra())
 }
 
 ///|
@@ -36,15 +33,18 @@ pub fn Function::post_ra(self : Function) -> Unit {
 // caller-saved registers, like a0, a1, ..., t0, t1, ..., fa0, ...
 // store them in reg_stack before the call instruction
 // and load them back after the call instruction.
-fn Function::store_load_caller_saved_registers(self: Self) -> Unit {
-  fn is_caller_saved_register(op: Operand) -> Bool {
+
+///|
+fn Function::store_load_caller_saved_registers(self : Self) -> Unit {
+  fn is_caller_saved_register(op : Operand) -> Bool {
     match op {
       IRegister(TReg(_)) => true
       FRegister(FTReg(_)) => true
       _ => false
     }
   }
-  let reg_stack_map: Map[Operand, Int64] = Map::new()
+
+  let reg_stack_map : Map[Operand, Int64] = Map::new()
   let call_insts = self.collect_insts_with_opcode(Call)
   for inst in call_insts {
     for op in inst.live_out.iter().filter(is_caller_saved_register) {
@@ -57,27 +57,35 @@ fn Function::store_load_caller_saved_registers(self: Self) -> Unit {
       let offset = reg_stack_map.get(op).unwrap()
       // Store before call
       let store_inst = match op {
-        IRegister(src) => try! builder.build_storei(64, src=src, base=FramePtr, offset~)
-        FRegister(src) => try! builder.build_storef(64, src=src, base=FramePtr, offset~)
+        IRegister(src) =>
+          try! builder.build_storei(64, src~, base=FramePtr, offset~)
+        FRegister(src) =>
+          try! builder.build_storef(64, src~, base=FramePtr, offset~)
         _ => {
-          println("Compiler ICE: Unexpected register type in caller-saved registers")
+          println(
+            "Compiler ICE: Unexpected register type in caller-saved registers",
+          )
           panic()
         }
       }
       let _ = inst.bb.insert_inst_before(before=inst, store_inst)
       // Load after call
       let load_inst = match op {
-        IRegister(dst) => try! builder.build_loadi(64, dst=dst, base=FramePtr, offset~)
-        FRegister(dst) => try! builder.build_loadf(64, dst=dst, base=FramePtr, offset~)
+        IRegister(dst) =>
+          try! builder.build_loadi(64, dst~, base=FramePtr, offset~)
+        FRegister(dst) =>
+          try! builder.build_loadf(64, dst~, base=FramePtr, offset~)
         _ => {
-          println("Compiler ICE: Unexpected register type in caller-saved registers")
+          println(
+            "Compiler ICE: Unexpected register type in caller-saved registers",
+          )
           panic()
         }
       }
-      let _ = inst.bb.insert_inst_after(after = inst, load_inst)
+      let _ = inst.bb.insert_inst_after(after=inst, load_inst)
+
     }
   }
-
 }
 
 ///|
@@ -111,12 +119,12 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
     let offset = -self.extend_reg_stack(8L, 8L)
     match r {
       IRegister(src) => {
-        let inst = try! builder.build_storei(64, src=src, base=FramePtr, offset~)
+        let inst = try! builder.build_storei(64, src~, base=FramePtr, offset~)
         callee_saved_reg_locs.set(r, offset)
         entry_bb.insts.insert(0, inst)
       }
       FRegister(src) => {
-        let inst = try! builder.build_storef(64, src=src, base=FramePtr, offset~)
+        let inst = try! builder.build_storef(64, src~, base=FramePtr, offset~)
         callee_saved_reg_locs.set(r, offset)
         entry_bb.insts.insert(0, inst)
       }
@@ -137,11 +145,11 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
       let offset = callee_saved_reg_locs.get(r).unwrap()
       match r {
         IRegister(dst) => {
-          let inst = try! builder.build_loadi(64, dst=dst, base=FramePtr, offset~)
+          let inst = try! builder.build_loadi(64, dst~, base=FramePtr, offset~)
           term_bb.push_inst_before_terminator(inst)
         }
         FRegister(dst) => {
-          let inst = try! builder.build_loadf(64, dst=dst, base=FramePtr, offset~)
+          let inst = try! builder.build_loadf(64, dst~, base=FramePtr, offset~)
           term_bb.push_inst_before_terminator(inst)
         }
         _ => {
@@ -159,11 +167,21 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
   let need_save_ra = self.has_inst_with_opcode(Call)
   if need_save_ra {
     let offset = -self.extend_reg_stack(8L, 8L)
-    let store_ra_inst = try! builder.build_storei(64, src=ReturnAddr, base=FramePtr, offset~)
+    let store_ra_inst = try! builder.build_storei(
+        64,
+        src=ReturnAddr,
+        base=FramePtr,
+        offset~,
+      )
     entry_bb.insts.insert(0, store_ra_inst)
     for term_bb in terminal_bbs {
       let builder = IRBuilder::new(self, term_bb)
-      let load_ra_inst = try! builder.build_loadi(64, dst=ReturnAddr, base=FramePtr, offset~)
+      let load_ra_inst = try! builder.build_loadi(
+          64,
+          dst=ReturnAddr,
+          base=FramePtr,
+          offset~,
+        )
       term_bb.push_inst_before_terminator(load_ra_inst)
     }
   }
@@ -179,18 +197,46 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
   let offset = -self.extend_reg_stack(8L, 8L)
   let total_stack_size = self.var_stack_size + self.reg_stack_size
   let builder = IRBuilder::new(self, entry_bb)
-  let alloc_stack_inst = try! builder.build_ibinary_imm(Add, 64, dst=StackPtr, src1=StackPtr, src2=-total_stack_size)
-  let store_fp_inst = try! builder.build_storei(64, src=FramePtr, base=FramePtr, offset~)
-  let set_fp_inst = try! builder.build_ibinary_imm(Add, 64, dst=FramePtr, src1=StackPtr, src2=total_stack_size)
+  let alloc_stack_inst = try! builder.build_ibinary_imm(
+      Add,
+      64,
+      dst=StackPtr,
+      src1=StackPtr,
+      src2=-total_stack_size,
+    )
+  let store_fp_inst = try! builder.build_storei(
+      64,
+      src=FramePtr,
+      base=FramePtr,
+      offset~,
+    )
+  let set_fp_inst = try! builder.build_ibinary_imm(
+      Add,
+      64,
+      dst=FramePtr,
+      src1=StackPtr,
+      src2=total_stack_size,
+    )
   entry_bb.insts.insert(0, set_fp_inst)
   entry_bb.insts.insert(0, store_fp_inst)
   entry_bb.insts.insert(0, alloc_stack_inst)
   for term_bb in terminal_bbs {
     let builder = IRBuilder::new(self, term_bb)
-    let dealloc_stack_inst = try! builder.build_ibinary_imm(Add, 64, dst=StackPtr, src1=StackPtr, src2=total_stack_size)
-    let load_fp_inst = try! builder.build_loadi(64, dst=FramePtr, base=StackPtr, offset=self.var_stack_size)
-    term_bb.push_inst_before_terminator(dealloc_stack_inst)
+    let load_fp_inst = try! builder.build_loadi(
+        64,
+        dst=FramePtr,
+        base=StackPtr,
+        offset=self.var_stack_size,
+      )
+    let dealloc_stack_inst = try! builder.build_ibinary_imm(
+        Add,
+        64,
+        dst=StackPtr,
+        src1=StackPtr,
+        src2=total_stack_size,
+      )
     term_bb.push_inst_before_terminator(load_fp_inst)
+    term_bb.push_inst_before_terminator(dealloc_stack_inst)
   }
 }
 
