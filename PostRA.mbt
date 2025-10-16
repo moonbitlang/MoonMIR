@@ -39,8 +39,8 @@ pub fn Function::post_ra(self : Function) -> Unit {
 fn Function::store_load_caller_saved_registers(self: Self) -> Unit {
   fn is_caller_saved_register(op: Operand) -> Bool {
     match op {
-      IRegister(AReg(_)) | IRegister(TReg(_)) => true
-      FRegister(FAReg(_)) | FRegister(FTReg(_)) => true
+      IRegister(TReg(_)) => true
+      FRegister(FTReg(_)) => true
       _ => false
     }
   }

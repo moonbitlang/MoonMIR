@@ -164,8 +164,22 @@ pub fn Function::translate_params(self : Self, loc~ : SourceLoc) -> Unit {
   let entry_bb = self.get_entry_block().unwrap()
   let buiilder = IRBuilder::new(self, entry_bb)
   for arg, param in llvm_func.arguments.zip_to_iter2(self.params) {
-    if param is (IRegister(_) | FRegister(_)) {
-      self.value_map.set(arg, param)
+    if param is IRegister(r) {
+      let tmp = self.new_virtual_reg()
+      let move_inst = buiilder.build_imove(64, dst=tmp, src=r) catch {
+        _ => abort("")
+      }
+      entry_bb.push(move_inst)
+      self.value_map.set(arg, IRegister(tmp))
+      continue
+    }
+    if param is FRegister(r) {
+      let tmp = self.new_virtual_freg()
+      let move_inst = buiilder.build_fmove(64, dst=tmp, src=r) catch {
+        _ => abort("")
+      }
+      entry_bb.push(move_inst)
+      self.value_map.set(arg, FRegister(tmp))
       continue
     }
     let is_fp = arg.getType().isIEEELikeFPTy()
