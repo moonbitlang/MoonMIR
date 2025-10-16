@@ -206,7 +206,7 @@ pub fn Function::traverse_llvm_basic_blocks(
   for llvm_bb in sorted_bbs {
     let label = match llvm_bb.getName() {
       Some(n) => n
-      None => "\{self.name}_L\{self.bbmap.size()}"
+      None => "\{self.name}_L\{self.bbmap.length()}"
     }
     let machine_bb = BasicBlock::new(self, label)
     self.body.push(machine_bb)

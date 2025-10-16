@@ -107,7 +107,7 @@ fn live_analysis_for_basic_blocks(
       let bb = all_bbs[i]
 
       // Save old livein to detect changes
-      let old_livein_size = bb.livein.size()
+      let old_livein_size = bb.livein.length()
 
       // Recompute liveout from successors' livein
       bb.liveout.clear()
@@ -142,7 +142,7 @@ fn live_analysis_for_basic_blocks(
       }
 
       // Check if livein changed
-      if bb.livein.size() != old_livein_size {
+      if bb.livein.length() != old_livein_size {
         changed = true
       }
     }

@@ -62,7 +62,7 @@ pub impl Show for InterferenceGraph with output(self, logger) {
   logger.write_string("Nodes:\n")
   for i, node in self.nodes.iter() {
     logger.write_string("\{node}")
-    if i % 10 != 9 && i != self.nodes.size() - 1 {
+    if i % 10 != 9 && i != self.nodes.length() - 1 {
       logger.write_string(", ")
     } else {
       logger.write_string("\n")
