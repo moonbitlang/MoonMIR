@@ -53,7 +53,7 @@ pub fn BasicBlock::push_inst_before_terminator(
   }
 }
 
-pub fn BasicBlock::insert_inst_before_inst(self: Self, inst: Instruction, before~: Instruction) -> Unit? {
+pub fn BasicBlock::insert_inst_before(self: Self, inst: Instruction, before~: Instruction) -> Unit? {
   if inst.bb != before.bb {
     return None
   }
@@ -62,6 +62,18 @@ pub fn BasicBlock::insert_inst_before_inst(self: Self, inst: Instruction, before
     return None
   }
   self.insts.insert(index.unwrap(), inst)
+  Some(())
+}
+
+pub fn BasicBlock::insert_inst_after(self: Self, inst: Instruction, after~: Instruction) -> Unit? {
+  if inst.bb != after.bb {
+    return None
+  }
+  let index = self.insts.search_by(i => i == after)
+  if index is None {
+    return None
+  }
+  self.insts.insert(index.unwrap() + 1, inst)
   Some(())
 }
 

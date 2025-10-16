@@ -29,9 +29,46 @@ pub fn Function::post_ra(self : Function) -> Unit {
 // store them in reg_stack before the call instruction
 // and load them back after the call instruction.
 fn Function::store_load_caller_saved_registers(self: Self) -> Unit {
-  // Register -> Mem(_, _)
-  //let reg_stack_map: Map[Operand, Operand] = Map::new()
-  //let call_insts = self.collect_insts_with_opcode(Call)
+  fn is_caller_saved_register(op: Operand) -> Bool {
+    match op {
+      IRegister(AReg(_)) | IRegister(TReg(_)) => true
+      FRegister(FAReg(_)) | FRegister(FTReg(_)) => true
+      _ => false
+    }
+  }
+  let reg_stack_map: Map[Operand, Int64] = Map::new()
+  let call_insts = self.collect_insts_with_opcode(Call)
+  for inst in call_insts {
+    for op in inst.live_out.iter().filter(is_caller_saved_register) {
+      let { func, bb, .. } = inst
+      let builder = IRBuilder::new(func, bb)
+      if !reg_stack_map.contains(op) {
+        let offset = -self.extend_reg_stack(8L, 8L)
+        reg_stack_map.set(op, offset)
+      }
+      let offset = reg_stack_map.get(op).unwrap()
+      // Store before call
+      let store_inst = match op {
+        IRegister(src) => try! builder.build_storei(64, src=src, base=FramePtr, offset~)
+        FRegister(src) => try! builder.build_storef(64, src=src, base=FramePtr, offset~)
+        _ => {
+          println("Compiler ICE: Unexpected register type in caller-saved registers")
+          panic()
+        }
+      }
+      let _ = inst.bb.insert_inst_before(before=inst, store_inst)
+      // Load after call
+      let load_inst = match op {
+        IRegister(dst) => try! builder.build_loadi(64, dst=dst, base=FramePtr, offset~)
+        FRegister(dst) => try! builder.build_loadf(64, dst=dst, base=FramePtr, offset~)
+        _ => {
+          println("Compiler ICE: Unexpected register type in caller-saved registers")
+          panic()
+        }
+      }
+      let _ = inst.bb.insert_inst_after(after = inst, load_inst)
+    }
+  }
 
 }
 
