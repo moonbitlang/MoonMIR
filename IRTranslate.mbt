@@ -164,9 +164,10 @@ pub fn Function::translate_params(self : Self, loc~ : SourceLoc) -> Unit {
   let entry_bb = self.get_entry_block().unwrap()
   let buiilder = IRBuilder::new(self, entry_bb)
   for arg, param in llvm_func.arguments.zip_to_iter2(self.params) {
+    let data_size = 64; // Riscv64
     if param is IRegister(r) {
       let tmp = self.new_virtual_reg()
-      let move_inst = buiilder.build_imove(64, dst=tmp, src=r) catch {
+      let move_inst = buiilder.build_imove(data_size, dst=tmp, src=r) catch {
         _ => abort("")
       }
       entry_bb.push(move_inst)
@@ -175,7 +176,7 @@ pub fn Function::translate_params(self : Self, loc~ : SourceLoc) -> Unit {
     }
     if param is FRegister(r) {
       let tmp = self.new_virtual_freg()
-      let move_inst = buiilder.build_fmove(64, dst=tmp, src=r) catch {
+      let move_inst = buiilder.build_fmove(data_size, dst=tmp, src=r) catch {
         _ => abort("")
       }
       entry_bb.push(move_inst)
@@ -186,14 +187,14 @@ pub fn Function::translate_params(self : Self, loc~ : SourceLoc) -> Unit {
     guard param is Mem(base, offset)
     if is_fp {
       let tmp = self.new_virtual_freg()
-      let load_inst = buiilder.build_loadf(64, dst=tmp, base~, offset~) catch {
+      let load_inst = buiilder.build_loadf(data_size, dst=tmp, base~, offset~) catch {
         _ => abort("")
       }
       entry_bb.push(load_inst)
       self.value_map.set(arg, FRegister(tmp))
     } else {
       let tmp = self.new_virtual_reg()
-      let load_inst = buiilder.build_loadi(64, dst=tmp, base~, offset~) catch {
+      let load_inst = buiilder.build_loadi(data_size, dst=tmp, base~, offset~) catch {
         _ => abort("")
       }
       entry_bb.push(load_inst)
@@ -521,12 +522,15 @@ pub fn translate_llvm_store_inst(
 /// let expected =
 ///   #|func add(a0, a1, fa0, fa1) {
 ///   #|entry:
-///   #|  v0 = add.i32 a0, a1
-///   #|  vf0 = fadd.f64 fa0, fa1
+///   #|  v0 = move.i64 a0
+///   #|  v1 = move.i64 a1
+///   #|  vf0 = move.f64 fa0
+///   #|  vf1 = move.f64 fa1
+///   #|  v2 = add.i32 v0, v1
+///   #|  vf2 = fadd.f64 vf0, vf1
 ///   #|  ret
 ///   #|}
 ///   #|
-///
 /// inspect(actual, content = expected)
 /// ```
 pub fn translate_llvm_binary_inst(
@@ -559,14 +563,15 @@ pub fn translate_llvm_binary_inst(
 /// let actual = mir_mod.get_function("add").unwrap()
 ///
 /// let expected =
-///  #|func add(fa0, fa1) {
-///  #|entry:
-///  #|  vf0 = fadd.f32 fa0, fa1
-///  #|  fa0 = move.f64 vf0
-///  #|  ret
-///  #|}
-///  #|
-///
+///   #|func add(fa0, fa1) {
+///   #|entry:
+///   #|  vf0 = move.f64 fa0
+///   #|  vf1 = move.f64 fa1
+///   #|  vf2 = fadd.f32 vf0, vf1
+///   #|  fa0 = move.f64 vf2
+///   #|  ret
+///   #|}
+///   #|
 /// inspect(actual, content = expected)
 /// ```
 pub fn translate_llvm_float_binary_inst(
@@ -700,12 +705,13 @@ pub fn translate_llvm_float_binary_inst(
 /// let expected = 
 ///   #|func add(a0, a1) {
 ///   #|entry:
-///   #|  v0 = add.i32 a0, a1
-///   #|  a0 = move.i64 v0
+///   #|  v0 = move.i64 a0
+///   #|  v1 = move.i64 a1
+///   #|  v2 = add.i32 v0, v1
+///   #|  a0 = move.i64 v2
 ///   #|  ret
 ///   #|}
 ///   #|
-///
 /// inspect(actual, content = expected)
 /// ```
 pub fn translate_llvm_int_binary_inst(
@@ -804,8 +810,9 @@ pub fn translate_llvm_int_binary_inst(
 /// let expected =
 ///  #|func neg(fa0) {
 ///  #|entry:
-///  #|  vf0 = fneg.f32 fa0
-///  #|  fa0 = move.f64 vf0
+///  #|  vf0 = move.f64 fa0
+///  #|  vf1 = fneg.f32 vf0
+///  #|  fa0 = move.f64 vf1
 ///  #|  ret
 ///  #|}
 ///  #|
@@ -879,12 +886,14 @@ pub fn translate_llvm_fneg_inst(
 /// let expected =
 ///   #|func demo(a0, a1) {
 ///   #|entry:
-///   #|  v0 = lt.i32 a0, a1
-///   #|  v1 = le.i32 a0, a1
-///   #|  v2 = gt.i32 a0, a1
-///   #|  v3 = ge.i32 a0, a1
-///   #|  v4 = eq.i32 a0, a1
-///   #|  v5 = ne.i32 a0, a1
+///   #|  v0 = move.i64 a0
+///   #|  v1 = move.i64 a1
+///   #|  v2 = lt.i32 v0, v1
+///   #|  v3 = le.i32 v0, v1
+///   #|  v4 = gt.i32 v0, v1
+///   #|  v5 = ge.i32 v0, v1
+///   #|  v6 = eq.i32 v0, v1
+///   #|  v7 = ne.i32 v0, v1
 ///   #|  ret
 ///   #|}
 ///   #|
@@ -1139,10 +1148,13 @@ pub fn translate_llvm_fcmp_inst(
 /// let expected = 
 ///   #|func demo(a0, a1) {
 ///   #|entry:
-///   #|  blt a0, a1, demo_L1, demo_L2
+///   #|  v0 = move.i64 a0
+///   #|  v1 = move.i64 a1
+///   #|  blt v0, v1, demo_L1, demo_L2
 ///   #|
 ///   #|; preds: entry
 ///   #|demo_L1:
+///   #|  a0 = move.i64 v0
 ///   #|  ret
 ///   #|
 ///   #|; preds: entry
@@ -1151,7 +1163,7 @@ pub fn translate_llvm_fcmp_inst(
 ///   #|
 ///   #|; preds: demo_L2
 ///   #|demo_L3:
-///   #|  a0 = move.i64 a1
+///   #|  a0 = move.i64 v1
 ///   #|  ret
 ///   #|}
 ///   #|
@@ -1192,10 +1204,13 @@ pub fn translate_llvm_branch_inst(
 /// let expected = 
 ///   #|func demo(a0, a1) {
 ///   #|entry:
-///   #|  blt a0, a1, demo_L1, demo_L2
+///   #|  v0 = move.i64 a0
+///   #|  v1 = move.i64 a1
+///   #|  blt v0, v1, demo_L1, demo_L2
 ///   #|
 ///   #|; preds: entry
 ///   #|demo_L1:
+///   #|  a0 = move.i64 v0
 ///   #|  ret
 ///   #|
 ///   #|; preds: entry
@@ -1204,7 +1219,7 @@ pub fn translate_llvm_branch_inst(
 ///   #|
 ///   #|; preds: demo_L2
 ///   #|demo_L3:
-///   #|  a0 = move.i64 a1
+///   #|  a0 = move.i64 v1
 ///   #|  ret
 ///   #|}
 ///   #|
@@ -1378,10 +1393,13 @@ pub fn translate_llvm_conditional_branch(
 /// let expected = 
 ///   #|func demo(a0, a1) {
 ///   #|entry:
-///   #|  blt a0, a1, demo_L1, demo_L2
+///   #|  v0 = move.i64 a0
+///   #|  v1 = move.i64 a1
+///   #|  blt v0, v1, demo_L1, demo_L2
 ///   #|
 ///   #|; preds: entry
 ///   #|demo_L1:
+///   #|  a0 = move.i64 v0
 ///   #|  ret
 ///   #|
 ///   #|; preds: entry
@@ -1390,7 +1408,7 @@ pub fn translate_llvm_conditional_branch(
 ///   #|
 ///   #|; preds: demo_L2
 ///   #|demo_L3:
-///   #|  a0 = move.i64 a1
+///   #|  a0 = move.i64 v1
 ///   #|  ret
 ///   #|}
 ///   #|

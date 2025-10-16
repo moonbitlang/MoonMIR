@@ -22,11 +22,12 @@ test "Simple Insts RiscV" {
   let expetced =
     #|.global foo
     #|foo:
-    #|    addw a2, a0, a1
-    #|    subw a1, a0, a1
-    #|    mulw a0, a2, a1
-    #|    divw a1, a2, a1
-    #|    remw a0, a0, a1
+    #|    mv a2, a0
+    #|    addw a0, a2, a1
+    #|    subw a2, a2, a1
+    #|    mulw a1, a0, a2
+    #|    divw a0, a0, a2
+    #|    remw a0, a1, a0
     #|    ret
     
   inspect(rvasm, content = expetced)

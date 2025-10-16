@@ -23,14 +23,16 @@ test "Simple Int32 Binary IRTranslate Test" {
   let expected =
     #|func add(a0, a1) {
     #|entry:
-    #|  v0 = add.i32 a0, a1
-    #|  v1 = sub.i32 a0, a1
-    #|  v2 = mul.i32 a0, a1
-    #|  v3 = div.i32 a0, a1
-    #|  v4 = rem.i32 a0, a1
-    #|  v5 = and.i32 a0, a1
-    #|  v6 = or.i32 a0, a1
-    #|  a0 = move.i64 v6
+    #|  v0 = move.i64 a0
+    #|  v1 = move.i64 a1
+    #|  v2 = add.i32 v0, v1
+    #|  v3 = sub.i32 v0, v1
+    #|  v4 = mul.i32 v0, v1
+    #|  v5 = div.i32 v0, v1
+    #|  v6 = rem.i32 v0, v1
+    #|  v7 = and.i32 v0, v1
+    #|  v8 = or.i32 v0, v1
+    #|  a0 = move.i64 v8
     #|  ret
     #|}
     #|
@@ -59,14 +61,16 @@ test "Simple Int64 Binary IRTranslate Test" {
   let expected =
     #|func add(a0, a1) {
     #|entry:
-    #|  v0 = add.i64 a0, a1
-    #|  v1 = sub.i64 a0, a1
-    #|  v2 = mul.i64 a0, a1
-    #|  v3 = div.i64 a0, a1
-    #|  v4 = rem.i64 a0, a1
-    #|  v5 = and.i64 a0, a1
-    #|  v6 = or.i64 a0, a1
-    #|  a0 = move.i64 v6
+    #|  v0 = move.i64 a0
+    #|  v1 = move.i64 a1
+    #|  v2 = add.i64 v0, v1
+    #|  v3 = sub.i64 v0, v1
+    #|  v4 = mul.i64 v0, v1
+    #|  v5 = div.i64 v0, v1
+    #|  v6 = rem.i64 v0, v1
+    #|  v7 = and.i64 v0, v1
+    #|  v8 = or.i64 v0, v1
+    #|  a0 = move.i64 v8
     #|  ret
     #|}
     #|
@@ -92,11 +96,13 @@ test "Simple Float Binary IRTranslate Test" {
   let expected =
     #|func add(fa0, fa1) {
     #|entry:
-    #|  vf0 = fadd.f32 fa0, fa1
-    #|  vf1 = fsub.f32 fa0, fa1
-    #|  vf2 = fmul.f32 fa0, fa1
-    #|  vf3 = fdiv.f32 fa0, fa1
-    #|  fa0 = move.f64 vf3
+    #|  vf0 = move.f64 fa0
+    #|  vf1 = move.f64 fa1
+    #|  vf2 = fadd.f32 vf0, vf1
+    #|  vf3 = fsub.f32 vf0, vf1
+    #|  vf4 = fmul.f32 vf0, vf1
+    #|  vf5 = fdiv.f32 vf0, vf1
+    #|  fa0 = move.f64 vf5
     #|  ret
     #|}
     #|
@@ -122,11 +128,13 @@ test "Simple Double Binary IRTranslate Test" {
   let expected =
     #|func add(fa0, fa1) {
     #|entry:
-    #|  vf0 = fadd.f64 fa0, fa1
-    #|  vf1 = fsub.f64 fa0, fa1
-    #|  vf2 = fmul.f64 fa0, fa1
-    #|  vf3 = fdiv.f64 fa0, fa1
-    #|  fa0 = move.f64 vf3
+    #|  vf0 = move.f64 fa0
+    #|  vf1 = move.f64 fa1
+    #|  vf2 = fadd.f64 vf0, vf1
+    #|  vf3 = fsub.f64 vf0, vf1
+    #|  vf4 = fmul.f64 vf0, vf1
+    #|  vf5 = fdiv.f64 vf0, vf1
+    #|  fa0 = move.f64 vf5
     #|  ret
     #|}
     #|
@@ -245,12 +253,14 @@ test "ICmp IRTranslate Test" {
   let expected =
     #|func demo(a0, a1) {
     #|entry:
-    #|  v0 = lt.i32 a0, a1
-    #|  v1 = le.i32 a0, a1
-    #|  v2 = gt.i32 a0, a1
-    #|  v3 = ge.i32 a0, a1
-    #|  v4 = eq.i32 a0, a1
-    #|  v5 = ne.i32 a0, a1
+    #|  v0 = move.i64 a0
+    #|  v1 = move.i64 a1
+    #|  v2 = lt.i32 v0, v1
+    #|  v3 = le.i32 v0, v1
+    #|  v4 = gt.i32 v0, v1
+    #|  v5 = ge.i32 v0, v1
+    #|  v6 = eq.i32 v0, v1
+    #|  v7 = ne.i32 v0, v1
     #|  ret
     #|}
     #|
@@ -277,12 +287,14 @@ test "FCmp IRTranslate Test" {
   let expected =
     #|func demo(fa0, fa1) {
     #|entry:
-    #|  v0 = flt.f32 fa0, fa1
-    #|  v1 = fle.f32 fa0, fa1
-    #|  v2 = fgt.f32 fa0, fa1
-    #|  v3 = fge.f32 fa0, fa1
-    #|  v4 = feq.f32 fa0, fa1
-    #|  v5 = fne.f32 fa0, fa1
+    #|  vf0 = move.f64 fa0
+    #|  vf1 = move.f64 fa1
+    #|  v0 = flt.f32 vf0, vf1
+    #|  v1 = fle.f32 vf0, vf1
+    #|  v2 = fgt.f32 vf0, vf1
+    #|  v3 = fge.f32 vf0, vf1
+    #|  v4 = feq.f32 vf0, vf1
+    #|  v5 = fne.f32 vf0, vf1
     #|  ret
     #|}
     #|
@@ -306,10 +318,13 @@ test "Branch IRTranslate Test" {
   let expected =
     #|func demo(a0, a1) {
     #|entry:
-    #|  blt a0, a1, demo_L1, demo_L2
+    #|  v0 = move.i64 a0
+    #|  v1 = move.i64 a1
+    #|  blt v0, v1, demo_L1, demo_L2
     #|
     #|; preds: entry
     #|demo_L1:
+    #|  a0 = move.i64 v0
     #|  ret
     #|
     #|; preds: entry
@@ -318,7 +333,7 @@ test "Branch IRTranslate Test" {
     #|
     #|; preds: demo_L2
     #|demo_L3:
-    #|  a0 = move.i64 a1
+    #|  a0 = move.i64 v1
     #|  ret
     #|}
     #|

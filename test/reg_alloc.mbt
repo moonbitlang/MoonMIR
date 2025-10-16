@@ -19,12 +19,13 @@ test "Simple Insts Live Analysis" {
   mir_func.alloc_register()
   let expected =
     #|func foo(a0, a1) {
-    #|entry:                       ; live in: a0, a1
-    #|  a2 = add.i32 a0, a1        # live in: a0, a1
-    #|  a1 = sub.i32 a0, a1        # live in: a2, a0, a1
-    #|  a0 = mul.i32 a2, a1        # live in: a2, a1
-    #|  a1 = div.i32 a2, a1        # live in: a0, a2, a1
-    #|  a0 = rem.i32 a0, a1        # live in: a0, a1
+    #|entry:                       ; live in: a1, a0
+    #|  a2 = move.i64 a0           # live in: a1, a0
+    #|  a0 = add.i32 a2, a1        # live in: a2, a1
+    #|  a2 = sub.i32 a2, a1        # live in: a0, a2, a1
+    #|  a1 = mul.i32 a0, a2        # live in: a0, a2
+    #|  a0 = div.i32 a0, a2        # live in: a1, a0, a2
+    #|  a0 = rem.i32 a1, a0        # live in: a1, a0
     #|  ret
     #|}
     #|

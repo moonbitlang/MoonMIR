@@ -509,6 +509,13 @@ pub fn Instruction::legalize_imove(
         builder.build_storei(bits, src=v1, base~, offset~),
       ]
     }
+    { defs: [Mem(base, offset)], uses: [IRegister(r1)], .. } => {
+      let vdst = func.keeped_treg1()
+      [
+        builder.build_imove(bits, dst=vdst, src=r1),
+        builder.build_storei(bits, src=vdst, base~, offset~),
+      ]
+    }
     { defs: [Mem(base, offset)], uses: [Imm(i1)], .. } => {
       let vdst = func.keeped_treg1()
       [

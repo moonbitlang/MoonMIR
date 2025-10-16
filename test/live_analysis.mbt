@@ -19,13 +19,15 @@ test "Simple Insts Live Analysis" {
   mir_func.live_analysis()
   let expected =
     #|func foo(a0, a1) {
-    #|entry:                       ; live in: a0, a1
-    #|  v0 = add.i32 a0, a1        # live in: a0, a1
-    #|  v1 = sub.i32 a0, a1        # live in: v0, a0, a1
-    #|  v2 = mul.i32 v0, v1        # live in: v0, v1
-    #|  v3 = div.i32 v0, v1        # live in: v2, v0, v1
-    #|  v4 = rem.i32 v2, v3        # live in: v2, v3
-    #|  a0 = move.i64 v4           # live in: v4
+    #|entry:                       ; live in: a1, a0
+    #|  v0 = move.i64 a0           # live in: a1, a0
+    #|  v1 = move.i64 a1           # live in: v0, a1
+    #|  v2 = add.i32 v0, v1        # live in: v0, v1
+    #|  v3 = sub.i32 v0, v1        # live in: v2, v0, v1
+    #|  v4 = mul.i32 v2, v3        # live in: v2, v3
+    #|  v5 = div.i32 v2, v3        # live in: v4, v2, v3
+    #|  v6 = rem.i32 v4, v5        # live in: v4, v5
+    #|  a0 = move.i64 v6           # live in: v6
     #|  ret
     #|}
     #|
@@ -50,26 +52,29 @@ test "Cond Branch Insts Live Analysis" {
   let mir_func = mir_mod.get_function("foo").unwrap()
   // Live Analysis
   mir_func.live_analysis()
-  let expected =
+  let expected = 
     #|func foo(a0, a1, a2) {
-    #|entry:                             ; live in: a0, a1, a2
-    #|  bne a2, 0, foo_L1, foo_L2        # live in: a0, a1, a2
+    #|entry:                             ; live in: a2, a1, a0
+    #|  v0 = move.i64 a0                 # live in: a2, a1, a0
+    #|  v1 = move.i64 a1                 # live in: v0, a2, a1
+    #|  v2 = move.i64 a2                 # live in: v0, v1, a2
+    #|  bne v2, 0, foo_L1, foo_L2        # live in: v0, v1, v2
     #|
     #|; preds: entry
-    #|foo_L1:                      ; live in: a0, a1
-    #|  v0 = add.i32 a0, a1        # live in: a0, a1
-    #|  v2 = move.i32 v0           # live in: v0
-    #|  jmp foo_L3                 # live in: v2
+    #|foo_L1:                      ; live in: v0, v1
+    #|  v3 = add.i32 v0, v1        # live in: v0, v1
+    #|  v5 = move.i32 v3           # live in: v3
+    #|  jmp foo_L3                 # live in: v5
     #|
     #|; preds: entry
-    #|foo_L2:                      ; live in: a0, a1
-    #|  v1 = mul.i32 a0, a1        # live in: a0, a1
-    #|  v2 = move.i32 v1           # live in: v1
-    #|  jmp foo_L3                 # live in: v2
+    #|foo_L2:                      ; live in: v0, v1
+    #|  v4 = mul.i32 v0, v1        # live in: v0, v1
+    #|  v5 = move.i32 v4           # live in: v4
+    #|  jmp foo_L3                 # live in: v5
     #|
     #|; preds: foo_L1, foo_L2
-    #|foo_L3:                   ; live in: v2
-    #|  a0 = move.i64 v2        # live in: v2
+    #|foo_L3:                   ; live in: v5
+    #|  a0 = move.i64 v5        # live in: v5
     #|  ret
     #|}
     #|
@@ -97,33 +102,34 @@ test "While Live Analysis" {
   mir_func.live_analysis()
   let expected =
     #|func sum_to_n(a0) {
-    #|entry:                           ; live in: a0
-    #|  v8 = move.i32 0                # live in: a0
-    #|  store.i32 (fp' - 4), v8        # live in: a0, v8
-    #|  v9 = move.i32 1                # live in: a0
-    #|  store.i32 (fp' - 8), v9        # live in: a0, v9
-    #|  jmp sum_to_n_L1                # live in: a0
+    #|entry:                            ; live in: a0
+    #|  v0 = move.i64 a0                # live in: a0
+    #|  v9 = move.i32 0                 # live in: v0
+    #|  store.i32 (fp' - 4), v9         # live in: v0, v9
+    #|  v10 = move.i32 1                # live in: v0
+    #|  store.i32 (fp' - 8), v10        # live in: v0, v10
+    #|  jmp sum_to_n_L1                 # live in: v0
     #|
     #|; preds: entry, sum_to_n_L2
-    #|sum_to_n_L1:                                  ; live in: a0
-    #|  v0 = load.i32 (fp' - 8)                     # live in: a0
-    #|  ble v0, a0, sum_to_n_L2, sum_to_n_L3        # live in: v0, a0
+    #|sum_to_n_L1:                                  ; live in: v0
+    #|  v1 = load.i32 (fp' - 8)                     # live in: v0
+    #|  ble v1, v0, sum_to_n_L2, sum_to_n_L3        # live in: v1, v0
     #|
     #|; preds: sum_to_n_L1
-    #|sum_to_n_L2:                     ; live in: a0
-    #|  v2 = load.i32 (fp' - 4)        # live in: a0
-    #|  v3 = load.i32 (fp' - 8)        # live in: a0, v2
-    #|  v4 = add.i32 v2, v3            # live in: a0, v2, v3
-    #|  store.i32 (fp' - 4), v4        # live in: a0, v4
-    #|  v5 = load.i32 (fp' - 8)        # live in: a0
-    #|  v6 = add.i32 v5, 1             # live in: a0, v5
-    #|  store.i32 (fp' - 8), v6        # live in: a0, v6
-    #|  jmp sum_to_n_L1                # live in: a0
+    #|sum_to_n_L2:                     ; live in: v0
+    #|  v3 = load.i32 (fp' - 4)        # live in: v0
+    #|  v4 = load.i32 (fp' - 8)        # live in: v0, v3
+    #|  v5 = add.i32 v3, v4            # live in: v0, v3, v4
+    #|  store.i32 (fp' - 4), v5        # live in: v0, v5
+    #|  v6 = load.i32 (fp' - 8)        # live in: v0
+    #|  v7 = add.i32 v6, 1             # live in: v0, v6
+    #|  store.i32 (fp' - 8), v7        # live in: v0, v7
+    #|  jmp sum_to_n_L1                # live in: v0
     #|
     #|; preds: sum_to_n_L1
     #|sum_to_n_L3:
-    #|  v7 = load.i32 (fp' - 4)
-    #|  a0 = move.i64 v7               # live in: v7
+    #|  v8 = load.i32 (fp' - 4)
+    #|  a0 = move.i64 v8               # live in: v8
     #|  ret
     #|}
     #|
