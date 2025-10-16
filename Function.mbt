@@ -234,6 +234,11 @@ pub fn Function::get_operand_from_llvm_value(
     }
     return Some(operand)
   }
+  if val.tryAsGlobalValue() is Some(gv) {
+    let gv_name = gv.getName().unwrap()
+    let label = Label(gv_name)
+    return Some(label)
+  }
   self.value_map.get(val)
 }
 

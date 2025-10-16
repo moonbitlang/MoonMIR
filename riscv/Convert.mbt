@@ -118,7 +118,7 @@ pub fn mir_module_to_riscv(
 ///|
 pub fn mir_global_to_riscv(global_value : @MoonMIR.GlobalValue) -> Array[RvAsm] {
   let insts : Array[RvAsm] = Array::new()
-  insts.push(Global(global_value.label))
+  insts.push(Label(global_value.label))
   match global_value.content {
     String(s) => insts.push(Asciz(s))
     Zero(size) => insts.push(Zero(size))

@@ -44,8 +44,9 @@ pub fn Instruction::legalize(
     Call => [self]
     Ret => [self]
     Nop => [self]
+    LoadAddr => self.legalize_load_addr(builder)
     Intrinsic(_) => raise LegalizeError("Unimplmented Intrinsic legalize Yet")
-    _ => raise LegalizeError("Unimplmented Yet")
+    op => raise LegalizeError("Unimplmented \{op} Yet")
   }
 }
 
@@ -992,5 +993,29 @@ pub fn Instruction::legalize_imovef(
       ]
     }
     _ => raise LegalizeError("Unhandled IMoveF legalization case: \{self}")
+  }
+}
+
+///|
+///loadaddr means load address of a variable (in memory) into a register
+///def must be IRegister, use must be label
+pub fn Instruction::legalize_load_addr(self: Instruction, builder : IRBuilder) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: LoadAddr, .. } else {
+    println(
+      "Compiler ICE: calling legalize_loadaddr on non-LoadAddr instruction: \{self}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [IRegister(_)], uses: [Label(_)], .. } => [self]
+    { defs: [Mem(base, offset)], uses: [Label(label)], .. } => {
+      let vdst = func.keeped_treg1()
+      [
+        builder.build_load_addr(vdst, label),
+        builder.build_storei(64, src=vdst, base~, offset~),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled LoadAddr legalization case: \{self}")
   }
 }

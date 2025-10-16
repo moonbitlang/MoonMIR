@@ -160,6 +160,18 @@ pub fn Function::build_interference_graph(self : Function) -> InterferenceGraph 
   let config = self.mod.arch_config
   let graph = InterferenceGraph::new(config, self.spilled_count)
   for inst in self.inst_iter() {
+    for def in inst.defs {
+      if !(def is (IRegister(_) | FRegister(_))) {
+        continue
+      }
+      graph.add_node(def)
+    }
+    for use_op in inst.uses {
+      if !(use_op is (IRegister(_) | FRegister(_))) {
+        continue
+      }
+      graph.add_node(use_op)
+    }
     for op1 in inst.live_in {
       for op2 in inst.live_in {
         graph.add_edge(op1, op2)

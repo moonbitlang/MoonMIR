@@ -2054,6 +2054,27 @@ pub fn translate_llvm_call_inst(
         minsts.push(inst2)
         call_freg_cnt += 1
       }
+      (Label(label), false) if call_ireg_cnt < num_arg_regs => {
+        let dst = AReg(call_ireg_cnt)
+        let inst = builder.build_load_addr(dst, label)
+        minsts.push(inst)
+        call_ireg_cnt += 1
+      }
+      (Label(label), false) => {
+        let _ = func.extend_var_stack(8L, 8L)
+        let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
+        let vreg = func.new_virtual_reg()
+        let inst1 = builder.build_load_addr(vreg, label)
+        let inst2 = builder.build_storei(
+          64,
+          src=vreg,
+          base=StackPtr,
+          offset=stack_offset,
+        )
+        minsts.push(inst1)
+        minsts.push(inst2)
+        call_ireg_cnt += 1
+      }
       arg_op =>
         raise IRTranslateError(
           "CallInst: Unsupported argument operand type: \{arg_op}",
