@@ -19,8 +19,8 @@ test "Simple Insts RiscV" {
   mir_mod.post_ra()
   let rvasm = @riscv.mir_module_to_riscv(mir_mod)
   let rvasm = rvasm.map(a => a.to_string()).join("\n")
-  println(rvasm)
-  let expected = 
+  let expetced =
+    #|.global foo
     #|foo:
     #|    addw a2, a0, a1
     #|    subw a1, a0, a1
@@ -28,7 +28,7 @@ test "Simple Insts RiscV" {
     #|    divw a1, a2, a1
     #|    remw a0, a0, a1
     #|    ret
-
-  inspect(rvasm, content = expected)
+    
+  inspect(rvasm, content = expetced)
 }
 
