@@ -1,6 +1,8 @@
 
 #include "test.h"
 
+double sqrt(double);
+
 struct Point {
   double x, y;
 };
