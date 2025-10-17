@@ -261,7 +261,12 @@ pub fn Function::adjust_mem_operands(self : Function) -> Unit {
   let { var_stack_size, reg_stack_size, .. } = self
   let total_stack_size = var_stack_size + reg_stack_size
   for inst in self.inst_iter() {
-    if inst is { opcode: IBinary(Add, _), uses: [IRegister(FramePtrPrim), Imm(i)], .. } {
+    if inst
+      is {
+        opcode: IBinary(Add, _),
+        uses: [IRegister(FramePtrPrim), Imm(i)],
+        ..,
+      } {
       inst.uses[0] = IRegister(StackPtr)
       inst.uses[1] = Imm(i + var_stack_size)
     }

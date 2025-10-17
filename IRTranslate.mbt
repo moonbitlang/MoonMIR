@@ -1833,20 +1833,17 @@ pub fn translate_llvm_gep_inst(
       "GetElementPtrInst: pointer operand not found in value_map",
     )
   }
-
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
     raise IRTranslateError(
       "GetElementPtrInst: destination operand not found in value_map",
     )
   }
-
   guard dst_op is IRegister(ptr_reg) else {
     raise IRTranslateError(
       "GetElementPtrInst: destination operand is not an integer register",
     )
   }
   let minsts : Array[Instruction] = []
-
   match ptr_op {
     IRegister(r) => {
       let inst = builder.build_imove(64, dst=ptr_reg, src=r)
@@ -1857,7 +1854,13 @@ pub fn translate_llvm_gep_inst(
       minsts.push(inst)
     }
     Mem(base, offset) => {
-      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=base, src2=offset)
+      let inst = builder.build_ibinary_imm(
+        Add,
+        64,
+        dst=ptr_reg,
+        src1=base,
+        src2=offset,
+      )
       minsts.push(inst)
     }
     Label(label) => {
@@ -1869,7 +1872,6 @@ pub fn translate_llvm_gep_inst(
         "GetElementPtrInst: unsupported pointer operand type: \{op}",
       )
   }
-
   let indices_ops : Array[Operand] = []
   for idx_val in indices {
     guard func.get_operand_from_llvm_value(idx_val) is Some(idx_op) else {
@@ -1879,20 +1881,37 @@ pub fn translate_llvm_gep_inst(
     }
     indices_ops.push(idx_op)
   }
-
   guard indices_ops is [first_idx_op, .. indices_ops]
   match first_idx_op {
     Imm(0) => ()
     Imm(i) => {
       let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() * i
-      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=offset)
+      let inst = builder.build_ibinary_imm(
+        Add,
+        64,
+        dst=ptr_reg,
+        src1=ptr_reg,
+        src2=offset,
+      )
       minsts.push(inst)
     }
     IRegister(idx_r) => {
       let offset = data_layout.getTypeAllocSize(pointeeType).to_int64()
       let scaled_idx = func.new_virtual_reg()
-      let inst1 = builder.build_ibinary_imm(Mul, 64, dst=scaled_idx, src1=idx_r, src2=offset)
-      let inst2 = builder.build_ibinary(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=scaled_idx)
+      let inst1 = builder.build_ibinary_imm(
+        Mul,
+        64,
+        dst=scaled_idx,
+        src1=idx_r,
+        src2=offset,
+      )
+      let inst2 = builder.build_ibinary(
+        Add,
+        64,
+        dst=ptr_reg,
+        src1=ptr_reg,
+        src2=scaled_idx,
+      )
       minsts..push(inst1)..push(inst2)
     }
     _ =>
@@ -1900,25 +1919,41 @@ pub fn translate_llvm_gep_inst(
         "GetElementPtrInst: unsupported first index operand in GEP translation",
       )
   }
-
   loop (pointeeType.asTypeEnum(), indices_ops) {
     (_, []) => break
     (_, [Imm(0)]) => break
-    (ArrayType({ elementType, .. }), [Imm(0), .. rest_indices]) => {
+    (ArrayType({ elementType, .. }), [Imm(0), .. rest_indices]) =>
       continue (elementType.asTypeEnum(), rest_indices)
-    }
     (ArrayType({ elementType, .. }), [Imm(i), .. rest_indices]) => {
       let elem_size = data_layout.getTypeAllocSize(elementType).to_int64()
       let offset = elem_size * i
-      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=offset)
+      let inst = builder.build_ibinary_imm(
+        Add,
+        64,
+        dst=ptr_reg,
+        src1=ptr_reg,
+        src2=offset,
+      )
       minsts.push(inst)
       continue (elementType.asTypeEnum(), rest_indices)
     }
     (ArrayType({ elementType, .. }), [IRegister(idx_r), .. rest_indices]) => {
       let offset = data_layout.getTypeAllocSize(elementType).to_int64()
       let scaled_idx = func.new_virtual_reg()
-      let inst1 = builder.build_ibinary_imm(Mul, 64, dst=scaled_idx, src1=idx_r, src2=offset)
-      let inst2 = builder.build_ibinary(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=scaled_idx)
+      let inst1 = builder.build_ibinary_imm(
+        Mul,
+        64,
+        dst=scaled_idx,
+        src1=idx_r,
+        src2=offset,
+      )
+      let inst2 = builder.build_ibinary(
+        Add,
+        64,
+        dst=ptr_reg,
+        src1=ptr_reg,
+        src2=scaled_idx,
+      )
       minsts.push(inst1)
       minsts.push(inst2)
       continue (elementType.asTypeEnum(), rest_indices)
@@ -1938,7 +1973,13 @@ pub fn translate_llvm_gep_inst(
       }
       let offset = data_layout.getStructTypeOffset(sty, i_int)
       let offset = offset.to_int64()
-      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=offset)
+      let inst = builder.build_ibinary_imm(
+        Add,
+        64,
+        dst=ptr_reg,
+        src1=ptr_reg,
+        src2=offset,
+      )
       minsts.push(inst)
       continue (elem_type.asTypeEnum(), rest_indices)
     }

@@ -9,7 +9,7 @@ import sys
 
 # 测试用例的基础名称列表
 TEST_CASES = [
-    "fib", "simple_add", "if", "for", "while", "while2", "many_args", "order_args"]
+    "fib", "simple_add", "if", "for", "while", "while2", "many_args", "order_args", "struct", "array"]
 
 # C语言源文件所在的目录
 C_SOURCE_DIR = "ctest"
