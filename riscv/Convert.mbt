@@ -2389,115 +2389,71 @@ fn cast_mir_to_riscv(
   inst : @MoonMIR.Instruction,
   cast_op : @MoonMIR.CastOpCode,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  match cast_op {
-    FPToSI(64, 32) =>
-      match inst {
-        { defs: [IRegister(dst)], uses: [FRegister(src)], .. } => {
-          let dst_reg = Reg::from_mir_reg(dst)
-          let src_reg = FReg::from_mir_freg(src)
-          [FcvtWD(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported FPToSI(64,32) format: \{inst}")
-      }
-    FPToSI(32, 32) =>
-      match inst {
-        { defs: [IRegister(dst)], uses: [FRegister(src)], .. } => {
-          let dst_reg = Reg::from_mir_reg(dst)
-          let src_reg = FReg::from_mir_freg(src)
-          [FcvtWS(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported FPToSI(32,32) format: \{inst}")
-      }
-    FPToSI(64, 64) =>
-      match inst {
-        { defs: [IRegister(dst)], uses: [FRegister(src)], .. } => {
-          let dst_reg = Reg::from_mir_reg(dst)
-          let src_reg = FReg::from_mir_freg(src)
-          [FcvtLD(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported FPToSI(64,64) format: \{inst}")
-      }
-    FPToSI(32, 64) =>
-      match inst {
-        { defs: [IRegister(dst)], uses: [FRegister(src)], .. } => {
-          let dst_reg = Reg::from_mir_reg(dst)
-          let src_reg = FReg::from_mir_freg(src)
-          [FcvtLS(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported FPToSI(32,64) format: \{inst}")
-      }
-    FPToUI(64, 32) =>
-      match inst {
-        { defs: [IRegister(dst)], uses: [FRegister(src)], .. } => {
-          let dst_reg = Reg::from_mir_reg(dst)
-          let src_reg = FReg::from_mir_freg(src)
-          [FcvtWuD(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported FPToUI(64,32) format: \{inst}")
-      }
-    FPToUI(32, 32) =>
-      match inst {
-        { defs: [IRegister(dst)], uses: [FRegister(src)], .. } => {
-          let dst_reg = Reg::from_mir_reg(dst)
-          let src_reg = FReg::from_mir_freg(src)
-          [FcvtWuS(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported FPToUI(32,32) format: \{inst}")
-      }
-    SIToFP(32, 64) =>
-      match inst {
-        { defs: [FRegister(dst)], uses: [IRegister(src)], .. } => {
-          let dst_reg = FReg::from_mir_freg(dst)
-          let src_reg = Reg::from_mir_reg(src)
-          [FcvtDW(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported SIToFP(32,64) format: \{inst}")
-      }
-    SIToFP(64, 64) =>
-      match inst {
-        { defs: [FRegister(dst)], uses: [IRegister(src)], .. } => {
-          let dst_reg = FReg::from_mir_freg(dst)
-          let src_reg = Reg::from_mir_reg(src)
-          [FcvtDL(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported SIToFP(64,64) format: \{inst}")
-      }
-    SIToFP(32, 32) =>
-      match inst {
-        { defs: [FRegister(dst)], uses: [IRegister(src)], .. } => {
-          let dst_reg = FReg::from_mir_freg(dst)
-          let src_reg = Reg::from_mir_reg(src)
-          [FcvtSW(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported SIToFP(32,32) format: \{inst}")
-      }
-    SIToFP(64, 32) =>
-      match inst {
-        { defs: [FRegister(dst)], uses: [IRegister(src)], .. } => {
-          let dst_reg = FReg::from_mir_freg(dst)
-          let src_reg = Reg::from_mir_reg(src)
-          [FcvtSL(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported SIToFP(64,32) format: \{inst}")
-      }
-    FPExt(32, 64) =>
-      match inst {
-        { defs: [FRegister(dst)], uses: [FRegister(src)], .. } => {
-          let dst_reg = FReg::from_mir_freg(dst)
-          let src_reg = FReg::from_mir_freg(src)
-          [FcvtDS(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported FPExt format: \{inst}")
-      }
-    FPTrunc(64, 32) =>
-      match inst {
-        { defs: [FRegister(dst)], uses: [FRegister(src)], .. } => {
-          let dst_reg = FReg::from_mir_freg(dst)
-          let src_reg = FReg::from_mir_freg(src)
-          [FcvtSD(dst_reg, src_reg)]
-        }
-        _ => raise MIRToRiscvError("Unsupported FPTrunc format: \{inst}")
-      }
-    op => raise MIRToRiscvError("Unsupported Cast operation: \{op}")
+  let { defs, uses, .. } = inst
+  match (cast_op, defs, uses) {
+    (FPToSI(64, 32), [IRegister(dst)], [FRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = FReg::from_mir_freg(src)
+      [FcvtWD(dst_reg, src_reg)]
+    }
+    (FPToSI(32, 32), [IRegister(dst)], [FRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = FReg::from_mir_freg(src)
+      [FcvtWS(dst_reg, src_reg)]
+    }
+    (FPToSI(64, 64), [IRegister(dst)], [FRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = FReg::from_mir_freg(src)
+      [FcvtLD(dst_reg, src_reg)]
+    }
+    (FPToSI(32, 64), [IRegister(dst)], [FRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = FReg::from_mir_freg(src)
+      [FcvtLS(dst_reg, src_reg)]
+    }
+    (FPToUI(64, 32), [IRegister(dst)], [FRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = FReg::from_mir_freg(src)
+      [FcvtWuD(dst_reg, src_reg)]
+    }
+    (FPToUI(32, 32), [IRegister(dst)], [FRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = FReg::from_mir_freg(src)
+      [FcvtWuS(dst_reg, src_reg)]
+    }
+    (SIToFP(32, 64), [FRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = FReg::from_mir_freg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      [FcvtDW(dst_reg, src_reg)]
+    }
+    (SIToFP(64, 64), [FRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = FReg::from_mir_freg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      [FcvtDL(dst_reg, src_reg)]
+    }
+    (SIToFP(32, 32), [FRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = FReg::from_mir_freg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      [FcvtSW(dst_reg, src_reg)]
+    }
+    (SIToFP(64, 32), [FRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = FReg::from_mir_freg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      [FcvtSL(dst_reg, src_reg)]
+    }
+    (FPExt(32, 64), [FRegister(dst)], [FRegister(src)]) => {
+      let dst_reg = FReg::from_mir_freg(dst)
+      let src_reg = FReg::from_mir_freg(src)
+      [FcvtDS(dst_reg, src_reg)]
+    }
+    (FPTrunc(64, 32), [FRegister(dst)], [FRegister(src)]) => {
+      let dst_reg = FReg::from_mir_freg(dst)
+      let src_reg = FReg::from_mir_freg(src)
+      [FcvtSD(dst_reg, src_reg)]
+    }
+    (op, defs, uses) =>
+      raise MIRToRiscvError(
+        "Unsupported cast operation \{op} with defs \{defs} and uses \{uses}",
+      )
   }
 }

@@ -22,6 +22,7 @@ pub fn IBinaryOpCode::is_commutative(self : Self) -> Bool {
   }
 }
 
+///|
 pub impl Show for IBinaryOpCode with output(self, logger) {
   let s = match self {
     Add => "add"
@@ -44,6 +45,7 @@ pub(all) enum IUnaryOpCode {
   Not
 } derive(Eq)
 
+///|
 pub impl Show for IUnaryOpCode with output(self, logger) {
   let s = match self {
     Not => "not"
@@ -65,6 +67,7 @@ pub(all) enum ICmpOpCode {
   Leu
 } derive(Eq)
 
+///|
 pub impl Show for ICmpOpCode with output(self, logger) {
   let s = match self {
     Eq => "eq"
@@ -96,6 +99,7 @@ pub(all) enum BranchOpCode {
   Jmp
 } derive(Eq)
 
+///|
 pub impl Show for BranchOpCode with output(self, logger) {
   let s = match self {
     Beq => "beq"
@@ -130,7 +134,7 @@ pub fn FBinaryOpCode::is_commutative(self : Self) -> Bool {
   }
 }
 
-
+///|
 pub impl Show for FBinaryOpCode with output(self, logger) {
   let s = match self {
     FAdd => "fadd"
@@ -147,6 +151,7 @@ pub(all) enum FUnaryOpCode {
   FNeg
 } derive(Eq)
 
+///|
 pub impl Show for FUnaryOpCode with output(self, logger) {
   let s = match self {
     FNeg => "fneg"
@@ -164,6 +169,7 @@ pub(all) enum FCmpOpCode {
   Fle
 } derive(Eq)
 
+///|
 pub impl Show for FCmpOpCode with output(self, logger) {
   let s = match self {
     Feq => "feq"

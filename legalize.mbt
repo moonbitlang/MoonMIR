@@ -897,9 +897,7 @@ pub fn Instruction::legalize_fstore(
         builder.build_storef(bits, src=v1, base~, offset~),
       ]
     }
-    _ => {
-      raise LegalizeError("Unhandled FStore legalization case: \{self}")
-    }
+    _ => raise LegalizeError("Unhandled FStore legalization case: \{self}")
   }
 }
 
@@ -979,7 +977,6 @@ pub fn Instruction::legalize_fmovei(
   }
 }
 
-
 ///|
 /// imovef means move from freg to ireg
 pub fn Instruction::legalize_imovef(
@@ -1053,124 +1050,143 @@ pub fn Instruction::legalize_cast(
     panic()
   }
   match cast_op {
-    // Floating point to signed integer conversion
-    FPToSI(from_bits, to_bits) =>
-      match self {
-        { defs: [IRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
-        { defs: [IRegister(dst)], uses: [FImm(imm_val)], .. } => {
-          let tmp_reg = func.keeped_ftreg1()
-          [
-            builder.build_fmove_imm(from_bits, dst=tmp_reg, src=imm_val),
-            builder.build_fp_to_si(
-              from_ty_size=from_bits,
-              to_ty_size=to_bits,
-              dst~,
-              src=tmp_reg,
-            ),
-          ]
-        }
-        { defs: [IRegister(dst)], uses: [Mem(base, offset)], .. } => {
-          let tmp_reg = func.keeped_ftreg1()
-          [
-            builder.build_loadf(from_bits, dst=tmp_reg, base~, offset~),
-            builder.build_fp_to_si(
-              from_ty_size=from_bits,
-              to_ty_size=to_bits,
-              dst~,
-              src=tmp_reg,
-            ),
-          ]
-        }
-        _ => raise LegalizeError("Unhandled FPToSI legalization case: \{self}")
-      }
-    FPToUI(from_bits, to_bits) =>
-      match self {
-        { defs: [IRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
-        { defs: [IRegister(dst)], uses: [FImm(imm_val)], .. } => {
-          let tmp_reg = func.keeped_ftreg1()
-          [
-            builder.build_fmove_imm(from_bits, dst=tmp_reg, src=imm_val),
-            builder.build_fp_to_ui(
-              from_ty_size=from_bits,
-              to_ty_size=to_bits,
-              dst~,
-              src=tmp_reg,
-            ),
-          ]
-        }
-        { defs: [IRegister(dst)], uses: [Mem(base, offset)], .. } => {
-          let tmp_reg = func.keeped_ftreg1()
-          [
-            builder.build_loadf(from_bits, dst=tmp_reg, base~, offset~),
-            builder.build_fp_to_ui(
-              from_ty_size=from_bits,
-              to_ty_size=to_bits,
-              dst~,
-              src=tmp_reg,
-            ),
-          ]
-        }
-        _ => raise LegalizeError("Unhandled FPToUI legalization case: \{self}")
-      }
-    SIToFP(from_bits, to_bits) =>
-      match self {
-        { defs: [FRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
-        { defs: [FRegister(dst)], uses: [Imm(imm_val)], .. } => {
-          let tmp_reg = func.keeped_treg1()
-          [
-            builder.build_imove_imm(from_bits, dst=tmp_reg, src=imm_val),
-            builder.build_si_to_fp(
-              from_ty_size=from_bits,
-              to_ty_size=to_bits,
-              dst~,
-              src=tmp_reg,
-            ),
-          ]
-        }
-        { defs: [FRegister(dst)], uses: [Mem(base, offset)], .. } => {
-          let tmp_reg = func.keeped_treg1()
-          [
-            builder.build_loadi(from_bits, dst=tmp_reg, base~, offset~),
-            builder.build_si_to_fp(
-              from_ty_size=from_bits,
-              to_ty_size=to_bits,
-              dst~,
-              src=tmp_reg,
-            ),
-          ]
-        }
-        _ => raise LegalizeError("Unhandled SIToFP legalization case: \{self}")
-      }
-    // Unsigned integer to floating point conversion
-    UIToFP(from_bits, to_bits) =>
-      match self {
-        { defs: [FRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
-        { defs: [FRegister(dst)], uses: [Imm(imm_val)], .. } => {
-          let tmp_reg = func.keeped_treg1()
-          [
-            builder.build_imove_imm(from_bits, dst=tmp_reg, src=imm_val),
-            builder.build_ui_to_fp(
-              from_ty_size=from_bits,
-              to_ty_size=to_bits,
-              dst~,
-              src=tmp_reg,
-            ),
-          ]
-        }
-        { defs: [FRegister(dst)], uses: [Mem(base, offset)], .. } => {
-          let tmp_reg = func.keeped_treg1()
-          [
-            builder.build_loadi(from_bits, dst=tmp_reg, base~, offset~),
-            builder.build_ui_to_fp(
-              from_ty_size=from_bits,
-              to_ty_size=to_bits,
-              dst~,
-              src=tmp_reg,
-            ),
-          ]
-        }
-        _ => raise LegalizeError("Unhandled UIToFP legalization case: \{self}")
-      }
-    _ => raise LegalizeError("Unhandled Cast operation: \{cast_op}")
+    FPToSI(_) => self.legalize_cast_fp_to_si(builder, func, cast_op)
+    FPToUI(_) => self.legalize_cast_fp_to_ui(builder, func, cast_op)
+    SIToFP(_) => self.legalize_cast_si_to_fp(builder, func, cast_op)
+    UIToFP(_) => self.legalize_cast_ui_to_fp(builder, func, cast_op)
+    cast_op =>
+      raise LegalizeError("Unhandled Cast legalization case: \{cast_op}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast_fp_to_si(
+  self : Instruction,
+  builder : IRBuilder,
+  func : Function,
+  cast_op : CastOpCode,
+) -> Array[Instruction] raise MIRError {
+  guard cast_op is FPToSI(from_ty_size, to_ty_size) else {
+    println(
+      "Compiler ICE: calling legalize_cast_fp_to_si on non-FPToSI cast operation: \{cast_op}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [IRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+    { defs: [IRegister(dst)], uses: [FImm(imm_val)], .. } => {
+      let src = func.keeped_ftreg1()
+      [
+        builder.build_fmove_imm(from_ty_size, dst=src, src=imm_val),
+        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    { defs: [IRegister(dst)], uses: [Mem(base, offset)], .. } => {
+      let src = func.keeped_ftreg1()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base~, offset~),
+        builder.build_fp_to_si(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled FPToSI legalization case: \{self}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast_fp_to_ui(
+  self : Instruction,
+  builder : IRBuilder,
+  func : Function,
+  cast_op : CastOpCode,
+) -> Array[Instruction] raise MIRError {
+  guard cast_op is FPToUI(from_ty_size, to_ty_size) else {
+    println(
+      "Compiler ICE: calling legalize_cast_fp_to_ui on non-FPToUI cast operation: \{cast_op}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [IRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+    { defs: [IRegister(dst)], uses: [FImm(imm_val)], .. } => {
+      let src = func.keeped_ftreg1()
+      [
+        builder.build_fmove_imm(from_ty_size, dst=src, src=imm_val),
+        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    { defs: [IRegister(dst)], uses: [Mem(base, offset)], .. } => {
+      let src = func.keeped_ftreg1()
+      [
+        builder.build_loadf(from_ty_size, dst=src, base~, offset~),
+        builder.build_fp_to_ui(from_ty_size~, to_ty_size~, dst~, src~),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled FPToUI legalization case: \{self}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast_si_to_fp(
+  self : Instruction,
+  builder : IRBuilder,
+  func : Function,
+  cast_op : CastOpCode,
+) -> Array[Instruction] raise MIRError {
+  guard cast_op is SIToFP(from_ty_size, to_ty_size) else {
+    println(
+      "Compiler ICE: calling legalize_cast_si_to_fp on non-SIToFP cast operation: \{cast_op}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [FRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
+    { defs: [FRegister(dst)], uses: [Imm(imm_val)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_imove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [FRegister(dst)], uses: [Mem(base, offset)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_loadi(from_ty_size, dst=tmp_reg, base~, offset~),
+        builder.build_si_to_fp(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled SIToFP legalization case: \{self}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast_ui_to_fp(
+  self : Instruction,
+  builder : IRBuilder,
+  func : Function,
+  cast_op : CastOpCode,
+) -> Array[Instruction] raise MIRError {
+  guard cast_op is UIToFP(from_ty_size, to_ty_size) else {
+    println(
+      "Compiler ICE: calling legalize_cast_ui_to_fp on non-UIToFP cast operation: \{cast_op}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [FRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
+    { defs: [FRegister(dst)], uses: [Imm(imm_val)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_imove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [FRegister(dst)], uses: [Mem(base, offset)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_loadi(from_ty_size, dst=tmp_reg, base~, offset~),
+        builder.build_ui_to_fp(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled UIToFP legalization case: \{self}")
   }
 }
