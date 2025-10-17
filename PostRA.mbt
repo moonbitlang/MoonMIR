@@ -208,7 +208,7 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
 
   // need space for fp
   let offset = -self.extend_reg_stack(8L, 8L)
-  self.var_stack_size = (self.var_stack_size + 8 - 1) / 8 * 8 // align to 8 bytes
+  self.var_stack_size = (self.var_stack_size + 16 - 1) / 16 * 16 // align to 8 bytes
 
   let total_stack_size = self.var_stack_size + self.reg_stack_size
   let builder = IRBuilder::new(self, entry_bb)
