@@ -1059,8 +1059,6 @@ pub fn Instruction::legalize_cast(
     FPToUI(_) => self.legalize_cast_fp_to_ui(builder, func, cast_op)
     SIToFP(_) => self.legalize_cast_si_to_fp(builder, func, cast_op)
     UIToFP(_) => self.legalize_cast_ui_to_fp(builder, func, cast_op)
-    cast_op =>
-      raise LegalizeError("Unhandled Cast legalization case: \{cast_op}")
   }
 }
 

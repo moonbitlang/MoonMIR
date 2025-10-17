@@ -1,6 +1,5 @@
 {
   "import" : [
-    "Kaida-Amethyst/MoonLLVM/IR",
     "Kaida-Amethyst/MoonMIR",
     "Kaida-Amethyst/MoonMIR/riscv",
     "Kaida-Amethyst/TinyMoonBit"
