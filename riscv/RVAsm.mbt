@@ -325,6 +325,16 @@ pub(all) enum RvAsm {
   FcvtWuS(Reg, FReg)
   FcvtSD(FReg, FReg)
   FcvtDS(FReg, FReg)
+  FcvtDW(FReg, Reg) // Convert i32 to f64
+  FcvtDWu(FReg, Reg) // Convert u32 to f64
+  FcvtWD(Reg, FReg) // Convert f64 to i32
+  FcvtWuD(Reg, FReg) // Convert f64 to u32
+  FcvtDL(FReg, Reg) // Convert i64 to f64
+  FcvtLD(Reg, FReg) // Convert f64 to i64
+  FcvtLuD(Reg, FReg) // Convert f64 to u64
+  FcvtSL(FReg, Reg) // Convert i64 to f32
+  FcvtLS(Reg, FReg) // Convert f32 to i64
+  FcvtLuS(Reg, FReg) // Convert f32 to u64
   // Comments
   Label(String)
   Comment(String)
@@ -413,7 +423,7 @@ pub impl Show for RvAsm with output(self, logger) {
     Fsd(fs, mem) => "fsd \{fs}, \{mem}"
     FeqD(rd, fs1, fs2) => "feq.d \{rd}, \{fs1}, \{fs2}"
     FleD(rd, fs1, fs2) => "fle.d \{rd}, \{fs1}, \{fs2}"
-    FmvDX(fd, rs) => "fmv.x.d \{fd}, \{rs}"
+    FmvDX(fd, rs) => "fmv.d.x \{fd}, \{rs}"
     Nop => "nop"
     La(rd, label) => "la \{rd}, \{label}"
     Li(rd, imm) => "li \{rd}, \{imm}"
@@ -484,6 +494,16 @@ pub impl Show for RvAsm with output(self, logger) {
     FcvtWuS(rd, fs) => "fcvt.wu.s \{rd}, \{fs}"
     FcvtSD(fd, fs) => "fcvt.s.d \{fd}, \{fs}"
     FcvtDS(fd, fs) => "fcvt.d.s \{fd}, \{fs}"
+    FcvtDW(fd, rs) => "fcvt.d.w \{fd}, \{rs}"
+    FcvtDWu(fd, rs) => "fcvt.d.wu \{fd}, \{rs}"
+    FcvtWD(rd, fs) => "fcvt.w.d \{rd}, \{fs}"
+    FcvtWuD(rd, fs) => "fcvt.wu.d \{rd}, \{fs}"
+    FcvtDL(fd, rs) => "fcvt.d.l \{fd}, \{rs}"
+    FcvtLD(rd, fs) => "fcvt.l.d \{rd}, \{fs}"
+    FcvtLuD(rd, fs) => "fcvt.lu.d \{rd}, \{fs}"
+    FcvtSL(fd, rs) => "fcvt.s.l \{fd}, \{rs}"
+    FcvtLS(rd, fs) => "fcvt.l.s \{rd}, \{fs}"
+    FcvtLuS(rd, fs) => "fcvt.lu.s \{rd}, \{fs}"
     Asciz(s) => ".asciz \"\{s}\""
     Byte(b) => ".byte \{b}"
     Half(h) => ".half \{h}"

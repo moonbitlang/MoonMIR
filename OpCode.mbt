@@ -22,10 +22,34 @@ pub fn IBinaryOpCode::is_commutative(self : Self) -> Bool {
   }
 }
 
+pub impl Show for IBinaryOpCode with output(self, logger) {
+  let s = match self {
+    Add => "add"
+    Sub => "sub"
+    Mul => "mul"
+    Div => "div"
+    Rem => "rem"
+    And => "and"
+    Or => "or"
+    Xor => "xor"
+    Shl => "shl"
+    LShr => "lshr"
+    AShr => "ashr"
+  }
+  logger.write_string(s)
+}
+
 ///|
 pub(all) enum IUnaryOpCode {
   Not
 } derive(Eq)
+
+pub impl Show for IUnaryOpCode with output(self, logger) {
+  let s = match self {
+    Not => "not"
+  }
+  logger.write_string(s)
+}
 
 ///|
 pub(all) enum ICmpOpCode {
@@ -41,6 +65,22 @@ pub(all) enum ICmpOpCode {
   Leu
 } derive(Eq)
 
+pub impl Show for ICmpOpCode with output(self, logger) {
+  let s = match self {
+    Eq => "eq"
+    Ne => "ne"
+    Gt => "gt"
+    Ge => "ge"
+    Lt => "lt"
+    Le => "le"
+    Gtu => "gtu"
+    Geu => "geu"
+    Ltu => "ltu"
+    Leu => "leu"
+  }
+  logger.write_string(s)
+}
+
 ///|
 pub(all) enum BranchOpCode {
   Beq
@@ -55,6 +95,23 @@ pub(all) enum BranchOpCode {
   Bleu
   Jmp
 } derive(Eq)
+
+pub impl Show for BranchOpCode with output(self, logger) {
+  let s = match self {
+    Beq => "beq"
+    Bne => "bne"
+    Bgt => "bgt"
+    Bge => "bge"
+    Blt => "blt"
+    Ble => "ble"
+    Bgtu => "bgtu"
+    Bgeu => "bgeu"
+    Bltu => "bltu"
+    Bleu => "bleu"
+    Jmp => "jmp"
+  }
+  logger.write_string(s)
+}
 
 ///|
 pub(all) enum FBinaryOpCode {
@@ -73,10 +130,29 @@ pub fn FBinaryOpCode::is_commutative(self : Self) -> Bool {
   }
 }
 
+
+pub impl Show for FBinaryOpCode with output(self, logger) {
+  let s = match self {
+    FAdd => "fadd"
+    FSub => "fsub"
+    FMul => "fmul"
+    FDiv => "fdiv"
+    FRem => "frem"
+  }
+  logger.write_string(s)
+}
+
 ///|
 pub(all) enum FUnaryOpCode {
   FNeg
 } derive(Eq)
+
+pub impl Show for FUnaryOpCode with output(self, logger) {
+  let s = match self {
+    FNeg => "fneg"
+  }
+  logger.write_string(s)
+}
 
 ///|
 pub(all) enum FCmpOpCode {
@@ -87,6 +163,18 @@ pub(all) enum FCmpOpCode {
   Flt
   Fle
 } derive(Eq)
+
+pub impl Show for FCmpOpCode with output(self, logger) {
+  let s = match self {
+    Feq => "feq"
+    Fne => "fne"
+    Fgt => "fgt"
+    Fge => "fge"
+    Flt => "flt"
+    Fle => "fle"
+  }
+  logger.write_string(s)
+}
 
 ///|
 pub(all) enum CastOpCode {
@@ -100,6 +188,22 @@ pub(all) enum CastOpCode {
   SIToFP(Int, Int)
   UIToFP(Int, Int)
 } derive(Eq)
+
+///|
+pub impl Show for CastOpCode with output(self, logger) {
+  let s = match self {
+    Trunc(from, to) => "trunc.i\{from}_to_i\{to}"
+    ZExt(from, to) => "zext.i\{from}_to_i\{to}"
+    SExt(from, to) => "sext.i\{from}_to_i\{to}"
+    FPTrunc(from, to) => "fptrunc.f\{from}_to_f\{to}"
+    FPExt(from, to) => "fpext.f\{from}_to_f\{to}"
+    FPToSI(from, to) => "fptosi.f\{from}_to_i\{to}"
+    FPToUI(from, to) => "fptoui.f\{from}_to_i\{to}"
+    SIToFP(from, to) => "sitofp.i\{from}_to_f\{to}"
+    UIToFP(from, to) => "uitofp.i\{from}_to_f\{to}"
+  }
+  logger.write_string(s)
+}
 
 ///|
 pub(all) enum OpCode {

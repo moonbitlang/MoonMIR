@@ -79,7 +79,7 @@ def run_single_test(c_file_path: str) -> bool:
         
         # 4. 使用riscv64-unknown-elf-gcc链接.s文件
         print(f"{Style.LINK} Assembling RISC-V executable ({moon_executable})...")
-        cmd_gcc = ["riscv64-unknown-elf-gcc", "-o", moon_executable, s_file, RUNTIME_C]
+        cmd_gcc = ["riscv64-unknown-elf-gcc", "-o", moon_executable, s_file, RUNTIME_C, "-lm"]
         result = subprocess.run(cmd_gcc, capture_output=True, text=True)
         if result.returncode != 0:
             print(f"{Style.RED}{Style.FAILED} Error: RISC-V GCC toolchain failed while assembling '{s_file}'.{Style.RESET}")

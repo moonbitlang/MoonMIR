@@ -350,9 +350,9 @@ fn IRBuilder::build_fmove_to_ireg(Self, Int, dst~ : IRegister, src~ : FRegister,
 #callsite(autofill(loc))
 fn IRBuilder::build_fneg(Self, Int, dst~ : FRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
 #callsite(autofill(loc))
-fn IRBuilder::build_fp_to_si(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+fn IRBuilder::build_fp_to_si(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction
 #callsite(autofill(loc))
-fn IRBuilder::build_fp_to_ui(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+fn IRBuilder::build_fp_to_ui(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction
 #callsite(autofill(loc))
 fn IRBuilder::build_fpext(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
 #callsite(autofill(loc))
@@ -381,7 +381,7 @@ fn IRBuilder::build_ret(Self) -> Instruction
 #callsite(autofill(loc))
 fn IRBuilder::build_sext(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
 #callsite(autofill(loc))
-fn IRBuilder::build_si_to_fp(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+fn IRBuilder::build_si_to_fp(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction
 #callsite(autofill(loc))
 fn IRBuilder::build_storef(Self, Int, src~ : FRegister, base~ : IRegister, offset~ : Int64, loc~ : SourceLoc) -> Instruction raise MIRError
 #callsite(autofill(loc))
@@ -389,7 +389,7 @@ fn IRBuilder::build_storei(Self, Int, src~ : IRegister, base~ : IRegister, offse
 #callsite(autofill(loc))
 fn IRBuilder::build_trunc(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
 #callsite(autofill(loc))
-fn IRBuilder::build_ui_to_fp(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
+fn IRBuilder::build_ui_to_fp(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction
 #callsite(autofill(loc))
 fn IRBuilder::build_zext(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
 fn IRBuilder::new(Function, BasicBlock) -> Self

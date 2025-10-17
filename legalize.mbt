@@ -45,6 +45,7 @@ pub fn Instruction::legalize(
     Ret => [self]
     Nop => [self]
     LoadAddr => self.legalize_load_addr(builder)
+    Cast(_) => self.legalize_cast(builder)
     Intrinsic(_) => raise LegalizeError("Unimplmented Intrinsic legalize Yet")
     op => raise LegalizeError("Unimplmented \{op} Yet")
   }
@@ -881,15 +882,24 @@ pub fn Instruction::legalize_fstore(
     panic()
   }
   match self {
-    { defs: [Mem(base, offset)], uses: [Mem(b1, o1)], .. } => {
+    { defs: [], uses: [Mem(_, _), FRegister(_)], .. } as inst => [inst]
+    { defs: [], uses: [Mem(base, offset), FImm(imm_val)], .. } => {
+      let tmp_reg = func.keeped_ftreg1()
+      [
+        builder.build_fmove_imm(bits, dst=tmp_reg, src=imm_val),
+        builder.build_storef(bits, src=tmp_reg, base~, offset~),
+      ]
+    }
+    { defs: [], uses: [Mem(base, offset), Mem(b1, o1)], .. } => {
       let v1 = func.keeped_ftreg1()
       [
         builder.build_loadf(bits, dst=v1, base=b1, offset=o1),
         builder.build_storef(bits, src=v1, base~, offset~),
       ]
     }
-    { defs: [Mem(_)], uses: [FRegister(_)], .. } as inst => [inst]
-    _ => raise LegalizeError("Unhandled FStore legalization case: \{self}")
+    _ => {
+      raise LegalizeError("Unhandled FStore legalization case: \{self}")
+    }
   }
 }
 
@@ -921,6 +931,9 @@ pub fn Instruction::legalize_fmove(
       ]
     }
     { defs: [FRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+    { defs: [FRegister(rdst)], uses: [FImm(imm_val)], .. } =>
+      // Handle immediate value to floating point register move
+      [builder.build_fmove_imm(bits, dst=rdst, src=imm_val)]
     { defs: [FRegister(rdst)], uses: [Mem(base, offset)], .. } => {
       let v1 = func.keeped_ftreg1()
       [
@@ -966,9 +979,9 @@ pub fn Instruction::legalize_fmovei(
   }
 }
 
-// imovef means move from freg to ireg
 
 ///|
+/// imovef means move from freg to ireg
 pub fn Instruction::legalize_imovef(
   self : Instruction,
   builder : IRBuilder,
@@ -1024,5 +1037,140 @@ pub fn Instruction::legalize_load_addr(
       ]
     }
     _ => raise LegalizeError("Unhandled LoadAddr legalization case: \{self}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast(
+  self : Instruction,
+  builder : IRBuilder,
+) -> Array[Instruction] raise MIRError {
+  let { func, .. } = builder
+  guard self is { opcode: Cast(cast_op), .. } else {
+    println(
+      "Compiler ICE: calling legalize_cast on non-Cast instruction: \{self}",
+    )
+    panic()
+  }
+  match cast_op {
+    // Floating point to signed integer conversion
+    FPToSI(from_bits, to_bits) =>
+      match self {
+        { defs: [IRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+        { defs: [IRegister(dst)], uses: [FImm(imm_val)], .. } => {
+          let tmp_reg = func.keeped_ftreg1()
+          [
+            builder.build_fmove_imm(from_bits, dst=tmp_reg, src=imm_val),
+            builder.build_fp_to_si(
+              from_ty_size=from_bits,
+              to_ty_size=to_bits,
+              dst~,
+              src=tmp_reg,
+            ),
+          ]
+        }
+        { defs: [IRegister(dst)], uses: [Mem(base, offset)], .. } => {
+          let tmp_reg = func.keeped_ftreg1()
+          [
+            builder.build_loadf(from_bits, dst=tmp_reg, base~, offset~),
+            builder.build_fp_to_si(
+              from_ty_size=from_bits,
+              to_ty_size=to_bits,
+              dst~,
+              src=tmp_reg,
+            ),
+          ]
+        }
+        _ => raise LegalizeError("Unhandled FPToSI legalization case: \{self}")
+      }
+    FPToUI(from_bits, to_bits) =>
+      match self {
+        { defs: [IRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+        { defs: [IRegister(dst)], uses: [FImm(imm_val)], .. } => {
+          let tmp_reg = func.keeped_ftreg1()
+          [
+            builder.build_fmove_imm(from_bits, dst=tmp_reg, src=imm_val),
+            builder.build_fp_to_ui(
+              from_ty_size=from_bits,
+              to_ty_size=to_bits,
+              dst~,
+              src=tmp_reg,
+            ),
+          ]
+        }
+        { defs: [IRegister(dst)], uses: [Mem(base, offset)], .. } => {
+          let tmp_reg = func.keeped_ftreg1()
+          [
+            builder.build_loadf(from_bits, dst=tmp_reg, base~, offset~),
+            builder.build_fp_to_ui(
+              from_ty_size=from_bits,
+              to_ty_size=to_bits,
+              dst~,
+              src=tmp_reg,
+            ),
+          ]
+        }
+        _ => raise LegalizeError("Unhandled FPToUI legalization case: \{self}")
+      }
+    SIToFP(from_bits, to_bits) =>
+      match self {
+        { defs: [FRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
+        { defs: [FRegister(dst)], uses: [Imm(imm_val)], .. } => {
+          let tmp_reg = func.keeped_treg1()
+          [
+            builder.build_imove_imm(from_bits, dst=tmp_reg, src=imm_val),
+            builder.build_si_to_fp(
+              from_ty_size=from_bits,
+              to_ty_size=to_bits,
+              dst~,
+              src=tmp_reg,
+            ),
+          ]
+        }
+        { defs: [FRegister(dst)], uses: [Mem(base, offset)], .. } => {
+          let tmp_reg = func.keeped_treg1()
+          [
+            builder.build_loadi(from_bits, dst=tmp_reg, base~, offset~),
+            builder.build_si_to_fp(
+              from_ty_size=from_bits,
+              to_ty_size=to_bits,
+              dst~,
+              src=tmp_reg,
+            ),
+          ]
+        }
+        _ => raise LegalizeError("Unhandled SIToFP legalization case: \{self}")
+      }
+    // Unsigned integer to floating point conversion
+    UIToFP(from_bits, to_bits) =>
+      match self {
+        { defs: [FRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
+        { defs: [FRegister(dst)], uses: [Imm(imm_val)], .. } => {
+          let tmp_reg = func.keeped_treg1()
+          [
+            builder.build_imove_imm(from_bits, dst=tmp_reg, src=imm_val),
+            builder.build_ui_to_fp(
+              from_ty_size=from_bits,
+              to_ty_size=to_bits,
+              dst~,
+              src=tmp_reg,
+            ),
+          ]
+        }
+        { defs: [FRegister(dst)], uses: [Mem(base, offset)], .. } => {
+          let tmp_reg = func.keeped_treg1()
+          [
+            builder.build_loadi(from_bits, dst=tmp_reg, base~, offset~),
+            builder.build_ui_to_fp(
+              from_ty_size=from_bits,
+              to_ty_size=to_bits,
+              dst~,
+              src=tmp_reg,
+            ),
+          ]
+        }
+        _ => raise LegalizeError("Unhandled UIToFP legalization case: \{self}")
+      }
+    _ => raise LegalizeError("Unhandled Cast operation: \{cast_op}")
   }
 }

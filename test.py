@@ -80,7 +80,7 @@ def run_test(base_name: str) -> bool:
 
         # 4. 使用riscv64-unknown-elf-gcc链接.s文件
         print(f"{Style.LINK} Assembling RISC-V executable ({moon_executable})...")
-        cmd_gcc = ["riscv64-unknown-elf-gcc", "-o", moon_executable, s_file, RUNTIME_C]
+        cmd_gcc = ["riscv64-unknown-elf-gcc", "-o", moon_executable, s_file, RUNTIME_C, "-lm"]
         result = subprocess.run(cmd_gcc, capture_output=True, text=True)
         if result.returncode != 0:
             print(f"{Style.RED}{Style.FAILED} Error: RISC-V GCC toolchain failed while assembling '{s_file}'.{Style.RESET}")
@@ -91,7 +91,7 @@ def run_test(base_name: str) -> bool:
         # 5. 【修改】直接使用clang编译.c文件生成标准可执行文件
         print(f"{Style.LINK} Compiling standard executable with Clang ({std_executable})...")
         # 直接使用 c_file_path 替代之前的 ll_file
-        cmd_clang = ["clang", "-o", std_executable, c_file_path, RUNTIME_C]
+        cmd_clang = ["clang", "-o", std_executable, c_file_path, RUNTIME_C, "-lm"]
         result = subprocess.run(cmd_clang, capture_output=True, text=True)
         if result.returncode != 0:
             print(f"{Style.RED}{Style.FAILED} Error: Clang failed to compile the source file '{c_file}'.{Style.RESET}")
