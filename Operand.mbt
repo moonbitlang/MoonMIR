@@ -48,7 +48,10 @@ pub impl Show for FRegister with output(self, logger) {
 pub(all) enum Operand {
   IRegister(IRegister)
   FRegister(FRegister)
-  Mem(IRegister, Int64) // Memory Addressing (Base, Offset)
+  // It means value stored in memory, need load/store
+  Mem(IRegister, Int64)
+  // Memory Address, it means address calculated by base register + offset
+  MemLoc(IRegister, Int64)
   Imm(Int64) // Immediate Value
   FImm(Double) // Floating Point Immediate Value
   Label(String) // Label
@@ -84,6 +87,14 @@ pub impl Show for Operand with output(self, logger) {
         "(\{base})"
       } else {
         "(\{base} + \{offset})"
+      }
+    MemLoc(base, offset) => 
+      if offset < 0 {
+        "[\{base} - \{-offset}]"
+      } else if offset == 0 {
+        "[\{base}]"
+      } else {
+        "[\{base} + \{offset}]"
       }
     Imm(i) => "\{i}"
     FImm(f) => "\{f}"

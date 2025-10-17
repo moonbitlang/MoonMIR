@@ -217,7 +217,7 @@ pub fn Function::bind_llvm_value_to_mem(
   base : IRegister,
   offset : Int64,
 ) -> Unit {
-  self.value_map.set(val, Operand::Mem(base, offset))
+  self.value_map.set(val, Operand::MemLoc(base, offset))
 }
 
 ///|

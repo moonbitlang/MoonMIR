@@ -394,7 +394,7 @@ pub fn translate_llvm_load_inst(
     raise IRTranslateError("LoadInst: pointer operand not found in value_map")
   }
   let (base, offset) = match ptr_op {
-    Mem(base, offset) => (base, offset)
+    MemLoc(base, offset) => (base, offset)
     IRegister(r) => (r, 0L)
     _ =>
       raise IRTranslateError(
@@ -462,7 +462,7 @@ pub fn translate_llvm_store_inst(
     raise IRTranslateError("StoreInst: pointer operand not found in value_map")
   }
   let (base, offset) = match ptr_op {
-    Mem(base, offset) => (base, offset)
+    MemLoc(base, offset) => (base, offset)
     IRegister(r) => (r, 0L)
     _ =>
       raise IRTranslateError(
@@ -1849,11 +1849,11 @@ pub fn translate_llvm_gep_inst(
       let inst = builder.build_imove(64, dst=ptr_reg, src=r)
       minsts.push(inst)
     }
-    Mem(base, 0L) => {
+    MemLoc(base, 0L) => {
       let inst = builder.build_imove(64, dst=ptr_reg, src=base)
       minsts.push(inst)
     }
-    Mem(base, offset) => {
+    MemLoc(base, offset) => {
       let inst = builder.build_ibinary_imm(
         Add,
         64,
@@ -2227,59 +2227,35 @@ pub fn translate_llvm_call_inst(
         minsts.push(inst2)
         call_ireg_cnt += 1
       }
-      (Mem(base, offset), false) if call_ireg_cnt < num_arg_regs => {
-        // Memory address as argument - compute effective address and pass in register
+      (MemLoc(base, 0L), false) if call_ireg_cnt < num_arg_regs => {
         let dst = AReg(call_ireg_cnt)
-        let vreg = func.new_virtual_reg()
-        // Compute effective address: base + offset
-        if offset == 0L {
-          let inst = builder.build_imove(64, dst~, src=base)
-          minsts.push(inst)
-        } else {
-          let inst1 = builder.build_ibinary_imm(
-            Add,
-            64,
-            dst=vreg,
-            src1=base,
-            src2=offset,
-          )
-          let inst2 = builder.build_imove(64, dst~, src=vreg)
-          minsts.push(inst1)
-          minsts.push(inst2)
-        }
+        let inst = builder.build_imove(64, dst~, src=base)
+        minsts.push(inst)
         call_ireg_cnt += 1
       }
-      (Mem(base, offset), false) => {
-        // Memory address as stack argument
+      (MemLoc(base, offset), false) if call_ireg_cnt < num_arg_regs => {
+        let dst = AReg(call_ireg_cnt)
+        let vreg = func.new_virtual_reg()
+        let inst1 = builder.build_ibinary_imm(Add, 64, dst=vreg, src1=base, src2=offset)
+        let inst2 = builder.build_imove(64, dst~, src=vreg)
+        minsts.push(inst1)
+        minsts.push(inst2)
+      }
+      (MemLoc(base, 0L), false) => {
+        let _ = func.extend_var_stack(8L, 8L)
+        let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
+        let inst = builder.build_storei(64, src=base, base=StackPtr, offset=stack_offset)
+        minsts.push(inst)
+        call_ireg_cnt += 1
+      }
+      (MemLoc(base, offset), false) => {
         let _ = func.extend_var_stack(8L, 8L)
         let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
         let vreg = func.new_virtual_reg()
-        // Compute effective address: base + offset
-        if offset == 0L {
-          let inst = builder.build_storei(
-            64,
-            src=base,
-            base=StackPtr,
-            offset=stack_offset,
-          )
-          minsts.push(inst)
-        } else {
-          let inst1 = builder.build_ibinary_imm(
-            Add,
-            64,
-            dst=vreg,
-            src1=base,
-            src2=offset,
-          )
-          let inst2 = builder.build_storei(
-            64,
-            src=vreg,
-            base=StackPtr,
-            offset=stack_offset,
-          )
-          minsts.push(inst1)
-          minsts.push(inst2)
-        }
+        let inst1 = builder.build_ibinary_imm(Add, 64, dst=vreg, src1=base, src2=offset)
+        let inst2 = builder.build_storei(64, src=vreg, base=StackPtr, offset=stack_offset)
+        minsts.push(inst1)
+        minsts.push(inst2)
         call_ireg_cnt += 1
       }
       arg_op =>
@@ -2372,18 +2348,6 @@ pub fn BasicBlock::phi_elimination(self : Self) -> Unit raise MIRError {
       (IRegister(dst), Imm(src)) => {
         let inst = builder.build_imove_imm(data_size, dst~, src~)
         self.push_inst_before_terminator(inst)
-      }
-      (IRegister(dst), Mem(b, o)) => {
-        let src = func.new_virtual_reg()
-        let load_inst = builder.build_loadi(
-          data_size,
-          dst=src,
-          base=b,
-          offset=o,
-        )
-        let move_inst = builder.build_imove(data_size, dst~, src~)
-        self.push_inst_before_terminator(load_inst)
-        self.push_inst_before_terminator(move_inst)
       }
       (FRegister(dst), FRegister(src)) => {
         let inst = builder.build_fmove(data_size, dst~, src~)
