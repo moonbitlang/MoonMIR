@@ -11,7 +11,9 @@ import sys
 TEST_CASES = [
     "fib", "simple_add", "bin_int", "if", "for", "while", "while2", "branch",
     "many_args", "order_args", "ptr", "struct", "array", "binary_search",
-    "heap_arr", "bubble_sort", "merge_sort", "quick_sort", "arr_struct"]
+    "heap_arr", "bubble_sort", "merge_sort", "quick_sort", "arr_struct",
+    "nested_while", "dijkstra", "lcs",
+]
 
 # C语言源文件所在的目录
 C_SOURCE_DIR = "ctest"
