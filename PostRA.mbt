@@ -201,16 +201,15 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
       term_bb.push_inst_before_terminator(load_ra_inst)
     }
   }
-  if self.reg_stack_size > 0 {
-    self.var_stack_size = (self.var_stack_size + 8 - 1) / 8 * 8 // align to 8 bytes
-  }
-
   // Step 5. Calculate total stack size, insert sp, fp modification instructions
   if self.var_stack_size == 0 && self.reg_stack_size == 0 {
     return
   }
+
   // need space for fp
   let offset = -self.extend_reg_stack(8L, 8L)
+  self.var_stack_size = (self.var_stack_size + 8 - 1) / 8 * 8 // align to 8 bytes
+
   let total_stack_size = self.var_stack_size + self.reg_stack_size
   let builder = IRBuilder::new(self, entry_bb)
   let alloc_stack_inst = try! builder.build_ibinary_imm(
