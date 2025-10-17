@@ -1827,307 +1827,141 @@ pub fn translate_llvm_gep_inst(
   func : Function,
   data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
-  raise IRTranslateError("GetElementPtrInst translation not implemented yet")
-  ignore(llvm_inst)
-  ignore(builder)
-  ignore(func)
-  ignore(data_layout)
-  []
-}
+  let { ptr, indices, pointeeType, .. } = llvm_inst
 
-///|
-//pub fn translate_llvm_gep_inst(
-//  llvm_inst : @IR.GetElementPtrInst,
-//  builder : IRBuilder,
-//  func : Function,
-//  data_layout : @IR.DataLayout,
-//) -> Array[Instruction] raise MIRError {
-//  let { ptr, indices, pointeeType, .. } = llvm_inst
-//
-//  // Get the base pointer operand
-//  guard func.get_operand_from_llvm_value(ptr) is Some(ptr_op) else {
-//    raise IRTranslateError(
-//      "GetElementPtrInst: pointer operand not found in value_map",
-//    )
-//  }
-//
-//  // Get the destination register for the result
-//  guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-//    raise IRTranslateError(
-//      "GetElementPtrInst: destination operand not found in value_map",
-//    )
-//  }
-//  guard dst_op is IRegister(dst) else {
-//    raise IRTranslateError(
-//      "GetElementPtrInst: destination operand is not an integer register",
-//    )
-//  }
-//
-//  // Start with the base pointer
-//  let mut result_reg = match ptr_op {
-//    IRegister(r) => r
-//    Mem(base, offset) => {
-//      // If the pointer is a memory location, compute its effective address
-//      let tmp = func.new_virtual_reg()
-//      let inst = if offset == 0L {
-//        builder.build_imove(64, dst=tmp, src=base)
-//      } else {
-//        builder.build_ibinary_imm(Add, 64, dst=tmp, src1=base, src2=offset)
-//      }
-//      builder.bb.push_inst_before_terminator(inst)
-//      tmp
-//    }
-//    Label(label) => {
-//      // If the pointer is a global label, load its address
-//      let tmp = func.new_virtual_reg()
-//      let inst = builder.build_load_addr(tmp, label)
-//      builder.bb.push_inst_before_terminator(inst)
-//      tmp
-//    }
-//    _ =>
-//      raise IRTranslateError(
-//        "GetElementPtrInst: unsupported pointer operand type: \{ptr_op}",
-//      )
-//  }
-//  let mut instructions : Array[Instruction] = []
-//  let mut current_type = pointeeType
-//
-//  // Process each index
-//  for i = 0; i < indices.length(); i = i + 1 {
-//    let index_value = indices[i]
-//    guard func.get_operand_from_llvm_value(index_value) is Some(index_op) else {
-//      raise IRTranslateError(
-//        "GetElementPtrInst: index \{i} operand not found in value_map",
-//      )
-//    }
-//    if i == 0 {
-//      // First index: scale by the size of pointeeType
-//      let type_size = data_layout.getTypeAllocSize(pointeeType)
-//      match index_op {
-//        IRegister(idx) =>
-//          // offset = idx * type_size
-//          if type_size == 1 {
-//            // No scaling needed for byte access
-//            let new_reg = func.new_virtual_reg()
-//            instructions.push(
-//              builder.build_ibinary(
-//                Add,
-//                64,
-//                dst=new_reg,
-//                src1=result_reg,
-//                src2=idx,
-//              ),
-//            )
-//            result_reg = new_reg
-//          } else {
-//            let scaled_idx = func.new_virtual_reg()
-//            instructions.push(
-//              builder.build_ibinary_imm(
-//                Mul,
-//                64,
-//                dst=scaled_idx,
-//                src1=idx,
-//                src2=type_size.to_int64(),
-//              ),
-//            )
-//            let new_reg = func.new_virtual_reg()
-//            instructions.push(
-//              builder.build_ibinary(
-//                Add,
-//                64,
-//                dst=new_reg,
-//                src1=result_reg,
-//                src2=scaled_idx,
-//              ),
-//            )
-//            result_reg = new_reg
-//          }
-//        Imm(idx_imm) => {
-//          let offset = idx_imm * type_size.to_int64()
-//          if offset != 0L {
-//            let new_reg = func.new_virtual_reg()
-//            instructions.push(
-//              builder.build_ibinary_imm(
-//                Add,
-//                64,
-//                dst=new_reg,
-//                src1=result_reg,
-//                src2=offset,
-//              ),
-//            )
-//            result_reg = new_reg
-//          }
-//        }
-//        _ =>
-//          raise IRTranslateError(
-//            "GetElementPtrInst: unsupported index operand type: \{index_op}",
-//          )
-//      }
-//    } else {
-//      // Subsequent indices: navigate through aggregate types
-//      match current_type.asTypeEnum() {
-//        ArrayType(array_type) => {
-//          // For arrays, scale by element size
-//          let elem_type = array_type.getElementType()
-//          let elem_size = data_layout.getTypeAllocSize(elem_type)
-//          match index_op {
-//            IRegister(idx) =>
-//              if elem_size == 1 {
-//                let new_reg = func.new_virtual_reg()
-//                instructions.push(
-//                  builder.build_ibinary(
-//                    Add,
-//                    64,
-//                    dst=new_reg,
-//                    src1=result_reg,
-//                    src2=idx,
-//                  ),
-//                )
-//                result_reg = new_reg
-//              } else {
-//                let scaled_idx = func.new_virtual_reg()
-//                instructions.push(
-//                  builder.build_ibinary_imm(
-//                    Mul,
-//                    64,
-//                    dst=scaled_idx,
-//                    src1=idx,
-//                    src2=elem_size.to_int64(),
-//                  ),
-//                )
-//                let new_reg = func.new_virtual_reg()
-//                instructions.push(
-//                  builder.build_ibinary(
-//                    Add,
-//                    64,
-//                    dst=new_reg,
-//                    src1=result_reg,
-//                    src2=scaled_idx,
-//                  ),
-//                )
-//                result_reg = new_reg
-//              }
-//            Imm(idx_imm) => {
-//              let offset = idx_imm * elem_size.to_int64()
-//              if offset != 0L {
-//                let new_reg = func.new_virtual_reg()
-//                instructions.push(
-//                  builder.build_ibinary_imm(
-//                    Add,
-//                    64,
-//                    dst=new_reg,
-//                    src1=result_reg,
-//                    src2=offset,
-//                  ),
-//                )
-//                result_reg = new_reg
-//              }
-//            }
-//            _ =>
-//              raise IRTranslateError(
-//                "GetElementPtrInst: unsupported array index operand type: \{index_op}",
-//              )
-//          }
-//          current_type = elem_type
-//        }
-//        StructType(struct_type) =>
-//          // For structs, get offset of the field
-//          match index_op {
-//            Imm(field_idx) => {
-//              let field_offset = data_layout.getStructTypeOffset(
-//                struct_type,
-//                field_idx.to_int(),
-//              )
-//              if field_offset != 0 {
-//                let new_reg = func.new_virtual_reg()
-//                instructions.push(
-//                  builder.build_ibinary_imm(
-//                    Add,
-//                    64,
-//                    dst=new_reg,
-//                    src1=result_reg,
-//                    src2=field_offset.to_int64(),
-//                  ),
-//                )
-//                result_reg = new_reg
-//              }
-//              let elements = struct_type.elements()
-//              if field_idx.to_int() < elements.length() {
-//                current_type = elements[field_idx.to_int()]
-//              } else {
-//                raise IRTranslateError(
-//                  "GetElementPtrInst: struct field index out of bounds: \{field_idx}",
-//                )
-//              }
-//            }
-//            _ =>
-//              raise IRTranslateError(
-//                "GetElementPtrInst: struct indices must be constants, got: \{index_op}",
-//              )
-//          }
-//        PointerType(_) => {
-//          // Pointer to pointer - dereference and continue
-//          let ptr_size = data_layout.getTypeAllocSize(current_type)
-//          match index_op {
-//            IRegister(idx) => {
-//              let scaled_idx = func.new_virtual_reg()
-//              instructions.push(
-//                builder.build_ibinary_imm(
-//                  Mul,
-//                  64,
-//                  dst=scaled_idx,
-//                  src1=idx,
-//                  src2=ptr_size.to_int64(),
-//                ),
-//              )
-//              let new_reg = func.new_virtual_reg()
-//              instructions.push(
-//                builder.build_ibinary(
-//                  Add,
-//                  64,
-//                  dst=new_reg,
-//                  src1=result_reg,
-//                  src2=scaled_idx,
-//                ),
-//              )
-//              result_reg = new_reg
-//            }
-//            Imm(idx_imm) => {
-//              let offset = idx_imm * ptr_size.to_int64()
-//              if offset != 0L {
-//                let new_reg = func.new_virtual_reg()
-//                instructions.push(
-//                  builder.build_ibinary_imm(
-//                    Add,
-//                    64,
-//                    dst=new_reg,
-//                    src1=result_reg,
-//                    src2=offset,
-//                  ),
-//                )
-//                result_reg = new_reg
-//              }
-//            }
-//            _ =>
-//              raise IRTranslateError(
-//                "GetElementPtrInst: unsupported pointer index operand type: \{index_op}",
-//              )
-//          }
-//        }
-//        _ =>
-//          raise IRTranslateError(
-//            "GetElementPtrInst: unsupported type for indexing: \{current_type}",
-//          )
-//      }
-//    }
-//  }
-//
-//  // Move the result to the destination register
-//  if result_reg != dst {
-//    instructions.push(builder.build_imove(64, dst~, src=result_reg))
-//  }
-//  instructions
-//}
+  guard func.get_operand_from_llvm_value(ptr) is Some(ptr_op) else {
+    raise IRTranslateError(
+      "GetElementPtrInst: pointer operand not found in value_map",
+    )
+  }
+
+  guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
+    raise IRTranslateError(
+      "GetElementPtrInst: destination operand not found in value_map",
+    )
+  }
+
+  guard dst_op is IRegister(ptr_reg) else {
+    raise IRTranslateError(
+      "GetElementPtrInst: destination operand is not an integer register",
+    )
+  }
+  let minsts : Array[Instruction] = []
+
+  match ptr_op {
+    IRegister(r) => {
+      let inst = builder.build_imove(64, dst=ptr_reg, src=r)
+      minsts.push(inst)
+    }
+    Mem(base, offset) => {
+      let inst = builder.build_loadi(64, dst=ptr_reg, base~, offset~)
+      minsts.push(inst)
+    }
+    Label(label) => {
+      let inst = builder.build_load_addr(ptr_reg, label)
+      minsts.push(inst)
+    }
+    op =>
+      raise IRTranslateError(
+        "GetElementPtrInst: unsupported pointer operand type: \{op}",
+      )
+  }
+
+  let indices_ops : Array[Operand] = []
+  for idx_val in indices {
+    guard func.get_operand_from_llvm_value(idx_val) is Some(idx_op) else {
+      raise IRTranslateError(
+        "GetElementPtrInst: index operand not found in value_map",
+      )
+    }
+    indices_ops.push(idx_op)
+  }
+  
+  guard indices_ops is [first_idx_op, ..indices_ops]
+  match first_idx_op {
+    Imm(0) => ()
+    Imm(i) => {
+      let offset = data_layout.getTypeAllocSize(pointeeType).to_int64() * i
+      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=offset)
+      minsts.push(inst)
+    }
+    IRegister(idx_r) => {
+      let offset = data_layout.getTypeAllocSize(pointeeType).to_int64()
+      let scaled_idx = func.new_virtual_reg()
+      let inst1 = builder.build_ibinary_imm(Mul, 64, dst=scaled_idx, src1=idx_r, src2=offset)
+      let inst2 = builder.build_ibinary(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=scaled_idx)
+      minsts..push(inst1)..push(inst2)
+    }
+    _ =>
+      raise IRTranslateError(
+        "GetElementPtrInst: unsupported first index operand in GEP translation",
+      )
+  }
+
+  loop (pointeeType.asTypeEnum(), indices_ops) {
+    (_, []) => break
+    (_, [Imm(0)]) => break
+    (any_type, [Imm(i)]) => {
+      let offset = data_layout.getTypeAllocSize(any_type.asTypeClass()).to_int64()
+      let offset = offset * i
+      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=offset)
+      minsts.push(inst)
+    }
+    (any_type, [IRegister(idx_r)]) => {
+      let offset = data_layout.getTypeAllocSize(any_type.asTypeClass()).to_int64()
+      let scaled_idx = func.new_virtual_reg()
+      let inst1 = builder.build_ibinary_imm(Mul, 64, dst=scaled_idx, src1=idx_r, src2=offset)
+      let inst2 = builder.build_ibinary(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=scaled_idx)
+      minsts.push(inst1)
+      minsts.push(inst2)
+    }
+    (ArrayType({ elementType, .. }), [Imm(0), ..rest_indices]) => {
+      continue (elementType.asTypeEnum(), rest_indices)
+    }
+    (ArrayType({ elementType, .. }), [Imm(i), ..rest_indices]) => {
+      let offset = data_layout.getTypeAllocSize(elementType).to_int64()
+      let offset = offset * i
+      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=offset)
+      minsts.push(inst)
+      continue (elementType.asTypeEnum(), rest_indices)
+    }
+    (ArrayType({ elementType, .. }), [IRegister(idx_r), ..rest_indices]) => {
+      let offset = data_layout.getTypeAllocSize(elementType).to_int64()
+      let scaled_idx = func.new_virtual_reg()
+      let inst1 = builder.build_ibinary_imm(Mul, 64, dst=scaled_idx, src1=idx_r, src2=offset)
+      let inst2 = builder.build_ibinary(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=scaled_idx)
+      minsts.push(inst1)
+      minsts.push(inst2)
+      continue (elementType.asTypeEnum(), rest_indices)
+    }
+    (StructType({ elements, .. }), [Imm(0), ..rest_indices]) => {
+      guard elements.get(0) is Some(elem_type) else {
+        raise IRTranslateError(
+          "GetElementPtrInst: StructType has no elements",
+        )
+      }
+      continue (elem_type.asTypeEnum(), rest_indices)
+    }
+    (StructType({ elements, .. } as sty), [Imm(i), ..rest_indices]) => {
+      let i_int = i.to_int()
+      guard elements.get(i_int) is Some(elem_type) else {
+        raise IRTranslateError(
+          "GetElementPtrInst: StructType index out of bounds",
+        )
+      }
+      let offset = data_layout.getStructTypeOffset(sty, i_int)
+      let offset = offset.to_int64()
+      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=offset)
+      minsts.push(inst)
+      continue (elem_type.asTypeEnum(), rest_indices)
+    }
+    (t, indices) =>
+      raise IRTranslateError(
+        "GetElementPtrInst: unsupported type or indices in GEP translation: \{t}, \{indices}",
+      )
+  }
+  minsts
+}
 
 ///|
 pub fn translate_llvm_select_inst(

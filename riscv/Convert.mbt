@@ -393,6 +393,12 @@ fn i32_mul_mir_to_riscv(
       let src2 = Reg::from_mir_reg(r2)
       [Mulw(dst, src1, src2)]
     }
+    { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = Reg::from_mir_reg(r1)
+      let src2 = Reg::T5
+      [Li(src2, i2.to_string()), Mulw(dst, src1, src2)]
+    }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
   }
@@ -414,6 +420,12 @@ fn i64_mul_mir_to_riscv(
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
       [Mul(dst, src1, src2)]
+    }
+    { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = Reg::from_mir_reg(r1)
+      let src2 = Reg::T5
+      [Li(src2, i2.to_string()), Mul(dst, src1, src2)]
     }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
