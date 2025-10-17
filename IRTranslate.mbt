@@ -2236,7 +2236,13 @@ pub fn translate_llvm_call_inst(
       (MemLoc(base, offset), false) if call_ireg_cnt < num_arg_regs => {
         let dst = AReg(call_ireg_cnt)
         let vreg = func.new_virtual_reg()
-        let inst1 = builder.build_ibinary_imm(Add, 64, dst=vreg, src1=base, src2=offset)
+        let inst1 = builder.build_ibinary_imm(
+          Add,
+          64,
+          dst=vreg,
+          src1=base,
+          src2=offset,
+        )
         let inst2 = builder.build_imove(64, dst~, src=vreg)
         minsts.push(inst1)
         minsts.push(inst2)
@@ -2245,7 +2251,12 @@ pub fn translate_llvm_call_inst(
       (MemLoc(base, 0L), false) => {
         let _ = func.extend_var_stack(8L, 8L)
         let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
-        let inst = builder.build_storei(64, src=base, base=StackPtr, offset=stack_offset)
+        let inst = builder.build_storei(
+          64,
+          src=base,
+          base=StackPtr,
+          offset=stack_offset,
+        )
         minsts.push(inst)
         call_ireg_cnt += 1
       }
@@ -2253,8 +2264,19 @@ pub fn translate_llvm_call_inst(
         let _ = func.extend_var_stack(8L, 8L)
         let stack_offset = 8L * (call_ireg_cnt - num_arg_regs).to_int64()
         let vreg = func.new_virtual_reg()
-        let inst1 = builder.build_ibinary_imm(Add, 64, dst=vreg, src1=base, src2=offset)
-        let inst2 = builder.build_storei(64, src=vreg, base=StackPtr, offset=stack_offset)
+        let inst1 = builder.build_ibinary_imm(
+          Add,
+          64,
+          dst=vreg,
+          src1=base,
+          src2=offset,
+        )
+        let inst2 = builder.build_storei(
+          64,
+          src=vreg,
+          base=StackPtr,
+          offset=stack_offset,
+        )
         minsts.push(inst1)
         minsts.push(inst2)
         call_ireg_cnt += 1

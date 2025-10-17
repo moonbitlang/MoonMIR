@@ -229,10 +229,11 @@ pub fn Function::get_operand_from_llvm_value(
     let operand = match c {
       ConstantInt(c) => Imm(c.getValueAsInt64())
       ConstantFP(c) => FImm(c.getValue())
+      ConstantPointerNull(_) => Imm(0)
       _ => {
         let err_msg =
           $|Fatal Error happened in Function::get_operand_from_llvm_value
-          #|Unsupported constant value: \{val}
+          $|Unsupported constant value: \{val}
         println(err_msg)
         panic()
       }

@@ -88,7 +88,7 @@ pub impl Show for Operand with output(self, logger) {
       } else {
         "(\{base} + \{offset})"
       }
-    MemLoc(base, offset) => 
+    MemLoc(base, offset) =>
       if offset < 0 {
         "[\{base} - \{-offset}]"
       } else if offset == 0 {

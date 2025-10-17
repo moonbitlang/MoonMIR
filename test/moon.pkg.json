@@ -2,6 +2,7 @@
   "import" : [
     "Kaida-Amethyst/MoonMIR",
     "Kaida-Amethyst/MoonMIR/riscv",
+    "Kaida-Amethyst/MoonMIR/arm",
     "Kaida-Amethyst/TinyMoonBit"
   ]
 }
