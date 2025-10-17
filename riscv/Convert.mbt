@@ -450,6 +450,12 @@ fn i32_div_mir_to_riscv(
       let src2 = Reg::from_mir_reg(r2)
       [Divw(dst, src1, src2)]
     }
+    { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = Reg::from_mir_reg(r1)
+      let src2 = Reg::T5
+      [Li(src2, i2.to_string()), Divw(dst, src1, src2)]
+    }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
   }
@@ -471,6 +477,12 @@ fn i64_div_mir_to_riscv(
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
       [Div(dst, src1, src2)]
+    }
+    { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = Reg::from_mir_reg(r1)
+      let src2 = Reg::T5
+      [Li(src2, i2.to_string()), Div(dst, src1, src2)]
     }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -494,6 +506,12 @@ fn i32_rem_mir_to_riscv(
       let src2 = Reg::from_mir_reg(r2)
       [Remw(dst, src1, src2)]
     }
+    { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = Reg::from_mir_reg(r1)
+      let src2 = Reg::T5
+      [Li(src2, i2.to_string()), Remw(dst, src1, src2)]
+    }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
   }
@@ -515,6 +533,12 @@ fn i64_rem_mir_to_riscv(
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
       [Rem(dst, src1, src2)]
+    }
+    { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = Reg::from_mir_reg(r1)
+      let src2 = Reg::T5
+      [Li(src2, i2.to_string()), Rem(dst, src1, src2)]
     }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1461,7 +1485,7 @@ fn i8_store_mir_to_riscv(
     panic()
   }
   match inst {
-    { defs: [], uses: [IRegister(r), Mem(base, offset)], .. } => {
+    { defs: [], uses: [Mem(base, offset), IRegister(r)], .. } => {
       let src = Reg::from_mir_reg(r)
       let base = Reg::from_mir_reg(base)
       let mem = Mem::{ base, offset }
@@ -1483,7 +1507,7 @@ fn i16_store_mir_to_riscv(
     panic()
   }
   match inst {
-    { defs: [], uses: [IRegister(r), Mem(base, offset)], .. } => {
+    { defs: [], uses: [Mem(base, offset), IRegister(r)], .. } => {
       let src = Reg::from_mir_reg(r)
       let base = Reg::from_mir_reg(base)
       let mem = Mem::{ base, offset }
@@ -2391,6 +2415,7 @@ fn cast_mir_to_riscv(
 ) -> Array[RvAsm] raise MIRToRiscvError {
   let { defs, uses, .. } = inst
   match (cast_op, defs, uses) {
+    // Floating point conversions
     (FPToSI(64, 32), [IRegister(dst)], [FRegister(src)]) => {
       let dst_reg = Reg::from_mir_reg(dst)
       let src_reg = FReg::from_mir_freg(src)
@@ -2450,6 +2475,110 @@ fn cast_mir_to_riscv(
       let dst_reg = FReg::from_mir_freg(dst)
       let src_reg = FReg::from_mir_freg(src)
       [FcvtSD(dst_reg, src_reg)]
+    }
+
+    // Integer conversions
+    // Zero Extension (ZExt)
+    (ZExt(8, 32), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Use andi to mask the lower 8 bits for zero extension
+      [Andi(dst_reg, src_reg, 0xFF)]
+    }
+    (ZExt(8, 64), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Use andi to mask the lower 8 bits for zero extension
+      [Andi(dst_reg, src_reg, 0xFF)]
+    }
+    (ZExt(16, 32), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Use andi to mask the lower 16 bits for zero extension
+      [Andi(dst_reg, src_reg, 0xFFFF)]
+    }
+    (ZExt(16, 64), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Use andi to mask the lower 16 bits for zero extension
+      [Andi(dst_reg, src_reg, 0xFFFF)]
+    }
+    (ZExt(32, 64), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // For 32->64 zero extension, we need to use a special sequence
+      // RISC-V addw automatically sign-extends, so we need different approach
+      [Slli(dst_reg, src_reg, 32), Srli(dst_reg, dst_reg, 32)]
+    }
+
+    // Sign Extension (SExt)
+    (SExt(8, 32), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Shift left by 24, then arithmetic right shift by 24
+      [Slli(dst_reg, src_reg, 24), Srai(dst_reg, dst_reg, 24)]
+    }
+    (SExt(8, 64), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Shift left by 56, then arithmetic right shift by 56
+      [Slli(dst_reg, src_reg, 56), Srai(dst_reg, dst_reg, 56)]
+    }
+    (SExt(16, 32), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Shift left by 16, then arithmetic right shift by 16
+      [Slli(dst_reg, src_reg, 16), Srai(dst_reg, dst_reg, 16)]
+    }
+    (SExt(16, 64), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Shift left by 48, then arithmetic right shift by 48
+      [Slli(dst_reg, src_reg, 48), Srai(dst_reg, dst_reg, 48)]
+    }
+    (SExt(32, 64), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Use sext.w pseudo-instruction for 32->64 sign extension
+      [SextW(dst_reg, src_reg)]
+    }
+
+    // Truncation (Trunc)
+    (Trunc(64, 32), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // For 64->32 truncation, we can just use addw with zero
+      [Addw(dst_reg, src_reg, Zero)]
+    }
+    (Trunc(64, 16), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Mask the lower 16 bits
+      [Andi(dst_reg, src_reg, 0xFFFF)]
+    }
+    (Trunc(64, 8), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Mask the lower 8 bits
+      [Andi(dst_reg, src_reg, 0xFF)]
+    }
+    (Trunc(32, 16), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Mask the lower 16 bits
+      [Andi(dst_reg, src_reg, 0xFFFF)]
+    }
+    (Trunc(32, 8), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Mask the lower 8 bits
+      [Andi(dst_reg, src_reg, 0xFF)]
+    }
+    (Trunc(16, 8), [IRegister(dst)], [IRegister(src)]) => {
+      let dst_reg = Reg::from_mir_reg(dst)
+      let src_reg = Reg::from_mir_reg(src)
+      // Mask the lower 8 bits
+      [Andi(dst_reg, src_reg, 0xFF)]
     }
     (op, defs, uses) =>
       raise MIRToRiscvError(

@@ -1050,6 +1050,11 @@ pub fn Instruction::legalize_cast(
     panic()
   }
   match cast_op {
+    Trunc(_) => self.legalize_cast_trunc(builder, func, cast_op)
+    ZExt(_) => self.legalize_cast_zext(builder, func, cast_op)
+    SExt(_) => self.legalize_cast_sext(builder, func, cast_op)
+    FPTrunc(_) => self.legalize_cast_fptrunc(builder, func, cast_op)
+    FPExt(_) => self.legalize_cast_fpext(builder, func, cast_op)
     FPToSI(_) => self.legalize_cast_fp_to_si(builder, func, cast_op)
     FPToUI(_) => self.legalize_cast_fp_to_ui(builder, func, cast_op)
     SIToFP(_) => self.legalize_cast_si_to_fp(builder, func, cast_op)
@@ -1188,5 +1193,340 @@ pub fn Instruction::legalize_cast_ui_to_fp(
       ]
     }
     _ => raise LegalizeError("Unhandled UIToFP legalization case: \{self}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast_trunc(
+  self : Instruction,
+  builder : IRBuilder,
+  func : Function,
+  cast_op : CastOpCode,
+) -> Array[Instruction] raise MIRError {
+  guard cast_op is Trunc(from_ty_size, to_ty_size) else {
+    println(
+      "Compiler ICE: calling legalize_cast_trunc on non-Trunc cast operation: \{cast_op}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [IRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
+    { defs: [IRegister(dst)], uses: [Imm(imm_val)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_imove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_trunc(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [IRegister(dst)], uses: [Mem(base, offset)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_loadi(from_ty_size, dst=tmp_reg, base~, offset~),
+        builder.build_trunc(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [IRegister(src)], .. } => {
+      let dst_reg = func.keeped_treg1()
+      [
+        builder.build_trunc(from_ty_size~, to_ty_size~, dst=dst_reg, src~),
+        builder.build_storei(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Imm(imm_val)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_treg2()
+      [
+        builder.build_imove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_trunc(
+          from_ty_size~,
+          to_ty_size~,
+          dst=dst_reg,
+          src=tmp_reg,
+        ),
+        builder.build_storei(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Mem(src_base, src_offset)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_treg2()
+      [
+        builder.build_loadi(
+          from_ty_size,
+          dst=tmp_reg,
+          base=src_base,
+          offset=src_offset,
+        ),
+        builder.build_trunc(
+          from_ty_size~,
+          to_ty_size~,
+          dst=dst_reg,
+          src=tmp_reg,
+        ),
+        builder.build_storei(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled Trunc legalization case: \{self}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast_zext(
+  self : Instruction,
+  builder : IRBuilder,
+  func : Function,
+  cast_op : CastOpCode,
+) -> Array[Instruction] raise MIRError {
+  guard cast_op is ZExt(from_ty_size, to_ty_size) else {
+    println(
+      "Compiler ICE: calling legalize_cast_zext on non-ZExt cast operation: \{cast_op}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [IRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
+    { defs: [IRegister(dst)], uses: [Imm(imm_val)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_imove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_zext(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [IRegister(dst)], uses: [Mem(base, offset)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_loadi(from_ty_size, dst=tmp_reg, base~, offset~),
+        builder.build_zext(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [IRegister(src)], .. } => {
+      let dst_reg = func.keeped_treg1()
+      [
+        builder.build_zext(from_ty_size~, to_ty_size~, dst=dst_reg, src~),
+        builder.build_storei(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Imm(imm_val)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_treg2()
+      [
+        builder.build_imove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_zext(from_ty_size~, to_ty_size~, dst=dst_reg, src=tmp_reg),
+        builder.build_storei(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Mem(src_base, src_offset)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_treg2()
+      [
+        builder.build_loadi(
+          from_ty_size,
+          dst=tmp_reg,
+          base=src_base,
+          offset=src_offset,
+        ),
+        builder.build_zext(from_ty_size~, to_ty_size~, dst=dst_reg, src=tmp_reg),
+        builder.build_storei(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled ZExt legalization case: \{self}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast_sext(
+  self : Instruction,
+  builder : IRBuilder,
+  func : Function,
+  cast_op : CastOpCode,
+) -> Array[Instruction] raise MIRError {
+  guard cast_op is SExt(from_ty_size, to_ty_size) else {
+    println(
+      "Compiler ICE: calling legalize_cast_sext on non-SExt cast operation: \{cast_op}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [IRegister(_)], uses: [IRegister(_)], .. } as inst => [inst]
+    { defs: [IRegister(dst)], uses: [Imm(imm_val)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_imove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_sext(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [IRegister(dst)], uses: [Mem(base, offset)], .. } => {
+      let tmp_reg = func.keeped_treg1()
+      [
+        builder.build_loadi(from_ty_size, dst=tmp_reg, base~, offset~),
+        builder.build_sext(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [IRegister(src)], .. } => {
+      let dst_reg = func.keeped_treg1()
+      [
+        builder.build_sext(from_ty_size~, to_ty_size~, dst=dst_reg, src~),
+        builder.build_storei(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Imm(imm_val)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_treg2()
+      [
+        builder.build_imove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_sext(from_ty_size~, to_ty_size~, dst=dst_reg, src=tmp_reg),
+        builder.build_storei(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Mem(src_base, src_offset)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_treg2()
+      [
+        builder.build_loadi(
+          from_ty_size,
+          dst=tmp_reg,
+          base=src_base,
+          offset=src_offset,
+        ),
+        builder.build_sext(from_ty_size~, to_ty_size~, dst=dst_reg, src=tmp_reg),
+        builder.build_storei(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled SExt legalization case: \{self}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast_fptrunc(
+  self : Instruction,
+  builder : IRBuilder,
+  func : Function,
+  cast_op : CastOpCode,
+) -> Array[Instruction] raise MIRError {
+  guard cast_op is FPTrunc(from_ty_size, to_ty_size) else {
+    println(
+      "Compiler ICE: calling legalize_cast_fptrunc on non-FPTrunc cast operation: \{cast_op}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [FRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+    { defs: [FRegister(dst)], uses: [FImm(imm_val)], .. } => {
+      let tmp_reg = func.keeped_ftreg1()
+      [
+        builder.build_fmove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [FRegister(dst)], uses: [Mem(base, offset)], .. } => {
+      let tmp_reg = func.keeped_ftreg1()
+      [
+        builder.build_loadf(from_ty_size, dst=tmp_reg, base~, offset~),
+        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FRegister(src)], .. } => {
+      let dst_reg = func.keeped_ftreg1()
+      [
+        builder.build_fptrunc(from_ty_size~, to_ty_size~, dst=dst_reg, src~),
+        builder.build_storef(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FImm(imm_val)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_ftreg2()
+      [
+        builder.build_fmove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_fptrunc(
+          from_ty_size~,
+          to_ty_size~,
+          dst=dst_reg,
+          src=tmp_reg,
+        ),
+        builder.build_storef(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Mem(src_base, src_offset)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_ftreg2()
+      [
+        builder.build_loadf(
+          from_ty_size,
+          dst=tmp_reg,
+          base=src_base,
+          offset=src_offset,
+        ),
+        builder.build_fptrunc(
+          from_ty_size~,
+          to_ty_size~,
+          dst=dst_reg,
+          src=tmp_reg,
+        ),
+        builder.build_storef(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled FPTrunc legalization case: \{self}")
+  }
+}
+
+///|
+pub fn Instruction::legalize_cast_fpext(
+  self : Instruction,
+  builder : IRBuilder,
+  func : Function,
+  cast_op : CastOpCode,
+) -> Array[Instruction] raise MIRError {
+  guard cast_op is FPExt(from_ty_size, to_ty_size) else {
+    println(
+      "Compiler ICE: calling legalize_cast_fpext on non-FPExt cast operation: \{cast_op}",
+    )
+    panic()
+  }
+  match self {
+    { defs: [FRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
+    { defs: [FRegister(dst)], uses: [FImm(imm_val)], .. } => {
+      let tmp_reg = func.keeped_ftreg1()
+      [
+        builder.build_fmove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [FRegister(dst)], uses: [Mem(base, offset)], .. } => {
+      let tmp_reg = func.keeped_ftreg1()
+      [
+        builder.build_loadf(from_ty_size, dst=tmp_reg, base~, offset~),
+        builder.build_fpext(from_ty_size~, to_ty_size~, dst~, src=tmp_reg),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FRegister(src)], .. } => {
+      let dst_reg = func.keeped_ftreg1()
+      [
+        builder.build_fpext(from_ty_size~, to_ty_size~, dst=dst_reg, src~),
+        builder.build_storef(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [FImm(imm_val)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_ftreg2()
+      [
+        builder.build_fmove_imm(from_ty_size, dst=tmp_reg, src=imm_val),
+        builder.build_fpext(
+          from_ty_size~,
+          to_ty_size~,
+          dst=dst_reg,
+          src=tmp_reg,
+        ),
+        builder.build_storef(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    { defs: [Mem(base, offset)], uses: [Mem(src_base, src_offset)], .. } => {
+      let (tmp_reg, dst_reg) = func.keeped_ftreg2()
+      [
+        builder.build_loadf(
+          from_ty_size,
+          dst=tmp_reg,
+          base=src_base,
+          offset=src_offset,
+        ),
+        builder.build_fpext(
+          from_ty_size~,
+          to_ty_size~,
+          dst=dst_reg,
+          src=tmp_reg,
+        ),
+        builder.build_storef(to_ty_size, src=dst_reg, base~, offset~),
+      ]
+    }
+    _ => raise LegalizeError("Unhandled FPExt legalization case: \{self}")
   }
 }
