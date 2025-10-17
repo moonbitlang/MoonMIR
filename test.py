@@ -9,7 +9,7 @@ import sys
 
 # 测试用例的基础名称列表
 TEST_CASES = [
-    "fib", "simple_add", "if", "for", "while", "while2",
+    "fib", "simple_add", "bin_int", "if", "for", "while", "while2", "branch",
     "many_args", "order_args", "ptr", "struct", "array",
     "heap_arr", "bubble_sort", "arr_struct"]
 

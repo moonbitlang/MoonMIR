@@ -2240,6 +2240,7 @@ pub fn translate_llvm_call_inst(
         let inst2 = builder.build_imove(64, dst~, src=vreg)
         minsts.push(inst1)
         minsts.push(inst2)
+        call_ireg_cnt += 1
       }
       (MemLoc(base, 0L), false) => {
         let _ = func.extend_var_stack(8L, 8L)
