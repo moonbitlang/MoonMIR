@@ -54,7 +54,7 @@ pub fn Function::live_analysis(self : Self) -> Unit {
   while !bb_queue.is_empty() {
     let bb = bb_queue.pop_front().unwrap()
     // If the basic block does not use any registers, skip it.
-    if !bb.utilize_any_register() {
+    if !bb.use_any_register() {
       append_preds(bb)
       continue
     }
@@ -111,12 +111,11 @@ pub fn Instruction::live_analysis(self : Self) -> Bool {
 }
 
 ///|
-fn BasicBlock::utilize_any_register(self : Self) -> Bool {
-  self.insts.iter().any(inst => inst.def_and_use_any_register())
+fn BasicBlock::use_any_register(self : Self) -> Bool {
+  self.insts.iter().any(inst => inst.use_any_register())
 }
 
 ///|
-fn Instruction::def_and_use_any_register(self : Self) -> Bool {
-  self.defs.iter().any(d => d is (IRegister(_) | FRegister(_))) ||
-  self.uses.iter().any(u => u is (IRegister(_) | FRegister(_)))
+fn Instruction::use_any_register(self : Self) -> Bool {
+  self.uses.iter().any(u => u is (IRegister(_) | FRegister(_) | Mem(_)))
 }

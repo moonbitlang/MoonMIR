@@ -10,8 +10,8 @@ import sys
 # 测试用例的基础名称列表
 TEST_CASES = [
     "fib", "simple_add", "bin_int", "if", "for", "while", "while2", "branch",
-    "many_args", "order_args", "ptr", "struct", "array",
-    "heap_arr", "bubble_sort", "arr_struct"]
+    "many_args", "order_args", "ptr", "struct", "array", "binary_search",
+    "heap_arr", "bubble_sort", "merge_sort", "quick_sort", "arr_struct"]
 
 # C语言源文件所在的目录
 C_SOURCE_DIR = "ctest"
