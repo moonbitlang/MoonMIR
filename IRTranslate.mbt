@@ -1828,7 +1828,6 @@ pub fn translate_llvm_gep_inst(
   data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
   let { ptr, indices, pointeeType, .. } = llvm_inst
-
   guard func.get_operand_from_llvm_value(ptr) is Some(ptr_op) else {
     raise IRTranslateError(
       "GetElementPtrInst: pointer operand not found in value_map",
@@ -1853,8 +1852,12 @@ pub fn translate_llvm_gep_inst(
       let inst = builder.build_imove(64, dst=ptr_reg, src=r)
       minsts.push(inst)
     }
+    Mem(base, 0L) => {
+      let inst = builder.build_imove(64, dst=ptr_reg, src=base)
+      minsts.push(inst)
+    }
     Mem(base, offset) => {
-      let inst = builder.build_loadi(64, dst=ptr_reg, base~, offset~)
+      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=base, src2=offset)
       minsts.push(inst)
     }
     Label(label) => {
@@ -1876,8 +1879,8 @@ pub fn translate_llvm_gep_inst(
     }
     indices_ops.push(idx_op)
   }
-  
-  guard indices_ops is [first_idx_op, ..indices_ops]
+
+  guard indices_ops is [first_idx_op, .. indices_ops]
   match first_idx_op {
     Imm(0) => ()
     Imm(i) => {
@@ -1901,31 +1904,17 @@ pub fn translate_llvm_gep_inst(
   loop (pointeeType.asTypeEnum(), indices_ops) {
     (_, []) => break
     (_, [Imm(0)]) => break
-    (any_type, [Imm(i)]) => {
-      let offset = data_layout.getTypeAllocSize(any_type.asTypeClass()).to_int64()
-      let offset = offset * i
-      let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=offset)
-      minsts.push(inst)
-    }
-    (any_type, [IRegister(idx_r)]) => {
-      let offset = data_layout.getTypeAllocSize(any_type.asTypeClass()).to_int64()
-      let scaled_idx = func.new_virtual_reg()
-      let inst1 = builder.build_ibinary_imm(Mul, 64, dst=scaled_idx, src1=idx_r, src2=offset)
-      let inst2 = builder.build_ibinary(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=scaled_idx)
-      minsts.push(inst1)
-      minsts.push(inst2)
-    }
-    (ArrayType({ elementType, .. }), [Imm(0), ..rest_indices]) => {
+    (ArrayType({ elementType, .. }), [Imm(0), .. rest_indices]) => {
       continue (elementType.asTypeEnum(), rest_indices)
     }
-    (ArrayType({ elementType, .. }), [Imm(i), ..rest_indices]) => {
-      let offset = data_layout.getTypeAllocSize(elementType).to_int64()
-      let offset = offset * i
+    (ArrayType({ elementType, .. }), [Imm(i), .. rest_indices]) => {
+      let elem_size = data_layout.getTypeAllocSize(elementType).to_int64()
+      let offset = elem_size * i
       let inst = builder.build_ibinary_imm(Add, 64, dst=ptr_reg, src1=ptr_reg, src2=offset)
       minsts.push(inst)
       continue (elementType.asTypeEnum(), rest_indices)
     }
-    (ArrayType({ elementType, .. }), [IRegister(idx_r), ..rest_indices]) => {
+    (ArrayType({ elementType, .. }), [IRegister(idx_r), .. rest_indices]) => {
       let offset = data_layout.getTypeAllocSize(elementType).to_int64()
       let scaled_idx = func.new_virtual_reg()
       let inst1 = builder.build_ibinary_imm(Mul, 64, dst=scaled_idx, src1=idx_r, src2=offset)
@@ -1934,15 +1923,13 @@ pub fn translate_llvm_gep_inst(
       minsts.push(inst2)
       continue (elementType.asTypeEnum(), rest_indices)
     }
-    (StructType({ elements, .. }), [Imm(0), ..rest_indices]) => {
+    (StructType({ elements, .. }), [Imm(0), .. rest_indices]) => {
       guard elements.get(0) is Some(elem_type) else {
-        raise IRTranslateError(
-          "GetElementPtrInst: StructType has no elements",
-        )
+        raise IRTranslateError("GetElementPtrInst: StructType has no elements")
       }
       continue (elem_type.asTypeEnum(), rest_indices)
     }
-    (StructType({ elements, .. } as sty), [Imm(i), ..rest_indices]) => {
+    (StructType({ elements, .. } as sty), [Imm(i), .. rest_indices]) => {
       let i_int = i.to_int()
       guard elements.get(i_int) is Some(elem_type) else {
         raise IRTranslateError(

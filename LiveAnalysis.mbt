@@ -99,7 +99,11 @@ pub fn Instruction::live_analysis(self : Self) -> Bool {
   // Remove defs from live_in
   defs.each(d => if d is (IRegister(_) | FRegister(_)) { live_in.remove(d) })
   // Add uses to live_in
-  uses.each(u => if u is (IRegister(_) | FRegister(_)) { live_in.add(u) })
+  uses.each(u => match u {
+    IRegister(_) | FRegister(_) => live_in.add(u)
+    Mem(base, _) => live_in.add(IRegister(base)) // Track base register in Mem operands
+    _ => ()
+  })
 
   // update_live_in returns true if changed
   let is_changed = self.update_live_in(live_in)
