@@ -259,6 +259,8 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
 pub fn Function::adjust_mem_operands(self : Function) -> Unit {
   let { var_stack_size, reg_stack_size, .. } = self
   let total_stack_size = var_stack_size + reg_stack_size
+  // Ensure total stack size is 16-byte aligned (same as in prologue_epilogue_insertion)
+  let total_stack_size = (total_stack_size + 16 - 1) / 16 * 16
   for inst in self.inst_iter() {
     if inst
       is {

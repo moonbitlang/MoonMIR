@@ -406,21 +406,10 @@ test "Call IRTranslate Test" {
     #|  a0 = move.i64 10
     #|  a1 = move.i64 20
     #|  call add, a0, a1
-    #|  v0 = move.i64 a0
-    #|  a0 = move.i64 v0
-    #|  ret
-    #|}
-    #|
-  inspect(mir_func, content=(
-    #|func demo() {
-    #|entry:
-    #|  a0 = move.i64 10
-    #|  a1 = move.i64 20
-    #|  call add, a0, a1
     #|  v0 = move.i32 a0
     #|  a0 = move.i64 v0
     #|  ret
     #|}
     #|
-  ))
+  inspect(mir_func, content=expected)
 }
