@@ -2080,16 +2080,18 @@ pub fn translate_llvm_return_inst(
 /// mir_mod.translate_llvm_module(llvm_mod)
 /// let mir_func = mir_mod.get_function("demo").unwrap()
 /// inspect(mir_func, content=(
+///   
 ///   #|func demo() {
-///   #|entry:
-///   #|  a0 = move.i64 10
-///   #|  a1 = move.i64 20
-///   #|  call add, a0, a1
-///   #|  v0 = move.i64 a0
-///   #|  a0 = move.i64 v0
-///   #|  ret
-///   #|}
-///   #|
+/// #|entry:
+/// #|  a0 = move.i64 10
+/// #|  a1 = move.i64 20
+/// #|  call add, a0, a1
+/// #|  v0 = move.i32 a0
+/// #|  a0 = move.i64 v0
+/// #|  ret
+/// #|}
+/// #|
+/// 
 /// ))
 ///
 /// ```
@@ -2301,13 +2303,21 @@ pub fn translate_llvm_call_inst(
         "CallInst: return value operand not found in value_map",
       )
     }
+    // Get the return type width
+    let ret_ty = llvm_inst.getType()
+    let ret_width = match ret_ty.asTypeEnum() {
+      Int1Type(_) | Int8Type(_) | Int16Type(_) | Int32Type(_) | FloatType(_) =>
+        32
+      Int64Type(_) | PointerType(_) | DoubleType(_) => 64
+      _ => 64 // Default to 64 for other types
+    }
     match ret_op {
       IRegister(dst) => {
-        let inst = builder.build_imove(64, dst~, src=AReg(0))
+        let inst = builder.build_imove(ret_width, dst~, src=AReg(0))
         minsts.push(inst)
       }
       FRegister(dst) => {
-        let inst = builder.build_fmove(64, dst~, src=FAReg(0))
+        let inst = builder.build_fmove(ret_width, dst~, src=FAReg(0))
         minsts.push(inst)
       }
       _ => ()

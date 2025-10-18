@@ -635,12 +635,21 @@ fn move_mir_to_aarch64(
     panic()
   }
   match inst {
-    { defs: [IRegister(d)], uses: [IRegister(r)], .. } => {
+    { opcode: IMove(32), defs: [IRegister(d)], uses: [IRegister(r)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src = Reg::from_mir_reg(r)
+      [Mov32(dst, src)]
+    }
+    { opcode: IMove(64), defs: [IRegister(d)], uses: [IRegister(r)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src = Reg::from_mir_reg(r)
       [Mov64(dst, src)]
     }
-    { defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
+    { opcode: IMove(32), defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      [MovImm32(dst, i2.to_int())]
+    }
+    { opcode: IMove(64), defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       [MovImm64(dst, i2)]
     }
@@ -2152,8 +2161,9 @@ fn loadaddr_mir_to_aarch64(
   match inst {
     { defs: [IRegister(d)], uses: [Label(label)], .. } => {
       let dst = Reg::from_mir_reg(d)
-      // ARM64使用adrp + add的组合来加载地址
-      [Adrp(dst, label), AddLo12(dst, dst, label)]
+      // 在macOS上，使用adr指令来加载地址，这比adrp+add更兼容
+      // adr指令可以加载PC相对地址，范围是±1MB
+      [Adr(dst, label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")

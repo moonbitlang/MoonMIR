@@ -443,6 +443,7 @@ pub(all) enum AArch64Asm {
   // Address loading
   Adrp(Reg, String) // adrp x1, label
   AddLo12(Reg, Reg, String) // add x1, x2, :lo12:label
+  Adr(Reg, String) // adr x1, label
 
   // Labels and directives
   Label(String)
@@ -638,6 +639,7 @@ pub impl Show for AArch64Asm with output(self, logger) {
     // Address loading
     Adrp(rd, label) => "adrp \{rd}, \{label}"
     AddLo12(rd, rs, label) => "add \{rd}, \{rs}, :lo12:\{label}"
+    Adr(rd, label) => "adr \{rd}, \{label}"
     _ => ""
   }
   logger.write_string("    " + s)

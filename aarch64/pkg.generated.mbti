@@ -145,6 +145,7 @@ pub(all) enum AArch64Asm {
   Nop
   Adrp(Reg, String)
   AddLo12(Reg, Reg, String)
+  Adr(Reg, String)
   Label(String)
   Comment(String)
 }

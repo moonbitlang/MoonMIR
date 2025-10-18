@@ -208,8 +208,9 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
 
   // need space for fp
   let offset = -self.extend_reg_stack(8L, 8L)
-  self.var_stack_size = (self.var_stack_size + 16 - 1) / 16 * 16 // align to 8 bytes
   let total_stack_size = self.var_stack_size + self.reg_stack_size
+  // Ensure total stack size is 16-byte aligned for AArch64
+  let total_stack_size = (total_stack_size + 16 - 1) / 16 * 16 // align to 16 bytes
   let builder = IRBuilder::new(self, entry_bb)
   let alloc_stack_inst = try! builder.build_ibinary_imm(
       Add,
