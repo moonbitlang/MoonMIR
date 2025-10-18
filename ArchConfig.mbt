@@ -46,14 +46,14 @@ pub fn ArchConfig::riscv64() -> ArchConfig {
 pub fn ArchConfig::aarch64() -> ArchConfig {
   ArchConfig::{
     arch_name: "aarch64",
-    max_num_reg: 19,        // X0-X30 minus reserved (SP, X18)
-    max_num_freg: 32,       // D0-D31
-    num_arg_regs: 8,        // X0-X7
-    num_arg_fregs: 8,       // D0-D7
-    num_temp_regs: 7,       // X9-X15
-    num_temp_fregs: 6,      // D16-D21
-    num_saved_regs: 11,     // X19-X28, X8 (can be saved), X29
-    num_saved_fregs: 8,     // D8-D15
+    max_num_reg: 19, // X0-X30 minus reserved (SP, X18)
+    max_num_freg: 32, // D0-D31
+    num_arg_regs: 8, // X0-X7
+    num_arg_fregs: 8, // D0-D7
+    num_temp_regs: 7, // X9-X15
+    num_temp_fregs: 6, // D16-D21
+    num_saved_regs: 11, // X19-X28, X8 (can be saved), X29
+    num_saved_fregs: 8, // D8-D15
     support_select: false,
   }
 }

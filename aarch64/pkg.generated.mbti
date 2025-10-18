@@ -1,0 +1,318 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Kaida-Amethyst/MoonMIR/aarch64"
+
+import(
+  "Kaida-Amethyst/MoonLLVM/IR"
+  "Kaida-Amethyst/MoonMIR"
+)
+
+// Values
+fn llvm_module_to_aarch64(@IR.Module) -> Array[AArch64Asm] raise
+
+fn mir_block_to_aarch64(@MoonMIR.BasicBlock, Int) -> Array[AArch64Asm] raise MIRToAArch64Error
+
+fn mir_function_to_aarch64(@MoonMIR.Function) -> Array[AArch64Asm] raise MIRToAArch64Error
+
+fn mir_global_to_aarch64(@MoonMIR.GlobalValue) -> Array[AArch64Asm]
+
+fn mir_inst_to_aarch64(@MoonMIR.Instruction) -> Array[AArch64Asm] raise MIRToAArch64Error
+
+fn mir_module_to_aarch64(@MoonMIR.Module) -> Array[AArch64Asm] raise MIRToAArch64Error
+
+// Errors
+pub suberror MIRToAArch64Error String
+fn MIRToAArch64Error::output(Self, &Logger) -> Unit // from trait `Show`
+fn MIRToAArch64Error::to_string(Self) -> String // from trait `Show`
+impl Show for MIRToAArch64Error
+
+// Types and methods
+pub(all) enum AArch64Asm {
+  Global(String)
+  Asciz(String)
+  Byte(Byte)
+  Half(UInt16)
+  Word(UInt)
+  Quad(UInt64)
+  Zero(UInt)
+  Mov64(Reg, Reg)
+  Mov32(Reg, Reg)
+  MovImm64(Reg, Int64)
+  MovImm32(Reg, Int)
+  Add64(Reg, Reg, Reg)
+  Add64Imm(Reg, Reg, Int)
+  Sub64(Reg, Reg, Reg)
+  Sub64Imm(Reg, Reg, Int)
+  Mul64(Reg, Reg, Reg)
+  Sdiv64(Reg, Reg, Reg)
+  Udiv64(Reg, Reg, Reg)
+  Add32(Reg, Reg, Reg)
+  Add32Imm(Reg, Reg, Int)
+  Sub32(Reg, Reg, Reg)
+  Sub32Imm(Reg, Reg, Int)
+  Mul32(Reg, Reg, Reg)
+  Sdiv32(Reg, Reg, Reg)
+  Udiv32(Reg, Reg, Reg)
+  And64(Reg, Reg, Reg)
+  And64Imm(Reg, Reg, Int64)
+  And32(Reg, Reg, Reg)
+  And32Imm(Reg, Reg, Int)
+  Orr64(Reg, Reg, Reg)
+  Orr64Imm(Reg, Reg, Int64)
+  Orr32(Reg, Reg, Reg)
+  Orr32Imm(Reg, Reg, Int)
+  Eor64(Reg, Reg, Reg)
+  Eor64Imm(Reg, Reg, Int64)
+  Eor32(Reg, Reg, Reg)
+  Eor32Imm(Reg, Reg, Int)
+  Mvn64(Reg, Reg)
+  Mvn32(Reg, Reg)
+  Lsl64(Reg, Reg, Reg)
+  Lsl64Imm(Reg, Reg, Int)
+  Lsl32(Reg, Reg, Reg)
+  Lsl32Imm(Reg, Reg, Int)
+  Lsr64(Reg, Reg, Reg)
+  Lsr64Imm(Reg, Reg, Int)
+  Lsr32(Reg, Reg, Reg)
+  Lsr32Imm(Reg, Reg, Int)
+  Asr64(Reg, Reg, Reg)
+  Asr64Imm(Reg, Reg, Int)
+  Asr32(Reg, Reg, Reg)
+  Asr32Imm(Reg, Reg, Int)
+  Ldr64(Reg, Mem)
+  Ldr32(Reg, Mem)
+  Ldrh(Reg, Mem)
+  Ldrb(Reg, Mem)
+  Ldrsw(Reg, Mem)
+  Ldrsh(Reg, Mem)
+  Ldrsb(Reg, Mem)
+  Str64(Reg, Mem)
+  Str32(Reg, Mem)
+  Strh(Reg, Mem)
+  Strb(Reg, Mem)
+  LdrD(FReg, Mem)
+  LdrS(FReg, Mem)
+  StrD(FReg, Mem)
+  StrS(FReg, Mem)
+  FaddD(FReg, FReg, FReg)
+  FaddS(FReg, FReg, FReg)
+  FsubD(FReg, FReg, FReg)
+  FsubS(FReg, FReg, FReg)
+  FmulD(FReg, FReg, FReg)
+  FmulS(FReg, FReg, FReg)
+  FdivD(FReg, FReg, FReg)
+  FdivS(FReg, FReg, FReg)
+  FnegD(FReg, FReg)
+  FnegS(FReg, FReg)
+  FmovD(FReg, FReg)
+  FmovS(FReg, FReg)
+  FcvtDtoS(FReg, FReg)
+  FcvtStoD(FReg, FReg)
+  FcvtDtoW(Reg, FReg)
+  FcvtDtoX(Reg, FReg)
+  FcvtStoW(Reg, FReg)
+  FcvtStoX(Reg, FReg)
+  FcvtWtoD(FReg, Reg)
+  FcvtWtoS(FReg, Reg)
+  FcvtXtoD(FReg, Reg)
+  FcvtXtoS(FReg, Reg)
+  FmovXtoD(FReg, Reg)
+  FmovDtoX(Reg, FReg)
+  FmovWtoS(FReg, Reg)
+  FmovStoW(Reg, FReg)
+  Cmp64(Reg, Reg)
+  Cmp64Imm(Reg, Int)
+  Cmp32(WReg, WReg)
+  Cmp32Imm(WReg, Int)
+  FcmpD(FReg, FReg)
+  FcmpS(FReg, FReg)
+  Cset(Reg, String)
+  B(String)
+  Beq(String)
+  Bne(String)
+  Blt(String)
+  Ble(String)
+  Bgt(String)
+  Bge(String)
+  Blo(String)
+  Bls(String)
+  Bhi(String)
+  Bhs(String)
+  Cbz(Reg, String)
+  Cbnz(Reg, String)
+  Bl(String)
+  Blr(Reg)
+  Ret
+  Nop
+  Adrp(Reg, String)
+  AddLo12(Reg, Reg, String)
+  Label(String)
+  Comment(String)
+}
+fn AArch64Asm::output(Self, &Logger) -> Unit // from trait `Show`
+fn AArch64Asm::to_string(Self) -> String // from trait `Show`
+impl Show for AArch64Asm
+
+pub(all) enum FReg {
+  D0
+  D1
+  D2
+  D3
+  D4
+  D5
+  D6
+  D7
+  D8
+  D9
+  D10
+  D11
+  D12
+  D13
+  D14
+  D15
+  D16
+  D17
+  D18
+  D19
+  D20
+  D21
+  D22
+  D23
+  D24
+  D25
+  D26
+  D27
+  D28
+  D29
+  D30
+  D31
+}
+fn FReg::compare(Self, Self) -> Int // from trait `Compare`
+fn FReg::equal(Self, Self) -> Bool // from trait `Eq`
+fn FReg::hash(Self) -> Int // from trait `Hash`
+fn FReg::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn FReg::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn FReg::output(Self, &Logger) -> Unit // from trait `Show`
+fn FReg::to_string(Self) -> String // from trait `Show`
+impl Compare for FReg
+impl Eq for FReg
+impl Hash for FReg
+impl Show for FReg
+
+pub(all) struct Mem {
+  base : Reg
+  offset : Int64
+}
+fn Mem::compare(Self, Self) -> Int // from trait `Compare`
+fn Mem::equal(Self, Self) -> Bool // from trait `Eq`
+fn Mem::hash(Self) -> Int // from trait `Hash`
+fn Mem::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn Mem::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn Mem::output(Self, &Logger) -> Unit // from trait `Show`
+fn Mem::to_string(Self) -> String // from trait `Show`
+impl Compare for Mem
+impl Eq for Mem
+impl Hash for Mem
+impl Show for Mem
+
+pub(all) enum Reg {
+  X0
+  X1
+  X2
+  X3
+  X4
+  X5
+  X6
+  X7
+  X8
+  X9
+  X10
+  X11
+  X12
+  X13
+  X14
+  X15
+  X16
+  X17
+  X18
+  X19
+  X20
+  X21
+  X22
+  X23
+  X24
+  X25
+  X26
+  X27
+  X28
+  X29
+  X30
+  SP
+  XZR
+}
+fn Reg::compare(Self, Self) -> Int // from trait `Compare`
+fn Reg::equal(Self, Self) -> Bool // from trait `Eq`
+fn Reg::hash(Self) -> Int // from trait `Hash`
+fn Reg::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn Reg::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn Reg::output(Self, &Logger) -> Unit // from trait `Show`
+fn Reg::to_string(Self) -> String // from trait `Show`
+fn Reg::to_wreg(Self) -> WReg
+impl Compare for Reg
+impl Eq for Reg
+impl Hash for Reg
+impl Show for Reg
+
+pub(all) enum WReg {
+  W0
+  W1
+  W2
+  W3
+  W4
+  W5
+  W6
+  W7
+  W8
+  W9
+  W10
+  W11
+  W12
+  W13
+  W14
+  W15
+  W16
+  W17
+  W18
+  W19
+  W20
+  W21
+  W22
+  W23
+  W24
+  W25
+  W26
+  W27
+  W28
+  W29
+  W30
+  WZR
+}
+fn WReg::compare(Self, Self) -> Int // from trait `Compare`
+fn WReg::equal(Self, Self) -> Bool // from trait `Eq`
+fn WReg::hash(Self) -> Int // from trait `Hash`
+fn WReg::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
+#deprecated
+fn WReg::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn WReg::output(Self, &Logger) -> Unit // from trait `Show`
+fn WReg::to_string(Self) -> String // from trait `Show`
+impl Compare for WReg
+impl Eq for WReg
+impl Hash for WReg
+impl Show for WReg
+
+// Type aliases
+
+// Traits
+

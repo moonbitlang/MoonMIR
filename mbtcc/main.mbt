@@ -2,18 +2,17 @@
 fn main {
   // Determine target architecture
   let args = @env.args()
-  let target_arch = if args.contains("--target=aarch64") || args.contains("--target=arm64") {
+  let target_arch = if args.contains("--target=aarch64") ||
+    args.contains("--target=arm64") {
     "aarch64"
   } else {
-    "riscv64"  // Default to RISC-V
+    "riscv64" // Default to RISC-V
   }
-  
   let arch_config = match target_arch {
     "aarch64" => @MoonMIR.ArchConfig::aarch64()
     "riscv64" => @MoonMIR.ArchConfig::riscv64()
-    _ => @MoonMIR.ArchConfig::riscv64()  // fallback
+    _ => @MoonMIR.ArchConfig::riscv64() // fallback
   }
-  
   let help_info =
     #|Usage: mbtcc [options] <input_file>
     #|

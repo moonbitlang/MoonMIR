@@ -1478,7 +1478,9 @@ fn branch_eq_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Beq(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Beq(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1508,7 +1510,9 @@ fn branch_ne_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Bne(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Bne(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1538,7 +1542,9 @@ fn branch_lt_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Blt(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Blt(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1568,7 +1574,9 @@ fn branch_ge_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Bge(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Bge(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1598,7 +1606,9 @@ fn branch_le_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Ble(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Ble(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1628,7 +1638,9 @@ fn branch_gt_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Bgt(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Bgt(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1658,7 +1670,9 @@ fn branch_ltu_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Blo(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Blo(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1688,7 +1702,9 @@ fn branch_geu_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Bhs(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Bhs(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1718,7 +1734,9 @@ fn branch_leu_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Bls(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Bls(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1748,7 +1766,9 @@ fn branch_gtu_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Bhi(true_label), B(false_label)]
+      let wsrc1 = src1.to_wreg()
+      let wsrc2 = src2.to_wreg()
+      [Cmp32(wsrc1, wsrc2), Bhi(true_label), B(false_label)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")

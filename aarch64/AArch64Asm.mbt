@@ -53,6 +53,43 @@ pub(all) enum Reg {
 } derive(Eq, Compare, Hash)
 
 ///|
+pub(all) enum WReg {
+  // General purpose registers (32-bit names)
+  W0 // Parameter/result register
+  W1 // Parameter register  
+  W2 // Parameter register
+  W3 // Parameter register
+  W4 // Parameter register
+  W5 // Parameter register
+  W6 // Parameter register
+  W7 // Parameter register
+  W8 // Indirect result location register
+  W9 // Temporary register
+  W10 // Temporary register
+  W11 // Temporary register
+  W12 // Temporary register
+  W13 // Temporary register
+  W14 // Temporary register
+  W15 // Temporary register
+  W16 // IP0 - Intra-call-use register
+  W17 // IP1 - Intra-call-use register
+  W18 // Platform register
+  W19 // Callee-saved register
+  W20 // Callee-saved register
+  W21 // Callee-saved register
+  W22 // Callee-saved register
+  W23 // Callee-saved register
+  W24 // Callee-saved register
+  W25 // Callee-saved register
+  W26 // Callee-saved register
+  W27 // Callee-saved register
+  W28 // Callee-saved register
+  W29 // Frame pointer
+  W30 // Link register
+  WZR // Zero register
+} derive(Eq, Compare, Hash)
+
+///|
 pub impl Show for Reg with output(self, logger) {
   let s = match self {
     X0 => "x0"
@@ -88,6 +125,89 @@ pub impl Show for Reg with output(self, logger) {
     X30 => "x30"
     SP => "sp"
     XZR => "xzr"
+  }
+  logger.write_string(s)
+}
+
+///|
+pub fn Reg::to_wreg(self : Self) -> WReg {
+  match self {
+    X0 => W0
+    X1 => W1
+    X2 => W2
+    X3 => W3
+    X4 => W4
+    X5 => W5
+    X6 => W6
+    X7 => W7
+    X8 => W8
+    X9 => W9
+    X10 => W10
+    X11 => W11
+    X12 => W12
+    X13 => W13
+    X14 => W14
+    X15 => W15
+    X16 => W16
+    X17 => W17
+    X18 => W18
+    X19 => W19
+    X20 => W20
+    X21 => W21
+    X22 => W22
+    X23 => W23
+    X24 => W24
+    X25 => W25
+    X26 => W26
+    X27 => W27
+    X28 => W28
+    X29 => W29
+    X30 => W30
+    XZR => WZR
+    SP => WZR // SP doesn't have a 32-bit equivalent, use WZR
+  }
+}
+
+///|
+fn Reg::to_w_string(self : Self) -> String {
+  self.to_wreg().to_string()
+}
+
+///|
+pub impl Show for WReg with output(self, logger) {
+  let s = match self {
+    W0 => "w0"
+    W1 => "w1"
+    W2 => "w2"
+    W3 => "w3"
+    W4 => "w4"
+    W5 => "w5"
+    W6 => "w6"
+    W7 => "w7"
+    W8 => "w8"
+    W9 => "w9"
+    W10 => "w10"
+    W11 => "w11"
+    W12 => "w12"
+    W13 => "w13"
+    W14 => "w14"
+    W15 => "w15"
+    W16 => "w16"
+    W17 => "w17"
+    W18 => "w18"
+    W19 => "w19"
+    W20 => "w20"
+    W21 => "w21"
+    W22 => "w22"
+    W23 => "w23"
+    W24 => "w24"
+    W25 => "w25"
+    W26 => "w26"
+    W27 => "w27"
+    W28 => "w28"
+    W29 => "w29"
+    W30 => "w30"
+    WZR => "wzr"
   }
   logger.write_string(s)
 }
@@ -287,8 +407,8 @@ pub(all) enum AArch64Asm {
   // Comparison
   Cmp64(Reg, Reg) // cmp x1, x2
   Cmp64Imm(Reg, Int) // cmp x1, #imm
-  Cmp32(Reg, Reg) // cmp w1, w2
-  Cmp32Imm(Reg, Int) // cmp w1, #imm
+  Cmp32(WReg, WReg) // cmp w1, w2
+  Cmp32Imm(WReg, Int) // cmp w1, #imm
   FcmpD(FReg, FReg) // fcmp d1, d2
   FcmpS(FReg, FReg) // fcmp s1, s2
 
@@ -357,9 +477,9 @@ pub impl Show for AArch64Asm with output(self, logger) {
 
     // Data movement
     Mov64(rd, rs) => "mov \{rd}, \{rs}"
-    Mov32(rd, rs) => "mov \{rd}, \{rs}" // Will use w register names
+    Mov32(rd, rs) => "mov \{rd.to_w_string()}, \{rs.to_w_string()}"
     MovImm64(rd, imm) => "mov \{rd}, #\{imm}"
-    MovImm32(rd, imm) => "mov \{rd}, #\{imm}" // Will use w register names
+    MovImm32(rd, imm) => "mov \{rd.to_w_string()}, #\{imm}"
 
     // Arithmetic 64-bit
     Add64(rd, rs1, rs2) => "add \{rd}, \{rs1}, \{rs2}"
@@ -371,56 +491,75 @@ pub impl Show for AArch64Asm with output(self, logger) {
     Udiv64(rd, rs1, rs2) => "udiv \{rd}, \{rs1}, \{rs2}"
 
     // Arithmetic 32-bit (will need w register conversion)
-    Add32(rd, rs1, rs2) => "add \{rd}, \{rs1}, \{rs2}"
-    Add32Imm(rd, rs, imm) => "add \{rd}, \{rs}, #\{imm}"
-    Sub32(rd, rs1, rs2) => "sub \{rd}, \{rs1}, \{rs2}"
-    Sub32Imm(rd, rs, imm) => "sub \{rd}, \{rs}, #\{imm}"
-    Mul32(rd, rs1, rs2) => "mul \{rd}, \{rs1}, \{rs2}"
-    Sdiv32(rd, rs1, rs2) => "sdiv \{rd}, \{rs1}, \{rs2}"
-    Udiv32(rd, rs1, rs2) => "udiv \{rd}, \{rs1}, \{rs2}"
+    Add32(rd, rs1, rs2) =>
+      "add \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    Add32Imm(rd, rs, imm) =>
+      "add \{rd.to_w_string()}, \{rs.to_w_string()}, #\{imm}"
+    Sub32(rd, rs1, rs2) =>
+      "sub \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    Sub32Imm(rd, rs, imm) =>
+      "sub \{rd.to_w_string()}, \{rs.to_w_string()}, #\{imm}"
+    Mul32(rd, rs1, rs2) =>
+      "mul \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    Sdiv32(rd, rs1, rs2) =>
+      "sdiv \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    Udiv32(rd, rs1, rs2) =>
+      "udiv \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
 
     // Logical operations
     And64(rd, rs1, rs2) => "and \{rd}, \{rs1}, \{rs2}"
     And64Imm(rd, rs, imm) => "and \{rd}, \{rs}, #\{imm}"
-    And32(rd, rs1, rs2) => "and \{rd}, \{rs1}, \{rs2}"
-    And32Imm(rd, rs, imm) => "and \{rd}, \{rs}, #\{imm}"
+    And32(rd, rs1, rs2) =>
+      "and \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    And32Imm(rd, rs, imm) =>
+      "and \{rd.to_w_string()}, \{rs.to_w_string()}, #\{imm}"
     Orr64(rd, rs1, rs2) => "orr \{rd}, \{rs1}, \{rs2}"
     Orr64Imm(rd, rs, imm) => "orr \{rd}, \{rs}, #\{imm}"
-    Orr32(rd, rs1, rs2) => "orr \{rd}, \{rs1}, \{rs2}"
-    Orr32Imm(rd, rs, imm) => "orr \{rd}, \{rs}, #\{imm}"
+    Orr32(rd, rs1, rs2) =>
+      "orr \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    Orr32Imm(rd, rs, imm) =>
+      "orr \{rd.to_w_string()}, \{rs.to_w_string()}, #\{imm}"
     Eor64(rd, rs1, rs2) => "eor \{rd}, \{rs1}, \{rs2}"
     Eor64Imm(rd, rs, imm) => "eor \{rd}, \{rs}, #\{imm}"
-    Eor32(rd, rs1, rs2) => "eor \{rd}, \{rs1}, \{rs2}"
-    Eor32Imm(rd, rs, imm) => "eor \{rd}, \{rs}, #\{imm}"
+    Eor32(rd, rs1, rs2) =>
+      "eor \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    Eor32Imm(rd, rs, imm) =>
+      "eor \{rd.to_w_string()}, \{rs.to_w_string()}, #\{imm}"
     Mvn64(rd, rs) => "mvn \{rd}, \{rs}"
-    Mvn32(rd, rs) => "mvn \{rd}, \{rs}"
+    Mvn32(rd, rs) => "mvn \{rd.to_w_string()}, \{rs.to_w_string()}"
 
     // Shift operations
     Lsl64(rd, rs1, rs2) => "lsl \{rd}, \{rs1}, \{rs2}"
     Lsl64Imm(rd, rs, imm) => "lsl \{rd}, \{rs}, #\{imm}"
-    Lsl32(rd, rs1, rs2) => "lsl \{rd}, \{rs1}, \{rs2}"
-    Lsl32Imm(rd, rs, imm) => "lsl \{rd}, \{rs}, #\{imm}"
+    Lsl32(rd, rs1, rs2) =>
+      "lsl \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    Lsl32Imm(rd, rs, imm) =>
+      "lsl \{rd.to_w_string()}, \{rs.to_w_string()}, #\{imm}"
     Lsr64(rd, rs1, rs2) => "lsr \{rd}, \{rs1}, \{rs2}"
     Lsr64Imm(rd, rs, imm) => "lsr \{rd}, \{rs}, #\{imm}"
-    Lsr32(rd, rs1, rs2) => "lsr \{rd}, \{rs1}, \{rs2}"
-    Lsr32Imm(rd, rs, imm) => "lsr \{rd}, \{rs}, #\{imm}"
+    Lsr32(rd, rs1, rs2) =>
+      "lsr \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    Lsr32Imm(rd, rs, imm) =>
+      "lsr \{rd.to_w_string()}, \{rs.to_w_string()}, #\{imm}"
     Asr64(rd, rs1, rs2) => "asr \{rd}, \{rs1}, \{rs2}"
     Asr64Imm(rd, rs, imm) => "asr \{rd}, \{rs}, #\{imm}"
-    Asr32(rd, rs1, rs2) => "asr \{rd}, \{rs1}, \{rs2}"
-    Asr32Imm(rd, rs, imm) => "asr \{rd}, \{rs}, #\{imm}"
+    Asr32(rd, rs1, rs2) =>
+      "asr \{rd.to_w_string()}, \{rs1.to_w_string()}, \{rs2.to_w_string()}"
+    Asr32Imm(rd, rs, imm) =>
+      "asr \{rd.to_w_string()}, \{rs.to_w_string()}, #\{imm}"
 
     // Load/Store
     Ldr64(rd, mem) => "ldr \{rd}, \{mem}"
-    Ldr32(rd, mem) => "ldr \{rd}, \{mem}" // Will use w register names
-    Ldrh(rd, mem) => "ldrh \{rd}, \{mem}"
-    Ldrb(rd, mem) => "ldrb \{rd}, \{mem}"
+    Ldr32(rd, mem) => "ldr \{rd.to_w_string()}, \{mem}"
+    Ldrh(rd, mem) => "ldrh \{rd.to_w_string()}, \{mem}"
+    Ldrb(rd, mem) => "ldrb \{rd.to_w_string()}, \{mem}"
     Ldrsw(rd, mem) => "ldrsw \{rd}, \{mem}"
     Ldrsh(rd, mem) => "ldrsh \{rd}, \{mem}"
     Ldrsb(rd, mem) => "ldrsb \{rd}, \{mem}"
     Str64(rs, mem) => "str \{rs}, \{mem}"
-    Str32(rs, mem) => "str \{rs}, \{mem}" // Will use w register names
-    Strh(rs, mem) => "strh \{rs}, \{mem}"
-    Strb(rs, mem) => "strb \{rs}, \{mem}"
+    Str32(rs, mem) => "str \{rs.to_w_string()}, \{mem}"
+    Strh(rs, mem) => "strh \{rs.to_w_string()}, \{mem}"
+    Strb(rs, mem) => "strb \{rs.to_w_string()}, \{mem}"
 
     // Floating point load/store
     LdrD(fd, mem) => "ldr \{fd}, \{mem}"

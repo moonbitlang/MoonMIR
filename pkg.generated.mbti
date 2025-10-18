@@ -89,6 +89,7 @@ pub(all) struct ArchConfig {
   num_saved_fregs : Int
   support_select : Bool
 }
+fn ArchConfig::aarch64() -> Self
 fn ArchConfig::debug() -> Self
 fn ArchConfig::riscv64() -> Self
 
@@ -146,7 +147,10 @@ pub(all) enum BranchOpCode {
 fn BranchOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 #deprecated
 fn BranchOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn BranchOpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn BranchOpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for BranchOpCode
+impl Show for BranchOpCode
 
 pub(all) enum CastOpCode {
   Trunc(Int, Int)
@@ -162,7 +166,10 @@ pub(all) enum CastOpCode {
 fn CastOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 #deprecated
 fn CastOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn CastOpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn CastOpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for CastOpCode
+impl Show for CastOpCode
 
 pub(all) enum FBinaryOpCode {
   FAdd
@@ -175,7 +182,10 @@ fn FBinaryOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 fn FBinaryOpCode::is_commutative(Self) -> Bool
 #deprecated
 fn FBinaryOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn FBinaryOpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn FBinaryOpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for FBinaryOpCode
+impl Show for FBinaryOpCode
 
 pub(all) enum FCmpOpCode {
   Feq
@@ -188,7 +198,10 @@ pub(all) enum FCmpOpCode {
 fn FCmpOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 #deprecated
 fn FCmpOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn FCmpOpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn FCmpOpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for FCmpOpCode
+impl Show for FCmpOpCode
 
 pub(all) enum FRegister {
   VFReg(Int)
@@ -213,7 +226,10 @@ pub(all) enum FUnaryOpCode {
 fn FUnaryOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 #deprecated
 fn FUnaryOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn FUnaryOpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn FUnaryOpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for FUnaryOpCode
+impl Show for FUnaryOpCode
 
 pub(all) struct Function {
   mod : Module
@@ -309,7 +325,10 @@ fn IBinaryOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 fn IBinaryOpCode::is_commutative(Self) -> Bool
 #deprecated
 fn IBinaryOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn IBinaryOpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn IBinaryOpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for IBinaryOpCode
+impl Show for IBinaryOpCode
 
 pub(all) enum ICmpOpCode {
   Eq
@@ -326,7 +345,10 @@ pub(all) enum ICmpOpCode {
 fn ICmpOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 #deprecated
 fn ICmpOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn ICmpOpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn ICmpOpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for ICmpOpCode
+impl Show for ICmpOpCode
 
 pub struct IRBuilder {
   func : Function
@@ -349,10 +371,8 @@ fn IRBuilder::build_fmove_imm(Self, Int, dst~ : FRegister, src~ : Double, loc~ :
 fn IRBuilder::build_fmove_to_ireg(Self, Int, dst~ : IRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
 #callsite(autofill(loc))
 fn IRBuilder::build_fneg(Self, Int, dst~ : FRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
-#callsite(autofill(loc))
-fn IRBuilder::build_fp_to_si(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction
-#callsite(autofill(loc))
-fn IRBuilder::build_fp_to_ui(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction
+fn IRBuilder::build_fp_to_si(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : FRegister) -> Instruction
+fn IRBuilder::build_fp_to_ui(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : FRegister) -> Instruction
 #callsite(autofill(loc))
 fn IRBuilder::build_fpext(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
 #callsite(autofill(loc))
@@ -380,16 +400,14 @@ fn IRBuilder::build_loadi(Self, Int, dst~ : IRegister, base~ : IRegister, offset
 fn IRBuilder::build_ret(Self) -> Instruction
 #callsite(autofill(loc))
 fn IRBuilder::build_sext(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
-#callsite(autofill(loc))
-fn IRBuilder::build_si_to_fp(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction
+fn IRBuilder::build_si_to_fp(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : IRegister) -> Instruction
 #callsite(autofill(loc))
 fn IRBuilder::build_storef(Self, Int, src~ : FRegister, base~ : IRegister, offset~ : Int64, loc~ : SourceLoc) -> Instruction raise MIRError
 #callsite(autofill(loc))
 fn IRBuilder::build_storei(Self, Int, src~ : IRegister, base~ : IRegister, offset~ : Int64, loc~ : SourceLoc) -> Instruction raise MIRError
 #callsite(autofill(loc))
 fn IRBuilder::build_trunc(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
-#callsite(autofill(loc))
-fn IRBuilder::build_ui_to_fp(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction
+fn IRBuilder::build_ui_to_fp(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : FRegister, src~ : IRegister) -> Instruction
 #callsite(autofill(loc))
 fn IRBuilder::build_zext(Self, from_ty_size~ : Int, to_ty_size~ : Int, dst~ : IRegister, src~ : IRegister, loc~ : SourceLoc) -> Instruction raise MIRError
 fn IRBuilder::new(Function, BasicBlock) -> Self
@@ -421,7 +439,10 @@ pub(all) enum IUnaryOpCode {
 fn IUnaryOpCode::equal(Self, Self) -> Bool // from trait `Eq`
 #deprecated
 fn IUnaryOpCode::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn IUnaryOpCode::output(Self, &Logger) -> Unit // from trait `Show`
+fn IUnaryOpCode::to_string(Self) -> String // from trait `Show`
 impl Eq for IUnaryOpCode
+impl Show for IUnaryOpCode
 
 pub(all) struct Instruction {
   id : Int
@@ -437,6 +458,16 @@ fn Instruction::contains_virtual_reg(Self) -> Bool
 fn Instruction::equal(Self, Self) -> Bool // from trait `Eq`
 fn Instruction::legalize(Self) -> Array[Self] raise MIRError
 fn Instruction::legalize_branch(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast(Self, IRBuilder) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast_fp_to_si(Self, IRBuilder, Function, CastOpCode) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast_fp_to_ui(Self, IRBuilder, Function, CastOpCode) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast_fpext(Self, IRBuilder, Function, CastOpCode) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast_fptrunc(Self, IRBuilder, Function, CastOpCode) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast_sext(Self, IRBuilder, Function, CastOpCode) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast_si_to_fp(Self, IRBuilder, Function, CastOpCode) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast_trunc(Self, IRBuilder, Function, CastOpCode) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast_ui_to_fp(Self, IRBuilder, Function, CastOpCode) -> Array[Self] raise MIRError
+fn Instruction::legalize_cast_zext(Self, IRBuilder, Function, CastOpCode) -> Array[Self] raise MIRError
 fn Instruction::legalize_fbinary(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::legalize_fcmp(Self, IRBuilder) -> Array[Self] raise MIRError
 fn Instruction::legalize_fload(Self, IRBuilder) -> Array[Self] raise MIRError
@@ -543,6 +574,7 @@ pub(all) enum Operand {
   IRegister(IRegister)
   FRegister(FRegister)
   Mem(IRegister, Int64)
+  MemLoc(IRegister, Int64)
   Imm(Int64)
   FImm(Double)
   Label(String)
