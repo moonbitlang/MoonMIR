@@ -1,6 +1,19 @@
 ///|
 fn main {
-  let rv64_config = @MoonMIR.ArchConfig::riscv64()
+  // Determine target architecture
+  let args = @env.args()
+  let target_arch = if args.contains("--target=aarch64") || args.contains("--target=arm64") {
+    "aarch64"
+  } else {
+    "riscv64"  // Default to RISC-V
+  }
+  
+  let arch_config = match target_arch {
+    "aarch64" => @MoonMIR.ArchConfig::aarch64()
+    "riscv64" => @MoonMIR.ArchConfig::riscv64()
+    _ => @MoonMIR.ArchConfig::riscv64()  // fallback
+  }
+  
   let help_info =
     #|Usage: mbtcc [options] <input_file>
     #|
@@ -8,13 +21,13 @@ fn main {
     #|  -h, --help                Show this help message
     #|  -f, --file <input_file>   Specify the input file
     #|  -o <output_file>          Specify the output file name
+    #|  --target=<arch>           Target architecture (riscv64, aarch64/arm64)
     #|  -emit-llvm                Output LLVM IR
     #|  --stop-after=IRTranslate   Stop after IR translation
     #|  --stop-after=Legalize      Stop after legalization
     #|  --stop-after=RegAlloc      Stop after register allocation
     #|  --stop-after=PostRA        Stop after post register allocation
     #|  --print-all               Print intermediate representations at all stages
-  let args = @env.args()
   if args.length() == 1 || args.contains("-h") || args.contains("--help") {
     println(help_info)
     return
@@ -76,7 +89,7 @@ fn main {
     println("==================== LLVM IR ================")
     println(llvm_mod)
   }
-  let mir_mod = @MoonMIR.Module::new(rv64_config)
+  let mir_mod = @MoonMIR.Module::new(arch_config)
   mir_mod.translate_llvm_module(llvm_mod) catch {
     e => {
       println("Error during MoonMIR translation: \{e}")
@@ -127,9 +140,40 @@ fn main {
     println("==================== MoonMIR PostRA ================")
     println(mir_mod)
   }
-  let riscv_asm = @riscv.mir_module_to_riscv(mir_mod) catch {
-    e => {
-      println("Error during RISCV assembly generation: \{e}")
+  // Generate assembly string based on target architecture
+  let asm_string = match target_arch {
+    "aarch64" => {
+      let aarch64_asm = @arm64.mir_module_to_aarch64(mir_mod) catch {
+        e => {
+          println("Error during AArch64 assembly generation: \{e}")
+          return
+        }
+      }
+      let mut s = ""
+      aarch64_asm.each(line => s += if line is Label(_) {
+        line.to_string() + "\n"
+      } else {
+        "    " + line.to_string() + "\n"
+      })
+      s
+    }
+    "riscv64" => {
+      let riscv_asm = @riscv.mir_module_to_riscv(mir_mod) catch {
+        e => {
+          println("Error during RISCV assembly generation: \{e}")
+          return
+        }
+      }
+      let mut s = ""
+      riscv_asm.each(line => s += if line is Label(_) {
+        line.to_string() + "\n"
+      } else {
+        "    " + line.to_string() + "\n"
+      })
+      s
+    }
+    _ => {
+      println("Unsupported target architecture: \{target_arch}")
       return
     }
   }
@@ -137,13 +181,7 @@ fn main {
     args.search("-o") is Some(idx) &&
     idx + 1 < args.length() {
     let output_file = args[idx + 1]
-    let mut s = ""
-    riscv_asm.each(line => s += if line is Label(_) {
-      line.to_string() + "\n"
-    } else {
-      "  " + line.to_string() + "\n"
-    })
-    @fs.write_string_to_file(output_file, s) catch {
+    @fs.write_string_to_file(output_file, asm_string) catch {
       err => {
         println("Error writing assembly to file: \{err}")
         return
@@ -151,5 +189,5 @@ fn main {
     }
     return
   }
-  riscv_asm.each(line => println(line))
+  println(asm_string)
 }
