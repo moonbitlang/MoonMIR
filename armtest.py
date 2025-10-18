@@ -9,8 +9,11 @@ import sys
 
 # 测试用例的基础名称列表
 TEST_CASES = [
-    "simple_ret", "simple_add", "simple_fib", "fib", "if", "while",
-    "for", "many_args", "order_args", "struct", "array", "heap_arr",
+    "simple_ret", "simple_add", "simple_fib", "fib", "if", 
+    "while", "while2", "nested_while", "for", "many_args",
+    "order_args", "ptr", "struct", "array", "heap_arr", "matrix",
+    "bubble_sort", "binary_search", "merge_sort", 
+    "quick_sort", "linked_list", "bst",
 ]
 
 # C语言源文件所在的目录
