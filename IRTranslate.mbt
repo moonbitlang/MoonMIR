@@ -54,40 +54,47 @@ pub fn Module::translate_llvm_global_constant(
   global_constant : &@IR.Constant,
 ) -> Unit raise MIRError {
   let gv = match global_constant.asConstantEnum() {
+    ConstantString({ data, .. }) =>
+      self.add_global_string(label=global_name, content=data)
+    _ => {
+      let data = llvm_global_constant_to_data(global_constant)
+      self.add_global_data(global_name, data)
+    }
+  }
+  let _ = gv
+}
+
+pub fn llvm_global_constant_to_data(
+  global_constant: &@IR.Constant
+) -> Array[GlobalValueData] raise MIRError {
+  match global_constant.asConstantEnum() {
     ConstantInt({ vty, value, .. }) =>
       match vty.asIntegerTypeEnum() {
         Int1Type(_) => {
-          let data = [Byte(value.to_byte())]
-          self.add_global_data(global_name, data)
+          [Byte(value.to_byte())]
         }
         Int8Type(_) => {
-          let data = [Byte(value.to_byte())]
-          self.add_global_data(global_name, data)
+          [Byte(value.to_byte())]
         }
         Int16Type(_) => {
-          let data = [Half(value.to_uint16())]
-          self.add_global_data(global_name, data)
+           [Half(value.to_uint16())]
         }
         Int32Type(_) => {
-          let data = [Word(value.to_int().reinterpret_as_uint())]
-          self.add_global_data(global_name, data)
+          [Word(value.to_int().reinterpret_as_uint())]
         }
         Int64Type(_) => {
-          let data = [Quad(value.reinterpret_as_uint64())]
-          self.add_global_data(global_name, data)
+          [Quad(value.reinterpret_as_uint64())]
         }
       }
     ConstantFP({ vty, value, .. }) =>
       match vty.asFPTypeEnum() {
         FloatType(_) => {
           let bits = value.to_float().reinterpret_as_uint()
-          let data = [Word(bits)]
-          self.add_global_data(global_name, data)
+          [Word(bits)]
         }
         DoubleType(_) => {
           let bits = value.reinterpret_as_uint64()
-          let data = [Quad(bits)]
-          self.add_global_data(global_name, data)
+          [Quad(bits)]
         }
         ty =>
           raise IRTranslateError(
@@ -95,24 +102,121 @@ pub fn Module::translate_llvm_global_constant(
           )
       }
     ConstantPointerNull(_) => {
-      let data = [Quad(0)]
-      self.add_global_data(global_name, data)
+      [Quad(0)]
     }
-    ConstantString({ data, .. }) =>
-      self.add_global_string(label=global_name, content=data)
-    ConstantArray(_) =>
-      raise IRTranslateError(
-        "ConstantArray in global constant is not supported yet.",
-      )
-    ConstantStruct(_) =>
-      raise IRTranslateError(
-        "ConstantStruct in global constant is not supported yet.",
-      )
+    ConstantArray({ data: Left(const_arr), ..}) => {
+      let data: Array[GlobalValueData] = Array::new()
+      for item in const_arr {
+        let item_data = llvm_global_constant_to_data(item)
+        data.append(item_data)
+      }
+      data
+    }
+    ConstantArray({ data: Right(Int8Array(arr)), ..}) => {
+      let length = arr.length()
+      let Int8Array(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        data.push(Byte(arr[i].to_byte()))
+      }
+      data
+    }
+    ConstantArray({ data: Right(UInt8Array(arr)), ..}) => {
+      let length = arr.length()
+      let UInt8Array(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        let UInt8(byte) = arr[i]
+        data.push(Byte(byte))
+      }
+      data
+    }
+    ConstantArray({ data: Right(Int16Array(arr)), ..}) => {
+      let length = arr.length()
+      let Int16Array(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        data.push(Half(arr[i].reinterpret_as_uint16()))
+      }
+      data
+    }
+    ConstantArray({ data: Right(UInt16Array(arr)), ..}) => {
+      let length = arr.length()
+      let UInt16Array(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        data.push(Half(arr[i]))
+      }
+      data
+    }
+    ConstantArray({ data: Right(Int32Array(arr)), ..}) => {
+      let length = arr.length()
+      let Int32Array(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        data.push(Word(arr[i].reinterpret_as_uint()))
+      }
+      data
+    }
+    ConstantArray({ data: Right(UInt32Array(arr)), ..}) => {
+      let length = arr.length()
+      let UInt32Array(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        data.push(Word(arr[i]))
+      }
+      data
+    }
+    ConstantArray({ data: Right(Int64Array(arr)), ..}) => {
+      let length = arr.length()
+      let Int64Array(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        data.push(Quad(arr[i].reinterpret_as_uint64()))
+      }
+      data
+    }
+    ConstantArray({ data: Right(UInt64Array(arr)), ..}) => {
+      let length = arr.length()
+      let UInt64Array(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        data.push(Quad(arr[i]))
+      }
+      data
+    }
+    ConstantArray({ data: Right(FloatArray(arr)), ..}) => {
+      let length = arr.length()
+      let FloatArray(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        let bits = arr[i].reinterpret_as_uint()
+        data.push(Word(bits))
+      }
+      data
+    }
+    ConstantArray({ data: Right(DoubleArray(arr)), ..}) => {
+      let length = arr.length()
+      let DoubleArray(arr) = arr
+      let data: Array[GlobalValueData] = Array::new()
+      for i in 0 ..<length {
+        let bits = arr[i].reinterpret_as_uint64()
+        data.push(Quad(bits))
+      }
+      data
+    }
+    ConstantStruct({ elements, ..}) => {
+      let data: Array[GlobalValueData] = Array::new()
+      for element in elements {
+        let element_data = llvm_global_constant_to_data(element)
+        data.append(element_data)
+      }
+      data
+    }
     _ => raise IRTranslateError("Unsupported constant type in global constant.")
   }
-  let _ = gv
-
 }
+
 
 ///|
 pub fn Function::translate_llvm_function(
@@ -286,7 +390,7 @@ fn Function::traverse_llvm_instructions(
           VoidType(_) => ()
           _ =>
             raise IRTranslateError(
-              "Cannot bind LLVM instruction type \{llvm_ty} to a register",
+              "Cannot bind LLVM instruction type \{llvm_ty} to a register, inst is \{llvm_inst}",
             )
         }
       }

@@ -1,7 +1,10 @@
 {
   "import" : [
     "Kaida-Amethyst/MoonLLVM/IR",
-    "Kaida-Amethyst/TinyMoonBit"
+    "Kaida-Amethyst/MoonLLVM/int8",
+    "Kaida-Amethyst/MoonLLVM/uint8",
+    "Kaida-Amethyst/TinyMoonBit",
+    "Kaida-Amethyst/either",
   ],
   "warn-list": "-15-29"
 }
