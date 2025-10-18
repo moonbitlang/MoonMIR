@@ -241,6 +241,7 @@ pub(all) struct Function {
   terminal_blocks : Array[BasicBlock]
   mut llvm_func : @IR.Function?
   is_external : Bool
+  is_variadic : Bool
   value_map : Map[&@IR.Value, Operand]
   bbmap : Map[String, BasicBlock]
   mut vreg_cnt : Int
@@ -270,7 +271,7 @@ fn Function::keeped_treg1(Self) -> IRegister
 fn Function::keeped_treg2(Self) -> (IRegister, IRegister)
 fn Function::legalize(Self) -> Unit raise MIRError
 fn Function::live_analysis(Self) -> Unit
-fn Function::new(Module, String, Bool) -> Self
+fn Function::new(Module, String, Bool, is_variadic? : Bool) -> Self
 fn Function::new_virtual_freg(Self) -> FRegister
 fn Function::new_virtual_reg(Self) -> IRegister
 fn Function::output(Self, &Logger) -> Unit // from trait `Show`
@@ -354,8 +355,8 @@ pub struct IRBuilder {
   func : Function
   bb : BasicBlock
 }
-fn IRBuilder::build_branch(Self, BranchOpCode, lhs~ : IRegister, rhs~ : IRegister, true_label~ : String, false_label~ : String) -> Instruction
-fn IRBuilder::build_branch_imm(Self, BranchOpCode, lhs~ : IRegister, rhs~ : Int64, true_label~ : String, false_label~ : String) -> Instruction
+fn IRBuilder::build_branch(Self, BranchOpCode, Int, lhs~ : IRegister, rhs~ : IRegister, true_label~ : String, false_label~ : String) -> Instruction
+fn IRBuilder::build_branch_imm(Self, BranchOpCode, Int, lhs~ : IRegister, rhs~ : Int64, true_label~ : String, false_label~ : String) -> Instruction
 fn IRBuilder::build_call(Self, String) -> Instruction
 #callsite(autofill(loc))
 fn IRBuilder::build_fbinary(Self, FBinaryOpCode, Int, dst~ : FRegister, src1~ : FRegister, src2~ : FRegister, loc~ : SourceLoc) -> Instruction raise MIRError
@@ -521,7 +522,7 @@ pub(all) struct Module {
   external_functions : Map[String, @IR.Function]
   global_values : Array[GlobalValue]
 }
-fn Module::add_function(Self, String, Array[ArgPattern], Bool) -> Function
+fn Module::add_function(Self, String, Array[ArgPattern], Bool, is_variadic? : Bool) -> Function
 fn Module::add_global_data(Self, String, Array[GlobalValueData]) -> GlobalValue
 fn Module::add_global_string(Self, label~ : String, content~ : String) -> GlobalValue
 fn Module::add_global_zero_data(Self, String, UInt) -> GlobalValue
@@ -544,7 +545,7 @@ pub(all) enum OpCode {
   ILoad(Int)
   IStore(Int)
   IMove(Int)
-  Branch(BranchOpCode)
+  Branch(BranchOpCode, Int)
   FBinary(FBinaryOpCode, Int)
   FUnary(FUnaryOpCode, Int)
   FCmp(FCmpOpCode, Int)

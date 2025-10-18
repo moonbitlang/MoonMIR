@@ -11,8 +11,8 @@ import sys
 TEST_CASES = [
     "simple_ret", "simple_add", "simple_fib", "fib", "if", 
     "while", "while2", "nested_while", "for", "many_args",
-    "order_args", "ptr", "struct", "array", "heap_arr", "matrix",
-    "bubble_sort", "binary_search", "merge_sort", 
+    "order_args", "ptr", "struct", "array", "heap_arr", 
+    "arr_struct", "matrix", "bubble_sort", "merge_sort", "binary_search", 
     "quick_sort", "linked_list", "bst",
 ]
 

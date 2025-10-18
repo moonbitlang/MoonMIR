@@ -554,7 +554,14 @@ pub fn Instruction::legalize_branch(
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
-        builder.build_branch(bop, bits, lhs=v1, rhs=v2, true_label~, false_label~),
+        builder.build_branch(
+          bop,
+          bits,
+          lhs=v1,
+          rhs=v2,
+          true_label~,
+          false_label~,
+        ),
       ]
     }
     {
@@ -565,7 +572,14 @@ pub fn Instruction::legalize_branch(
       let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
-        builder.build_branch(bop, bits, lhs=v1, rhs=r2, true_label~, false_label~),
+        builder.build_branch(
+          bop,
+          bits,
+          lhs=v1,
+          rhs=r2,
+          true_label~,
+          false_label~,
+        ),
       ]
     }
     {
@@ -576,7 +590,14 @@ pub fn Instruction::legalize_branch(
       let v1 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
-        builder.build_branch_imm(bop, bits, lhs=v1, rhs=v2, true_label~, false_label~),
+        builder.build_branch_imm(
+          bop,
+          bits,
+          lhs=v1,
+          rhs=v2,
+          true_label~,
+          false_label~,
+        ),
       ]
     }
     {
@@ -587,7 +608,14 @@ pub fn Instruction::legalize_branch(
       let v2 = func.keeped_treg1()
       [
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
-        builder.build_branch(bop, bits, lhs=r1, rhs=v2, true_label~, false_label~),
+        builder.build_branch(
+          bop,
+          bits,
+          lhs=r1,
+          rhs=v2,
+          true_label~,
+          false_label~,
+        ),
       ]
     }
     { defs: [], uses: [IRegister(_), IRegister(_), Label(_), Label(_)], .. } as inst =>
@@ -600,7 +628,14 @@ pub fn Instruction::legalize_branch(
       let v2 = func.keeped_treg1()
       [
         builder.build_imove_imm(bits, dst=v2, src=i2),
-        builder.build_branch(bop, bits, lhs=r1, rhs=v2, true_label~, false_label~),
+        builder.build_branch(
+          bop,
+          bits,
+          lhs=r1,
+          rhs=v2,
+          true_label~,
+          false_label~,
+        ),
       ]
     }
     {
@@ -612,7 +647,14 @@ pub fn Instruction::legalize_branch(
       [
         builder.build_loadi(bits, dst=v2, base=b2, offset=o2),
         builder.build_imove_imm(bits, dst=v1, src=i1),
-        builder.build_branch(bop, bits, lhs=v1, rhs=v2, true_label~, false_label~),
+        builder.build_branch(
+          bop,
+          bits,
+          lhs=v1,
+          rhs=v2,
+          true_label~,
+          false_label~,
+        ),
       ]
     }
     {
@@ -623,7 +665,14 @@ pub fn Instruction::legalize_branch(
       let v1 = func.keeped_treg1()
       [
         builder.build_imove_imm(bits, dst=v1, src=i1),
-        builder.build_branch(bop, bits, lhs=v1, rhs=r2, true_label~, false_label~),
+        builder.build_branch(
+          bop,
+          bits,
+          lhs=v1,
+          rhs=r2,
+          true_label~,
+          false_label~,
+        ),
       ]
     }
     {
@@ -635,7 +684,14 @@ pub fn Instruction::legalize_branch(
       [
         builder.build_imove_imm(bits, dst=v1, src=i1),
         builder.build_imove_imm(bits, dst=v2, src=i2),
-        builder.build_branch(bop, bits, lhs=v1, rhs=v2, true_label~, false_label~),
+        builder.build_branch(
+          bop,
+          bits,
+          lhs=v1,
+          rhs=v2,
+          true_label~,
+          false_label~,
+        ),
       ]
     }
     { defs: [], uses: [Label(_)], .. } as inst => [inst]
