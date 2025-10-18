@@ -4,7 +4,7 @@
     "Kaida-Amethyst/MoonLLVM/IR",
     "Kaida-Amethyst/MoonMIR",
     "Kaida-Amethyst/MoonMIR/riscv",
-    "Kaida-Amethyst/MoonMIR/arm64",
+    "Kaida-Amethyst/MoonMIR/aarch64",
     "Kaida-Amethyst/mbtcc/parser",
     "Kaida-Amethyst/mbtcc/codegen",
     "moonbitlang/x/fs"

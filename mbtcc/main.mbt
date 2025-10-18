@@ -143,7 +143,7 @@ fn main {
   // Generate assembly string based on target architecture
   let asm_string = match target_arch {
     "aarch64" => {
-      let aarch64_asm = @arm64.mir_module_to_aarch64(mir_mod) catch {
+      let aarch64_asm = @aarch64.mir_module_to_aarch64(mir_mod) catch {
         e => {
           println("Error during AArch64 assembly generation: \{e}")
           return
