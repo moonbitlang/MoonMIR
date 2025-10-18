@@ -2104,26 +2104,61 @@ pub fn translate_llvm_call_inst(
   func : Function,
 ) -> Array[Instruction] raise MIRError {
   let { callee, args, .. } = llvm_inst
-  let { num_arg_regs, num_arg_fregs, .. } = func.mod.arch_config
+  let { num_arg_regs, num_arg_fregs, arch_name, .. } = func.mod.arch_config
   let callee_name = callee.getName().unwrap()
+  
+  // Check if the callee is a variadic function
+  // First check MoonMIR functions, then check external LLVM functions
+  let is_variadic_call = match func.mod.get_function(callee_name) {
+    Some(f) => f.is_variadic
+    None => {
+      // Check external functions
+      match func.mod.external_functions.get(callee_name) {
+        Some(llvm_func) => llvm_func.fty.isVarArg
+        None => false // Unknown function, assume non-variadic
+      }
+    }
+  }
+  
+  // For AArch64 variadic functions, arguments after the first one should be on stack only
+  // The first argument (format string) still goes in register x0
+  let is_aarch64_variadic = is_variadic_call && arch_name == "aarch64"
+  
   let mut call_ireg_cnt = 0
   let mut call_freg_cnt = 0
+  let mut variadic_stack_offset = 0L // Stack offset for variadic arguments
   let minsts : Array[Instruction] = Array::new()
-  for arg in args {
+  for arg_idx, arg in args.iter2() {
     guard func.get_operand_from_llvm_value(arg) is Some(arg_op) else {
       raise IRTranslateError(
         "CallInst: argument operand not found in value_map",
       )
     }
     let arg_is_fp = arg.getType().isIEEELikeFPTy()
+    
+    // For AArch64 variadic functions, arguments after index 0 go on stack only
+    let force_stack = is_aarch64_variadic && arg_idx > 0
+    
     match (arg_op, arg_is_fp) {
-      (IRegister(src), false) if call_ireg_cnt < num_arg_regs => {
+      (IRegister(src), false) if !force_stack && call_ireg_cnt < num_arg_regs => {
         let dst = AReg(call_ireg_cnt)
         let inst = builder.build_imove(64, dst~, src~)
         if src != dst {
           minsts.push(inst)
         }
         call_ireg_cnt += 1
+      }
+      (IRegister(src), false) if force_stack => {
+        // For variadic functions on AArch64, put on stack at variadic_stack_offset
+        let _ = func.extend_var_stack(8L, 8L)
+        let inst = builder.build_storei(
+          64,
+          src~,
+          base=StackPtr,
+          offset=variadic_stack_offset,
+        )
+        minsts.push(inst)
+        variadic_stack_offset += 8
       }
       (IRegister(src), false) => {
         let _ = func.extend_var_stack(8L, 8L)
@@ -2158,11 +2193,26 @@ pub fn translate_llvm_call_inst(
         minsts.push(inst)
         call_freg_cnt += 1
       }
-      (Imm(src), false) if call_ireg_cnt < num_arg_regs => {
+      (Imm(src), false) if !force_stack && call_ireg_cnt < num_arg_regs => {
         let dst = AReg(call_ireg_cnt)
         let inst = builder.build_imove_imm(64, dst~, src~)
         minsts.push(inst)
         call_ireg_cnt += 1
+      }
+      (Imm(src), false) if force_stack => {
+        // For variadic functions on AArch64, put on stack at variadic_stack_offset
+        let _ = func.extend_var_stack(8L, 8L)
+        let vreg = func.new_virtual_reg()
+        let inst1 = builder.build_imove_imm(64, dst=vreg, src~)
+        let inst2 = builder.build_storei(
+          64,
+          src=vreg,
+          base=StackPtr,
+          offset=variadic_stack_offset,
+        )
+        minsts.push(inst1)
+        minsts.push(inst2)
+        variadic_stack_offset += 8
       }
       (Imm(src), false) => {
         let _ = func.extend_var_stack(8L, 8L)
@@ -2211,11 +2261,26 @@ pub fn translate_llvm_call_inst(
         minsts.push(inst2)
         call_freg_cnt += 1
       }
-      (Label(label), false) if call_ireg_cnt < num_arg_regs => {
+      (Label(label), false) if !force_stack && call_ireg_cnt < num_arg_regs => {
         let dst = AReg(call_ireg_cnt)
         let inst = builder.build_load_addr(dst, label)
         minsts.push(inst)
         call_ireg_cnt += 1
+      }
+      (Label(label), false) if force_stack => {
+        // For variadic functions on AArch64, put on stack at variadic_stack_offset
+        let _ = func.extend_var_stack(8L, 8L)
+        let vreg = func.new_virtual_reg()
+        let inst1 = builder.build_load_addr(vreg, label)
+        let inst2 = builder.build_storei(
+          64,
+          src=vreg,
+          base=StackPtr,
+          offset=variadic_stack_offset,
+        )
+        minsts.push(inst1)
+        minsts.push(inst2)
+        variadic_stack_offset += 8
       }
       (Label(label), false) => {
         let _ = func.extend_var_stack(8L, 8L)
@@ -2232,13 +2297,25 @@ pub fn translate_llvm_call_inst(
         minsts.push(inst2)
         call_ireg_cnt += 1
       }
-      (MemLoc(base, 0L), false) if call_ireg_cnt < num_arg_regs => {
+      (MemLoc(base, 0L), false) if !force_stack && call_ireg_cnt < num_arg_regs => {
         let dst = AReg(call_ireg_cnt)
         let inst = builder.build_imove(64, dst~, src=base)
         minsts.push(inst)
         call_ireg_cnt += 1
       }
-      (MemLoc(base, offset), false) if call_ireg_cnt < num_arg_regs => {
+      (MemLoc(base, 0L), false) if force_stack => {
+        // For variadic functions on AArch64, put on stack at variadic_stack_offset
+        let _ = func.extend_var_stack(8L, 8L)
+        let inst = builder.build_storei(
+          64,
+          src=base,
+          base=StackPtr,
+          offset=variadic_stack_offset,
+        )
+        minsts.push(inst)
+        variadic_stack_offset += 8
+      }
+      (MemLoc(base, offset), false) if !force_stack && call_ireg_cnt < num_arg_regs => {
         let dst = AReg(call_ireg_cnt)
         let vreg = func.new_virtual_reg()
         let inst1 = builder.build_ibinary_imm(
@@ -2252,6 +2329,27 @@ pub fn translate_llvm_call_inst(
         minsts.push(inst1)
         minsts.push(inst2)
         call_ireg_cnt += 1
+      }
+      (MemLoc(base, offset), false) if force_stack => {
+        // For variadic functions on AArch64, put on stack at variadic_stack_offset
+        let _ = func.extend_var_stack(8L, 8L)
+        let vreg = func.new_virtual_reg()
+        let inst1 = builder.build_ibinary_imm(
+          Add,
+          64,
+          dst=vreg,
+          src1=base,
+          src2=offset,
+        )
+        let inst2 = builder.build_storei(
+          64,
+          src=vreg,
+          base=StackPtr,
+          offset=variadic_stack_offset,
+        )
+        minsts.push(inst1)
+        minsts.push(inst2)
+        variadic_stack_offset += 8
       }
       (MemLoc(base, 0L), false) => {
         let _ = func.extend_var_stack(8L, 8L)
