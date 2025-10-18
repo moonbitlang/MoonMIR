@@ -304,6 +304,10 @@ pub(all) enum AArch64Asm {
   Mov32(Reg, Reg) // mov w1, w2
   MovImm64(Reg, Int64) // mov x1, #imm
   MovImm32(Reg, Int) // mov w1, #imm
+  Movz64(Reg, UInt16, Int) // movz x1, #imm, lsl #shift
+  Movz32(Reg, UInt16, Int) // movz w1, #imm, lsl #shift
+  Movk64(Reg, UInt16, Int) // movk x1, #imm, lsl #shift
+  Movk32(Reg, UInt16, Int) // movk w1, #imm, lsl #shift
 
   // Arithmetic (64-bit)
   Add64(Reg, Reg, Reg) // add x1, x2, x3
@@ -481,6 +485,10 @@ pub impl Show for AArch64Asm with output(self, logger) {
     Mov32(rd, rs) => "mov \{rd.to_w_string()}, \{rs.to_w_string()}"
     MovImm64(rd, imm) => "mov \{rd}, #\{imm}"
     MovImm32(rd, imm) => "mov \{rd.to_w_string()}, #\{imm}"
+    Movz64(rd, imm, shift) => "movz \{rd}, #\{imm}, lsl #\{shift}"
+    Movz32(rd, imm, shift) => "movz \{rd.to_w_string()}, #\{imm}, lsl #\{shift}"
+    Movk64(rd, imm, shift) => "movk \{rd}, #\{imm}, lsl #\{shift}"
+    Movk32(rd, imm, shift) => "movk \{rd.to_w_string()}, #\{imm}, lsl #\{shift}"
 
     // Arithmetic 64-bit
     Add64(rd, rs1, rs2) => "add \{rd}, \{rs1}, \{rs2}"

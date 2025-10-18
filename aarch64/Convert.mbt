@@ -625,6 +625,72 @@ fn i64_and_mir_to_aarch64(
 // I'll include a few more critical ones and then provide the rest in a summary
 
 ///|
+fn load_immediate_32(reg : Reg, value : Int) -> Array[AArch64Asm] {
+  // AArch64 mov instruction can only handle 16-bit immediate values
+  // For larger values, we need to use movz and movk instructions
+  if value >= -65536 && value <= 65535 {
+    // Can be loaded with a single mov instruction
+    [MovImm32(reg, value)]
+  } else {
+    // Need to use movz and movk instructions
+    let low16 = value & 0xFFFF
+    let high16 = (value >> 16) & 0xFFFF
+    if high16 == 0 {
+      // Only low 16 bits are non-zero
+      [Movz32(reg, low16.to_uint16(), 0)]
+    } else if low16 == 0 {
+      // Only high 16 bits are non-zero
+      [Movz32(reg, high16.to_uint16(), 16)]
+    } else {
+      // Both parts are non-zero
+      [Movz32(reg, low16.to_uint16(), 0), Movk32(reg, high16.to_uint16(), 16)]
+    }
+  }
+}
+
+///|
+fn load_immediate_64(reg : Reg, value : Int64) -> Array[AArch64Asm] {
+  // AArch64 mov instruction can only handle 16-bit immediate values
+  // For larger values, we need to use movz and movk instructions
+  if value >= -65536 && value <= 65535 {
+    // Can be loaded with a single mov instruction
+    [MovImm64(reg, value)]
+  } else {
+    // Need to use movz and movk instructions
+    let low16 = value & 0xFFFF
+    let mid16_1 = (value >> 16) & 0xFFFF
+    let mid16_2 = (value >> 32) & 0xFFFF
+    let high16 = (value >> 48) & 0xFFFF
+    let mut instructions = Array::new()
+    if low16 != 0 {
+      instructions = instructions + [Movz64(reg, low16.to_uint16(), 0)]
+    }
+    if mid16_1 != 0 {
+      if instructions.length() == 0 {
+        instructions = instructions + [Movz64(reg, mid16_1.to_uint16(), 16)]
+      } else {
+        instructions = instructions + [Movk64(reg, mid16_1.to_uint16(), 16)]
+      }
+    }
+    if mid16_2 != 0 {
+      if instructions.length() == 0 {
+        instructions = instructions + [Movz64(reg, mid16_2.to_uint16(), 32)]
+      } else {
+        instructions = instructions + [Movk64(reg, mid16_2.to_uint16(), 32)]
+      }
+    }
+    if high16 != 0 {
+      if instructions.length() == 0 {
+        instructions = instructions + [Movz64(reg, high16.to_uint16(), 48)]
+      } else {
+        instructions = instructions + [Movk64(reg, high16.to_uint16(), 48)]
+      }
+    }
+    instructions
+  }
+}
+
+///|
 fn move_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
@@ -647,11 +713,11 @@ fn move_mir_to_aarch64(
     }
     { opcode: IMove(32), defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
-      [MovImm32(dst, i2.to_int())]
+      load_immediate_32(dst, i2.to_int())
     }
     { opcode: IMove(64), defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
-      [MovImm64(dst, i2)]
+      load_immediate_64(dst, i2)
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
