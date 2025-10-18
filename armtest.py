@@ -15,7 +15,7 @@ TEST_CASES = [
     "array", "heap_arr", "arr_struct", "matrix", 
     "linked_list", "bst",
     "binary_search", "bubble_sort", "merge_sort", "quick_sort",
-    "dijkstra",
+    "dijkstra", "lcs",
 ]
 
 # C语言源文件所在的目录

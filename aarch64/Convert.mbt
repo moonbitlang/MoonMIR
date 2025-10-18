@@ -701,6 +701,20 @@ fn move_mir_to_aarch64(
     panic()
   }
   match inst {
+    { opcode: IMove(8), defs: [IRegister(d)], uses: [IRegister(r)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src = Reg::from_mir_reg(r)
+      // For 8-bit move, we need to zero-extend to 32-bit first, then truncate
+      // Use and with immediate to mask the lower 8 bits
+      [And32Imm(dst, src, 0xFF)]
+    }
+    { opcode: IMove(16), defs: [IRegister(d)], uses: [IRegister(r)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src = Reg::from_mir_reg(r)
+      // For 16-bit move, we need to zero-extend to 32-bit first, then truncate
+      // Use and with immediate to mask the lower 16 bits
+      [And32Imm(dst, src, 0xFFFF)]
+    }
     { opcode: IMove(32), defs: [IRegister(d)], uses: [IRegister(r)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src = Reg::from_mir_reg(r)
@@ -710,6 +724,16 @@ fn move_mir_to_aarch64(
       let dst = Reg::from_mir_reg(d)
       let src = Reg::from_mir_reg(r)
       [Mov64(dst, src)]
+    }
+    { opcode: IMove(8), defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      // For 8-bit immediate, we can load it as 32-bit and mask
+      load_immediate_32(dst, i2.to_int())
+    }
+    { opcode: IMove(16), defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      // For 16-bit immediate, we can load it as 32-bit and mask
+      load_immediate_32(dst, i2.to_int())
     }
     { opcode: IMove(32), defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
@@ -738,8 +762,17 @@ fn i32_load_mir_to_aarch64(
     { defs: [IRegister(d)], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let base = Reg::from_mir_reg(base)
-      let mem = Mem::{ base, offset }
-      [Ldr32(dst, mem)]
+      if offset >= -256 && offset <= 255 {
+        let mem = Mem::{ base, offset }
+        [Ldr32(dst, mem)]
+      } else {
+        // For large offsets, use a temporary register to compute the address
+        let tmp = X16 // Use IP0 as temporary register
+        [
+          Add64Imm(tmp, base, offset.to_int()),
+          Ldr32(dst, Mem::{ base: tmp, offset: 0 }),
+        ]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -760,8 +793,17 @@ fn i64_load_mir_to_aarch64(
     { defs: [IRegister(d)], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let base = Reg::from_mir_reg(base)
-      let mem = Mem::{ base, offset }
-      [Ldr64(dst, mem)]
+      if offset >= -256 && offset <= 255 {
+        let mem = Mem::{ base, offset }
+        [Ldr64(dst, mem)]
+      } else {
+        // For large offsets, use a temporary register to compute the address
+        let tmp = X16 // Use IP0 as temporary register
+        [
+          Add64Imm(tmp, base, offset.to_int()),
+          Ldr64(dst, Mem::{ base: tmp, offset: 0 }),
+        ]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1410,8 +1452,17 @@ fn i8_load_mir_to_aarch64(
     { defs: [IRegister(d)], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let base = Reg::from_mir_reg(base)
-      let mem = Mem::{ base, offset }
-      [Ldrb(dst, mem)]
+      if offset >= -256 && offset <= 255 {
+        let mem = Mem::{ base, offset }
+        [Ldrb(dst, mem)]
+      } else {
+        // For large offsets, use a temporary register to compute the address
+        let tmp = X16 // Use IP0 as temporary register
+        [
+          Add64Imm(tmp, base, offset.to_int()),
+          Ldrb(dst, Mem::{ base: tmp, offset: 0 }),
+        ]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1432,8 +1483,17 @@ fn i16_load_mir_to_aarch64(
     { defs: [IRegister(d)], uses: [Mem(base, offset)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let base = Reg::from_mir_reg(base)
-      let mem = Mem::{ base, offset }
-      [Ldrh(dst, mem)]
+      if offset >= -256 && offset <= 255 {
+        let mem = Mem::{ base, offset }
+        [Ldrh(dst, mem)]
+      } else {
+        // For large offsets, use a temporary register to compute the address
+        let tmp = X16 // Use IP0 as temporary register
+        [
+          Add64Imm(tmp, base, offset.to_int()),
+          Ldrh(dst, Mem::{ base: tmp, offset: 0 }),
+        ]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1454,8 +1514,17 @@ fn i8_store_mir_to_aarch64(
     { defs: [], uses: [Mem(base, offset), IRegister(r)], .. } => {
       let src = Reg::from_mir_reg(r)
       let base = Reg::from_mir_reg(base)
-      let mem = Mem::{ base, offset }
-      [Strb(src, mem)]
+      if offset >= -256 && offset <= 255 {
+        let mem = Mem::{ base, offset }
+        [Strb(src, mem)]
+      } else {
+        // For large offsets, use a temporary register to compute the address
+        let tmp = X16 // Use IP0 as temporary register
+        [
+          Add64Imm(tmp, base, offset.to_int()),
+          Strb(src, Mem::{ base: tmp, offset: 0 }),
+        ]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1476,8 +1545,17 @@ fn i16_store_mir_to_aarch64(
     { defs: [], uses: [Mem(base, offset), IRegister(r)], .. } => {
       let src = Reg::from_mir_reg(r)
       let base = Reg::from_mir_reg(base)
-      let mem = Mem::{ base, offset }
-      [Strh(src, mem)]
+      if offset >= -256 && offset <= 255 {
+        let mem = Mem::{ base, offset }
+        [Strh(src, mem)]
+      } else {
+        // For large offsets, use a temporary register to compute the address
+        let tmp = X16 // Use IP0 as temporary register
+        [
+          Add64Imm(tmp, base, offset.to_int()),
+          Strh(src, Mem::{ base: tmp, offset: 0 }),
+        ]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1498,8 +1576,17 @@ fn i32_store_mir_to_aarch64(
     { defs: [], uses: [Mem(base, offset), IRegister(r)], .. } => {
       let src = Reg::from_mir_reg(r)
       let base = Reg::from_mir_reg(base)
-      let mem = Mem::{ base, offset }
-      [Str32(src, mem)]
+      if offset >= -256 && offset <= 255 {
+        let mem = Mem::{ base, offset }
+        [Str32(src, mem)]
+      } else {
+        // For large offsets, use a temporary register to compute the address
+        let tmp = X16 // Use IP0 as temporary register
+        [
+          Add64Imm(tmp, base, offset.to_int()),
+          Str32(src, Mem::{ base: tmp, offset: 0 }),
+        ]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1520,8 +1607,17 @@ fn i64_store_mir_to_aarch64(
     { defs: [], uses: [Mem(base, offset), IRegister(r)], .. } => {
       let src = Reg::from_mir_reg(r)
       let base = Reg::from_mir_reg(base)
-      let mem = Mem::{ base, offset }
-      [Str64(src, mem)]
+      if offset >= -256 && offset <= 255 {
+        let mem = Mem::{ base, offset }
+        [Str64(src, mem)]
+      } else {
+        // For large offsets, use a temporary register to compute the address
+        let tmp = X16 // Use IP0 as temporary register
+        [
+          Add64Imm(tmp, base, offset.to_int()),
+          Str64(src, Mem::{ base: tmp, offset: 0 }),
+        ]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
