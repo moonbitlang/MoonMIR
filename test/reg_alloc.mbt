@@ -57,7 +57,7 @@ test "Cond Branch Insts Register Allocation" {
   let expected =
     #|func foo(a0, a1, a2) {
     #|entry:                              ; live in: a0, a1, a2
-    #|  t5 = move.i32 0                   # live in: a0, a1, a2
+    #|  t5 = move.i64 0                   # live in: a0, a1, a2
     #|  bne a2, t5, foo_L1, foo_L2        # live in: a0, a1, a2, t5
     #|
     #|; preds: entry

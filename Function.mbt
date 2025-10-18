@@ -25,6 +25,7 @@ pub(all) struct Function {
   // LLVM
   mut llvm_func : @IR.Function?
   is_external : Bool
+  is_variadic : Bool
 
   // Value Map
   value_map : Map[&@IR.Value, Operand]
@@ -41,6 +42,7 @@ pub fn Function::new(
   mod : Module,
   name : String,
   is_external : Bool,
+  is_variadic? : Bool = false,
 ) -> Function {
   Function::{
     mod,
@@ -52,6 +54,7 @@ pub fn Function::new(
     terminal_blocks: Array::new(),
     llvm_func: None,
     is_external,
+    is_variadic,
     value_map: Map::new(),
     bbmap: Map::new(),
     vreg_cnt: 0,

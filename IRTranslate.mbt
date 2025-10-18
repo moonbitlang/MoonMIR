@@ -16,7 +16,8 @@ pub fn Module::translate_llvm_module(
     } else {
       let fname = func.getName().unwrap()
       let is_external = func.linkage.val is External
-      let f = self.add_function(fname, [], is_external)
+      let is_variadic = func.fty.isVarArg
+      let f = self.add_function(fname, [], is_external, is_variadic~)
       f.translate_llvm_function(func)
     }
   }

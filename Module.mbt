@@ -65,8 +65,9 @@ pub fn Module::add_function(
   name : String,
   arg_patterns : Array[ArgPattern],
   is_external : Bool,
+  is_variadic? : Bool = false,
 ) -> Function {
-  let func = Function::new(self, name, is_external)
+  let func = Function::new(self, name, is_external, is_variadic~)
   self.functions.set(name, func)
   if arg_patterns.is_empty() {
     return func
