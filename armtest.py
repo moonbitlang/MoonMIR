@@ -9,7 +9,8 @@ import sys
 
 # 测试用例的基础名称列表
 TEST_CASES = [
-    "simple_ret", "simple_add", "simple_fib", "fib",
+    "simple_ret", "simple_add", "simple_fib", "fib", "if", "while",
+    "for", "many_args", "order_args", "struct", "array", "heap_arr",
 ]
 
 # C语言源文件所在的目录
