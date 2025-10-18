@@ -197,6 +197,7 @@ pub(all) enum RvAsm {
 
   // reg-imm arith
   Addi(Reg, Reg, Int)
+  Addiw(Reg, Reg, Int)
   Xori(Reg, Reg, Int)
   Ori(Reg, Reg, Int)
   Andi(Reg, Reg, Int)
@@ -376,6 +377,7 @@ pub impl Show for RvAsm with output(self, logger) {
     Srlw(dst, src1, src2) => "srlw \{dst}, \{src1}, \{src2}"
     Sraw(dst, src1, src2) => "sraw \{dst}, \{src1}, \{src2}"
     Addi(dst, src, imm) => "addi \{dst}, \{src}, \{imm}"
+    Addiw(dst, src, imm) => "addiw \{dst}, \{src}, \{imm}"
     Xori(dst, src, imm) => "xori \{dst}, \{src}, \{imm}"
     Ori(dst, src, imm) => "ori \{dst}, \{src}, \{imm}"
     Andi(dst, src, imm) => "andi \{dst}, \{src}, \{imm}"

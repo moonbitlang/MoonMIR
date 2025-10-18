@@ -286,7 +286,7 @@ fn i32_add_mir_to_riscv(
     { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
-      [Addi(dst, src1, i2.to_int())]
+      [Addiw(dst, src1, i2.to_int())]
     }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -342,7 +342,7 @@ fn i32_sub_mir_to_riscv(
     { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
-      [Addi(dst, src1, -i2.to_int())]
+      [Addiw(dst, src1, -i2.to_int())]
     }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
