@@ -99,10 +99,14 @@ pub fn mir_module_to_aarch64(
   mod : @MoonMIR.Module,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
   let insts : Array[AArch64Asm] = Array::new()
-  mod.functions
-  .values()
-  .filter(f => f.is_external)
-  .each(f => insts.push(Global(f.name)))
+  let gfuncs = mod.functions.values().filter(f => f.is_external)
+  for func in gfuncs {
+    let fname = match func.name.has_prefix("_") {
+      true => func.name
+      false => "_\{func.name}"
+    }
+    insts.push(Global(fname))
+  }
   for gv in mod.global_values {
     let gv_insts = mir_global_to_aarch64(gv)
     insts.append(gv_insts)
@@ -141,7 +145,10 @@ pub fn mir_function_to_aarch64(
   func : @MoonMIR.Function,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
   let aarch64_insts : Array[AArch64Asm] = Array::new()
-  let fname = func.name
+  let fname = match func.name.has_prefix("_") {
+    true => func.name
+    false => "_\{func.name}"
+  }
   aarch64_insts.push(Label(fname))
   for i, bb in func.body {
     let bb_insts = mir_block_to_aarch64(bb, i)
@@ -702,7 +709,13 @@ fn call_mir_to_aarch64(
   }
   let f = inst.uses[0]
   match f {
-    Label(func_name) => [Bl(func_name)]
+    Label(func_name) => {
+      let fname = match func_name.has_prefix("_") {
+        true => func_name
+        false => "_\{func_name}"
+      }
+      [Bl(fname)]
+    }
     IRegister(r) => {
       let reg = Reg::from_mir_reg(r)
       [Blr(reg)]
