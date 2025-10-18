@@ -212,17 +212,17 @@ pub fn mir_inst_to_riscv(
     IStore(32) => i32_store_mir_to_riscv(inst)
     IStore(64) => i64_store_mir_to_riscv(inst)
     IMove(_) => move_mir_to_riscv(inst)
-    Branch(Beq) => branch_eq_mir_to_riscv(inst)
-    Branch(Bne) => branch_ne_mir_to_riscv(inst)
-    Branch(Blt) => branch_lt_mir_to_riscv(inst)
-    Branch(Bge) => branch_ge_mir_to_riscv(inst)
-    Branch(Ble) => branch_le_mir_to_riscv(inst)
-    Branch(Bgt) => branch_gt_mir_to_riscv(inst)
-    Branch(Bltu) => branch_ltu_mir_to_riscv(inst)
-    Branch(Bgeu) => branch_geu_mir_to_riscv(inst)
-    Branch(Bleu) => branch_leu_mir_to_riscv(inst)
-    Branch(Bgtu) => branch_gtu_mir_to_riscv(inst)
-    Branch(Jmp) => jump_mir_to_riscv(inst)
+    Branch(Beq, _) => branch_eq_mir_to_riscv(inst)
+    Branch(Bne, _) => branch_ne_mir_to_riscv(inst)
+    Branch(Blt, _) => branch_lt_mir_to_riscv(inst)
+    Branch(Bge, _) => branch_ge_mir_to_riscv(inst)
+    Branch(Ble, _) => branch_le_mir_to_riscv(inst)
+    Branch(Bgt, _) => branch_gt_mir_to_riscv(inst)
+    Branch(Bltu, _) => branch_ltu_mir_to_riscv(inst)
+    Branch(Bgeu, _) => branch_geu_mir_to_riscv(inst)
+    Branch(Bleu, _) => branch_leu_mir_to_riscv(inst)
+    Branch(Bgtu, _) => branch_gtu_mir_to_riscv(inst)
+    Branch(Jmp, _) => jump_mir_to_riscv(inst)
     FBinary(FAdd, 32) => f32_add_mir_to_riscv(inst)
     FBinary(FAdd, 64) => f64_add_mir_to_riscv(inst)
     FBinary(FSub, 32) => f32_sub_mir_to_riscv(inst)
@@ -1069,7 +1069,7 @@ fn move_mir_to_riscv(
 fn branch_eq_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Beq), .. } else {
+  guard inst is { opcode: Branch(Beq, _), .. } else {
     println(
       "Compiler ICE: branch_eq_mir_to_riscv called with non-beq instruction: \{inst}",
     )
@@ -1099,7 +1099,7 @@ fn branch_eq_mir_to_riscv(
 fn branch_ne_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Bne), .. } else {
+  guard inst is { opcode: Branch(Bne, _), .. } else {
     println(
       "Compiler ICE: branch_ne_mir_to_riscv called with non-bne instruction: \{inst}",
     )
@@ -1129,7 +1129,7 @@ fn branch_ne_mir_to_riscv(
 fn branch_lt_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Blt), .. } else {
+  guard inst is { opcode: Branch(Blt, _), .. } else {
     println(
       "Compiler ICE: branch_lt_mir_to_riscv called with non-blt instruction: \{inst}",
     )
@@ -1159,7 +1159,7 @@ fn branch_lt_mir_to_riscv(
 fn branch_ge_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Bge), .. } else {
+  guard inst is { opcode: Branch(Bge, _), .. } else {
     println(
       "Compiler ICE: branch_ge_mir_to_riscv called with non-bge instruction: \{inst}",
     )
@@ -1189,7 +1189,7 @@ fn branch_ge_mir_to_riscv(
 fn branch_ltu_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Bltu), .. } else {
+  guard inst is { opcode: Branch(Bltu, _), .. } else {
     println(
       "Compiler ICE: branch_ltu_mir_to_riscv called with non-bltu instruction: \{inst}",
     )
@@ -1219,7 +1219,7 @@ fn branch_ltu_mir_to_riscv(
 fn branch_geu_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Bgeu), .. } else {
+  guard inst is { opcode: Branch(Bgeu, _), .. } else {
     println(
       "Compiler ICE: branch_geu_mir_to_riscv called with non-bgeu instruction: \{inst}",
     )
@@ -1249,7 +1249,7 @@ fn branch_geu_mir_to_riscv(
 fn jump_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Jmp), .. } else {
+  guard inst is { opcode: Branch(Jmp, _), .. } else {
     println(
       "Compiler ICE: jump_mir_to_riscv called with non-jump instruction: \{inst}",
     )
@@ -1522,7 +1522,7 @@ fn i16_store_mir_to_riscv(
 fn branch_le_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Ble), .. } else {
+  guard inst is { opcode: Branch(Ble, _), .. } else {
     println(
       "Compiler ICE: branch_le_mir_to_riscv called with non-ble instruction: \{inst}",
     )
@@ -1552,7 +1552,7 @@ fn branch_le_mir_to_riscv(
 fn branch_gt_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Bgt), .. } else {
+  guard inst is { opcode: Branch(Bgt, _), .. } else {
     println(
       "Compiler ICE: branch_gt_mir_to_riscv called with non-bgt instruction: \{inst}",
     )
@@ -1582,7 +1582,7 @@ fn branch_gt_mir_to_riscv(
 fn branch_leu_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Bleu), .. } else {
+  guard inst is { opcode: Branch(Bleu, _), .. } else {
     println(
       "Compiler ICE: branch_leu_mir_to_riscv called with non-bleu instruction: \{inst}",
     )
@@ -1613,7 +1613,7 @@ fn branch_leu_mir_to_riscv(
 fn branch_gtu_mir_to_riscv(
   inst : @MoonMIR.Instruction,
 ) -> Array[RvAsm] raise MIRToRiscvError {
-  guard inst is { opcode: Branch(Bgtu), .. } else {
+  guard inst is { opcode: Branch(Bgtu, _), .. } else {
     println(
       "Compiler ICE: branch_gtu_mir_to_riscv called with non-bgtu instruction: \{inst}",
     )

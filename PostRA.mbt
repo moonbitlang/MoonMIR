@@ -207,7 +207,7 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
   }
 
   // need space for fp
-  let offset = -self.extend_reg_stack(8L, 8L)
+  let fp_offset = -self.extend_reg_stack(8L, 8L)
   let total_stack_size = self.var_stack_size + self.reg_stack_size
   // Ensure total stack size is 16-byte aligned for AArch64
   let total_stack_size = (total_stack_size + 16 - 1) / 16 * 16 // align to 16 bytes
@@ -223,7 +223,7 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
       64,
       src=FramePtr,
       base=FramePtr,
-      offset~,
+      offset=fp_offset,
     )
   let set_fp_inst = try! builder.build_ibinary_imm(
       Add,
@@ -241,7 +241,7 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
         64,
         dst=FramePtr,
         base=StackPtr,
-        offset=self.var_stack_size,
+        offset=fp_offset + total_stack_size,
       )
     let dealloc_stack_inst = try! builder.build_ibinary_imm(
         Add,

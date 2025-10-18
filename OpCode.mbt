@@ -219,7 +219,7 @@ pub(all) enum OpCode {
   ILoad(Int) // Int is the bit width (8, 16, 32, 64)
   IStore(Int) // Int is the bit width (8, 16, 32, 64)
   IMove(Int) // Int is the bit width (8, 16, 32, 64)
-  Branch(BranchOpCode)
+  Branch(BranchOpCode, Int) // Int is the bit width (32, 64) for comparison
   FBinary(FBinaryOpCode, Int) // Int is the bit width (32, 64)
   FUnary(FUnaryOpCode, Int) // Int is the bit width (32, 64)
   FCmp(FCmpOpCode, Int) // Int is the bit width (32, 64)
@@ -282,7 +282,7 @@ pub impl Show for OpCode with output(self, logger) {
     ILoad(bits) => "load.i\{bits}"
     IStore(bits) => "store.i\{bits}"
     IMove(bits) => "move.i\{bits}"
-    Branch(op) =>
+    Branch(op, _) =>
       match op {
         Beq => "beq"
         Bne => "bne"

@@ -504,6 +504,7 @@ pub fn IRBuilder::build_ret(self : Self) -> Instruction {
 pub fn IRBuilder::build_branch(
   self : Self,
   opcode : BranchOpCode,
+  bits : Int,
   lhs~ : IRegister,
   rhs~ : IRegister,
   true_label~ : String,
@@ -514,7 +515,7 @@ pub fn IRBuilder::build_branch(
   let true_label = Operand::Label(true_label)
   let false_label = Operand::Label(false_label)
   Instruction::new(
-    Branch(opcode),
+    Branch(opcode, bits),
     [],
     [lhs, rhs, true_label, false_label],
     self.bb,
@@ -525,6 +526,7 @@ pub fn IRBuilder::build_branch(
 pub fn IRBuilder::build_branch_imm(
   self : Self,
   opcode : BranchOpCode,
+  bits : Int,
   lhs~ : IRegister,
   rhs~ : Int64,
   true_label~ : String,
@@ -535,7 +537,7 @@ pub fn IRBuilder::build_branch_imm(
   let true_label = Operand::Label(true_label)
   let false_label = Operand::Label(false_label)
   Instruction::new(
-    Branch(opcode),
+    Branch(opcode, bits),
     [],
     [lhs, rhs, true_label, false_label],
     self.bb,
@@ -545,7 +547,7 @@ pub fn IRBuilder::build_branch_imm(
 ///|
 pub fn IRBuilder::build_jmp(self : Self, target_label~ : String) -> Instruction {
   let target_label = Operand::Label(target_label)
-  Instruction::new(Branch(Jmp), [], [target_label], self.bb)
+  Instruction::new(Branch(Jmp, 64), [], [target_label], self.bb)
 }
 
 ///|

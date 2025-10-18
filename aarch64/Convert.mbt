@@ -107,13 +107,13 @@ pub fn mir_module_to_aarch64(
     }
     insts.push(Global(fname))
   }
-  for gv in mod.global_values {
-    let gv_insts = mir_global_to_aarch64(gv)
-    insts.append(gv_insts)
-  }
   for _, func in mod.functions {
     let func_insts = mir_function_to_aarch64(func)
     insts.append(func_insts)
+  }
+  for gv in mod.global_values {
+    let gv_insts = mir_global_to_aarch64(gv)
+    insts.append(gv_insts)
   }
   insts
 }
@@ -222,17 +222,17 @@ pub fn mir_inst_to_aarch64(
     IStore(32) => i32_store_mir_to_aarch64(inst)
     IStore(64) => i64_store_mir_to_aarch64(inst)
     IMove(_) => move_mir_to_aarch64(inst)
-    Branch(Beq) => branch_eq_mir_to_aarch64(inst)
-    Branch(Bne) => branch_ne_mir_to_aarch64(inst)
-    Branch(Blt) => branch_lt_mir_to_aarch64(inst)
-    Branch(Bge) => branch_ge_mir_to_aarch64(inst)
-    Branch(Ble) => branch_le_mir_to_aarch64(inst)
-    Branch(Bgt) => branch_gt_mir_to_aarch64(inst)
-    Branch(Bltu) => branch_ltu_mir_to_aarch64(inst)
-    Branch(Bgeu) => branch_geu_mir_to_aarch64(inst)
-    Branch(Bleu) => branch_leu_mir_to_aarch64(inst)
-    Branch(Bgtu) => branch_gtu_mir_to_aarch64(inst)
-    Branch(Jmp) => jump_mir_to_aarch64(inst)
+    Branch(Beq, bits) => branch_eq_mir_to_aarch64(inst, bits)
+    Branch(Bne, bits) => branch_ne_mir_to_aarch64(inst, bits)
+    Branch(Blt, bits) => branch_lt_mir_to_aarch64(inst, bits)
+    Branch(Bge, bits) => branch_ge_mir_to_aarch64(inst, bits)
+    Branch(Ble, bits) => branch_le_mir_to_aarch64(inst, bits)
+    Branch(Bgt, bits) => branch_gt_mir_to_aarch64(inst, bits)
+    Branch(Bltu, bits) => branch_ltu_mir_to_aarch64(inst, bits)
+    Branch(Bgeu, bits) => branch_geu_mir_to_aarch64(inst, bits)
+    Branch(Bleu, bits) => branch_leu_mir_to_aarch64(inst, bits)
+    Branch(Bgtu, bits) => branch_gtu_mir_to_aarch64(inst, bits)
+    Branch(Jmp, _) => jump_mir_to_aarch64(inst)
     FBinary(FAdd, 32) => f32_add_mir_to_aarch64(inst)
     FBinary(FAdd, 64) => f64_add_mir_to_aarch64(inst)
     FBinary(FSub, 32) => f32_sub_mir_to_aarch64(inst)
@@ -1467,8 +1467,9 @@ fn i64_store_mir_to_aarch64(
 ///|
 fn branch_eq_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Beq), .. } else {
+  guard inst is { opcode: Branch(Beq, _), .. } else {
     println(
       "Compiler ICE: branch_eq_mir_to_aarch64 called with non-beq instruction: \{inst}",
     )
@@ -1487,9 +1488,13 @@ fn branch_eq_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Beq(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Beq(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Beq(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1499,8 +1504,9 @@ fn branch_eq_mir_to_aarch64(
 ///|
 fn branch_ne_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Bne), .. } else {
+  guard inst is { opcode: Branch(Bne, _), .. } else {
     println(
       "Compiler ICE: branch_ne_mir_to_aarch64 called with non-bne instruction: \{inst}",
     )
@@ -1519,9 +1525,13 @@ fn branch_ne_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Bne(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Bne(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Bne(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1531,8 +1541,9 @@ fn branch_ne_mir_to_aarch64(
 ///|
 fn branch_lt_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Blt), .. } else {
+  guard inst is { opcode: Branch(Blt, _), .. } else {
     println(
       "Compiler ICE: branch_lt_mir_to_aarch64 called with non-blt instruction: \{inst}",
     )
@@ -1551,9 +1562,13 @@ fn branch_lt_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Blt(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Blt(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Blt(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1563,8 +1578,9 @@ fn branch_lt_mir_to_aarch64(
 ///|
 fn branch_ge_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Bge), .. } else {
+  guard inst is { opcode: Branch(Bge, _), .. } else {
     println(
       "Compiler ICE: branch_ge_mir_to_aarch64 called with non-bge instruction: \{inst}",
     )
@@ -1583,9 +1599,13 @@ fn branch_ge_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Bge(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Bge(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Bge(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1595,8 +1615,9 @@ fn branch_ge_mir_to_aarch64(
 ///|
 fn branch_le_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Ble), .. } else {
+  guard inst is { opcode: Branch(Ble, _), .. } else {
     println(
       "Compiler ICE: branch_le_mir_to_aarch64 called with non-ble instruction: \{inst}",
     )
@@ -1615,9 +1636,13 @@ fn branch_le_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Ble(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Ble(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Ble(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1627,8 +1652,9 @@ fn branch_le_mir_to_aarch64(
 ///|
 fn branch_gt_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Bgt), .. } else {
+  guard inst is { opcode: Branch(Bgt, _), .. } else {
     println(
       "Compiler ICE: branch_gt_mir_to_aarch64 called with non-bgt instruction: \{inst}",
     )
@@ -1647,9 +1673,13 @@ fn branch_gt_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Bgt(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Bgt(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Bgt(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1659,8 +1689,9 @@ fn branch_gt_mir_to_aarch64(
 ///|
 fn branch_ltu_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Bltu), .. } else {
+  guard inst is { opcode: Branch(Bltu, _), .. } else {
     println(
       "Compiler ICE: branch_ltu_mir_to_aarch64 called with non-bltu instruction: \{inst}",
     )
@@ -1679,9 +1710,13 @@ fn branch_ltu_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Blo(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Blo(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Blo(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1691,8 +1726,9 @@ fn branch_ltu_mir_to_aarch64(
 ///|
 fn branch_geu_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Bgeu), .. } else {
+  guard inst is { opcode: Branch(Bgeu, _), .. } else {
     println(
       "Compiler ICE: branch_geu_mir_to_aarch64 called with non-bgeu instruction: \{inst}",
     )
@@ -1711,9 +1747,13 @@ fn branch_geu_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Bhs(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Bhs(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Bhs(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1723,8 +1763,9 @@ fn branch_geu_mir_to_aarch64(
 ///|
 fn branch_leu_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Bleu), .. } else {
+  guard inst is { opcode: Branch(Bleu, _), .. } else {
     println(
       "Compiler ICE: branch_leu_mir_to_aarch64 called with non-bleu instruction: \{inst}",
     )
@@ -1743,9 +1784,13 @@ fn branch_leu_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Bls(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Bls(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Bls(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1755,8 +1800,9 @@ fn branch_leu_mir_to_aarch64(
 ///|
 fn branch_gtu_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
+  bits : Int,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Bgtu), .. } else {
+  guard inst is { opcode: Branch(Bgtu, _), .. } else {
     println(
       "Compiler ICE: branch_gtu_mir_to_aarch64 called with non-bgtu instruction: \{inst}",
     )
@@ -1775,9 +1821,13 @@ fn branch_gtu_mir_to_aarch64(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      let wsrc1 = src1.to_wreg()
-      let wsrc2 = src2.to_wreg()
-      [Cmp32(wsrc1, wsrc2), Bhi(true_label), B(false_label)]
+      if bits == 32 {
+        let wsrc1 = src1.to_wreg()
+        let wsrc2 = src2.to_wreg()
+        [Cmp32(wsrc1, wsrc2), Bhi(true_label), B(false_label)]
+      } else {
+        [Cmp64(src1, src2), Bhi(true_label), B(false_label)]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1788,7 +1838,7 @@ fn branch_gtu_mir_to_aarch64(
 fn jump_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: Branch(Jmp), .. } else {
+  guard inst is { opcode: Branch(Jmp, _), .. } else {
     println(
       "Compiler ICE: jump_mir_to_aarch64 called with non-jump instruction: \{inst}",
     )

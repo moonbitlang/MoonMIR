@@ -1278,6 +1278,7 @@ pub fn translate_llvm_conditional_branch(
     }
     let minst = builder.build_branch_imm(
       Bne,
+      64,
       lhs~,
       rhs=0L,
       true_label~,
@@ -1306,6 +1307,7 @@ pub fn translate_llvm_conditional_branch(
     }
     let minst = builder.build_branch_imm(
       Bne,
+      64,
       lhs~,
       rhs=0L,
       true_label~,
@@ -1338,14 +1340,14 @@ pub fn translate_llvm_conditional_branch(
   let data_size = data_layout.getTypeAllocSizeInBits(lhs.getType())
   match (lhs_op, rhs_op) {
     (IRegister(lhs), IRegister(rhs)) =>
-      [builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~)]
+      [builder.build_branch(opcode, data_size, lhs~, rhs~, true_label~, false_label~)]
     (IRegister(lhs), Imm(rhs)) =>
-      [builder.build_branch_imm(opcode, lhs~, rhs~, true_label~, false_label~)]
+      [builder.build_branch_imm(opcode, data_size, lhs~, rhs~, true_label~, false_label~)]
     (Imm(lhs_imm), IRegister(rhs)) => {
       let lhs = func.new_virtual_reg()
       [
         builder.build_imove_imm(data_size, dst=lhs, src=lhs_imm),
-        builder.build_branch(opcode, lhs~, rhs~, true_label~, false_label~),
+        builder.build_branch(opcode, data_size, lhs~, rhs~, true_label~, false_label~),
       ]
     }
     (Imm(lhs), Imm(rhs)) => {
