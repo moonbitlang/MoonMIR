@@ -52,6 +52,8 @@ pub(all) enum Operand {
   Mem(IRegister, Int64)
   // Memory Address, it means address calculated by base register + offset
   MemLoc(IRegister, Int64)
+  // For loading/storing multiple values
+  MemGroup(IRegister, Array[Int64])
   Imm(Int64) // Immediate Value
   FImm(Double) // Floating Point Immediate Value
   Label(String) // Label
@@ -96,6 +98,11 @@ pub impl Show for Operand with output(self, logger) {
       } else {
         "[\{base} + \{offset}]"
       }
+    MemGroup(base, offsets) => {
+      let offset_strs = offsets.map(off => off.to_string())
+      let offset_strs = offset_strs.join(", ")
+      "(\{base} + {\{offset_strs}})"
+    }
     Imm(i) => "\{i}"
     FImm(f) => "\{f}"
     Label(l) => l
