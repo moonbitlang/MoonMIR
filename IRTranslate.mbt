@@ -520,19 +520,28 @@ fn Function::bind_struct_or_array_value_to_mem_group(
     }
     op
   }
-  guard ptr_op is IRegister(base) else {
-    raise IRTranslateError("Struct LoadInst pointer is not a register, it is \{ptr_op}")
+  // Handle both IRegister and MemLoc cases
+  // For MemLoc, we just use the base register and add the offset to all offsets
+  let (base, base_offset) = match ptr_op {
+    IRegister(r) => (r, 0L)
+    MemLoc(base_reg, offset) => (base_reg, offset)
+    _ =>
+      raise IRTranslateError(
+        "Struct LoadInst pointer is not a register or memory location, it is \{ptr_op}",
+      )
   }
-  let offsets = match ty.asTypeEnum() {
+  let relative_offsets = match ty.asTypeEnum() {
     StructType(sty) =>
-      self.bind_struct_value_to_mem_group(base, 0, sty, data_layout)
+      self.bind_struct_value_to_mem_group(base, 0L, sty, data_layout)
     ArrayType(aty) =>
-      self.bind_array_value_to_mem_group(base, 0, aty, data_layout)
+      self.bind_array_value_to_mem_group(base, 0L, aty, data_layout)
     _ =>
       raise IRTranslateError(
         "Type \{ty} is not struct or array for struct/array value binding",
       )
   }
+  // Add base_offset to all relative offsets to get absolute offsets
+  let offsets = relative_offsets.map(fn(offset) { base_offset + offset })
   let op = MemGroup(base, offsets)
   self.value_map.set(llvm_inst, op)
 }
@@ -818,28 +827,34 @@ fn translate_multiple_load_store(
   func : Function,
   _data_layout : @IR.DataLayout,
   src_base : IRegister,
-  offsets : Array[Int64],
+  src_offsets : Array[Int64],
   dst_base : IRegister,
   dst_base_offset : Int64,
 ) -> Array[Instruction] raise MIRError {
   let minsts : Array[Instruction] = Array::new()
 
-  // For each offset in the MemGroup, we need to load from src_base + offset
-  // and store to dst_base + (dst_base_offset + offset)
-  // Use 32-bit load/store for most fields, as they are typically int/float
-  for offset in offsets {
-    // Load the value from source location (src_base + offset)
+  // The src_offsets array contains absolute offsets relative to src_base
+  // We need to extract the relative field offsets and apply them to the destination
+  guard src_offsets.length() > 0 else { return minsts }
+  let src_base_offset = src_offsets[0]
+
+  // For each field in the struct/array
+  for src_offset in src_offsets {
+    // Calculate the field's relative offset
+    let field_offset = src_offset - src_base_offset
+
+    // Load the value from source location (src_base + src_offset)
     let temp_reg = func.new_virtual_reg()
     let load_inst = builder.build_loadi(
       32,
       dst=temp_reg,
       base=src_base,
-      offset~,
+      offset=src_offset,
     )
     minsts.push(load_inst)
 
-    // Store the value to destination location (dst_base + dst_base_offset + offset)
-    let dst_offset = dst_base_offset + offset
+    // Store the value to destination location (dst_base + dst_base_offset + field_offset)
+    let dst_offset = dst_base_offset + field_offset
     let store_inst = builder.build_storei(
       32,
       src=temp_reg,
