@@ -145,6 +145,7 @@ pub(all) enum RvAsm {
   Word(UInt)
   Quad(UInt64)
   Zero(UInt)
+  Section(String)
   LuiHi(Reg, String)
   AddiLo(Reg, Reg, String)
   Add(Reg, Reg, Reg)

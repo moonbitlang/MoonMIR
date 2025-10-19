@@ -8,6 +8,12 @@ import(
 )
 
 // Values
+fn get_constant_size(&@IR.Constant) -> UInt
+
+fn get_type_size(&@IR.Type) -> UInt
+
+fn is_zero_initializer(&@IR.Constant) -> Bool
+
 fn llvm_global_constant_to_data(&@IR.Constant) -> Array[GlobalValueData] raise MIRError
 
 fn translate_bitcast(Int, Operand, Operand, IRBuilder, Function) -> Array[Instruction] raise MIRError

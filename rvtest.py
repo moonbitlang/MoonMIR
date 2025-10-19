@@ -13,9 +13,9 @@ TEST_CASES = [
     "fib", "if", "for", "while", "while2", "nested_while", 
     "branch", "many_args", "order_args", "ptr", "struct", 
     "array", "heap_arr", "arr_struct", "matrix",
-    "linked_list", "bst",
+    "linked_list", "bst", "hash_table",
     "binary_search", "bubble_sort", "merge_sort", "quick_sort", 
-    "dijkstra", "lcs", 
+    "heap_sort", "dijkstra", "lcs", "dsu"
 ]
 
 # C语言源文件所在的目录

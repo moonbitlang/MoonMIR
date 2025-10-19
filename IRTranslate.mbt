@@ -56,35 +56,111 @@ pub fn Module::translate_llvm_global_constant(
   let gv = match global_constant.asConstantEnum() {
     ConstantString({ data, .. }) =>
       self.add_global_string(label=global_name, content=data)
-    _ => {
-      let data = llvm_global_constant_to_data(global_constant)
-      self.add_global_data(global_name, data)
-    }
+    _ =>
+      // Check if this is a zeroinitializer constant
+      if is_zero_initializer(global_constant) {
+        let size = get_constant_size(global_constant)
+        self.add_global_zero_data(global_name, size)
+      } else {
+        let data = llvm_global_constant_to_data(global_constant)
+        self.add_global_data(global_name, data)
+      }
   }
   let _ = gv
+
 }
 
+///|
+/// Check if a constant is a zeroinitializer
+pub fn is_zero_initializer(constant : &@IR.Constant) -> Bool {
+  match constant.asConstantEnum() {
+    ConstantArray({ data: Left(const_arr), .. }) => {
+      // Check if all elements are zero
+      for item in const_arr {
+        if !is_zero_initializer(item) {
+          return false
+        }
+      }
+      true
+    }
+    ConstantStruct({ elements, .. }) => {
+      // Check if all elements are zero
+      for element in elements {
+        if !is_zero_initializer(element) {
+          return false
+        }
+      }
+      true
+    }
+    ConstantInt(c) => c.getValueAsInt64() == 0
+    ConstantFP(c) => c.getValue() == 0.0
+    ConstantPointerNull(_) => true
+    _ => false
+  }
+}
+
+///|
+/// Get the size of a constant in bytes
+pub fn get_constant_size(constant : &@IR.Constant) -> UInt {
+  match constant.asConstantEnum() {
+    ConstantArray({ data: Left(const_arr), vty, .. }) => {
+      let element_size = get_type_size(vty.getElementType())
+      let count = const_arr.length()
+      element_size * count.reinterpret_as_uint()
+    }
+    ConstantStruct({ elements, .. }) => {
+      let mut total_size : UInt = 0
+      for element in elements {
+        total_size = total_size + get_constant_size(element)
+      }
+      total_size
+    }
+    ConstantInt(c) => get_type_size(c.getIntegerType())
+    ConstantFP(c) => get_type_size(c.getFPType())
+    ConstantPointerNull(_) => 8 // 64-bit pointer
+    _ => 0
+  }
+}
+
+///|
+/// Get the size of a type in bytes
+pub fn get_type_size(ty : &@IR.Type) -> UInt {
+  // This is a simplified implementation
+  // In a real implementation, we would need to handle all type kinds
+  match ty.asTypeEnum() {
+    Int1Type(_) => 1
+    Int8Type(_) => 1
+    Int16Type(_) => 2
+    Int32Type(_) => 4
+    Int64Type(_) => 8
+    FloatType(_) => 4
+    DoubleType(_) => 8
+    PointerType(_) => 8 // 64-bit pointer
+    ArrayType(arr_ty) => {
+      let element_size = get_type_size(arr_ty.getElementType())
+      let count = arr_ty.getElementCount()
+      element_size * count.reinterpret_as_uint()
+    }
+    StructType(_) =>
+      // For struct types, we need to get the size from the data layout
+      // This is a simplified implementation
+      0
+    _ => 0
+  }
+}
+
+///|
 pub fn llvm_global_constant_to_data(
-  global_constant: &@IR.Constant
+  global_constant : &@IR.Constant,
 ) -> Array[GlobalValueData] raise MIRError {
   match global_constant.asConstantEnum() {
     ConstantInt({ vty, value, .. }) =>
       match vty.asIntegerTypeEnum() {
-        Int1Type(_) => {
-          [Byte(value.to_byte())]
-        }
-        Int8Type(_) => {
-          [Byte(value.to_byte())]
-        }
-        Int16Type(_) => {
-           [Half(value.to_uint16())]
-        }
-        Int32Type(_) => {
-          [Word(value.to_int().reinterpret_as_uint())]
-        }
-        Int64Type(_) => {
-          [Quad(value.reinterpret_as_uint64())]
-        }
+        Int1Type(_) => [Byte(value.to_byte())]
+        Int8Type(_) => [Byte(value.to_byte())]
+        Int16Type(_) => [Half(value.to_uint16())]
+        Int32Type(_) => [Word(value.to_int().reinterpret_as_uint())]
+        Int64Type(_) => [Quad(value.reinterpret_as_uint64())]
       }
     ConstantFP({ vty, value, .. }) =>
       match vty.asFPTypeEnum() {
@@ -101,112 +177,110 @@ pub fn llvm_global_constant_to_data(
             "Unsupported floating point type \{ty} in global constant.",
           )
       }
-    ConstantPointerNull(_) => {
-      [Quad(0)]
-    }
-    ConstantArray({ data: Left(const_arr), ..}) => {
-      let data: Array[GlobalValueData] = Array::new()
+    ConstantPointerNull(_) => [Quad(0)]
+    ConstantArray({ data: Left(const_arr), .. }) => {
+      let data : Array[GlobalValueData] = Array::new()
       for item in const_arr {
         let item_data = llvm_global_constant_to_data(item)
         data.append(item_data)
       }
       data
     }
-    ConstantArray({ data: Right(Int8Array(arr)), ..}) => {
+    ConstantArray({ data: Right(Int8Array(arr)), .. }) => {
       let length = arr.length()
       let Int8Array(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         data.push(Byte(arr[i].to_byte()))
       }
       data
     }
-    ConstantArray({ data: Right(UInt8Array(arr)), ..}) => {
+    ConstantArray({ data: Right(UInt8Array(arr)), .. }) => {
       let length = arr.length()
       let UInt8Array(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         let UInt8(byte) = arr[i]
         data.push(Byte(byte))
       }
       data
     }
-    ConstantArray({ data: Right(Int16Array(arr)), ..}) => {
+    ConstantArray({ data: Right(Int16Array(arr)), .. }) => {
       let length = arr.length()
       let Int16Array(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         data.push(Half(arr[i].reinterpret_as_uint16()))
       }
       data
     }
-    ConstantArray({ data: Right(UInt16Array(arr)), ..}) => {
+    ConstantArray({ data: Right(UInt16Array(arr)), .. }) => {
       let length = arr.length()
       let UInt16Array(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         data.push(Half(arr[i]))
       }
       data
     }
-    ConstantArray({ data: Right(Int32Array(arr)), ..}) => {
+    ConstantArray({ data: Right(Int32Array(arr)), .. }) => {
       let length = arr.length()
       let Int32Array(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         data.push(Word(arr[i].reinterpret_as_uint()))
       }
       data
     }
-    ConstantArray({ data: Right(UInt32Array(arr)), ..}) => {
+    ConstantArray({ data: Right(UInt32Array(arr)), .. }) => {
       let length = arr.length()
       let UInt32Array(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         data.push(Word(arr[i]))
       }
       data
     }
-    ConstantArray({ data: Right(Int64Array(arr)), ..}) => {
+    ConstantArray({ data: Right(Int64Array(arr)), .. }) => {
       let length = arr.length()
       let Int64Array(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         data.push(Quad(arr[i].reinterpret_as_uint64()))
       }
       data
     }
-    ConstantArray({ data: Right(UInt64Array(arr)), ..}) => {
+    ConstantArray({ data: Right(UInt64Array(arr)), .. }) => {
       let length = arr.length()
       let UInt64Array(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         data.push(Quad(arr[i]))
       }
       data
     }
-    ConstantArray({ data: Right(FloatArray(arr)), ..}) => {
+    ConstantArray({ data: Right(FloatArray(arr)), .. }) => {
       let length = arr.length()
       let FloatArray(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         let bits = arr[i].reinterpret_as_uint()
         data.push(Word(bits))
       }
       data
     }
-    ConstantArray({ data: Right(DoubleArray(arr)), ..}) => {
+    ConstantArray({ data: Right(DoubleArray(arr)), .. }) => {
       let length = arr.length()
       let DoubleArray(arr) = arr
-      let data: Array[GlobalValueData] = Array::new()
-      for i in 0 ..<length {
+      let data : Array[GlobalValueData] = Array::new()
+      for i in 0..<length {
         let bits = arr[i].reinterpret_as_uint64()
         data.push(Quad(bits))
       }
       data
     }
-    ConstantStruct({ elements, ..}) => {
-      let data: Array[GlobalValueData] = Array::new()
+    ConstantStruct({ elements, .. }) => {
+      let data : Array[GlobalValueData] = Array::new()
       for element in elements {
         let element_data = llvm_global_constant_to_data(element)
         data.append(element_data)
@@ -216,7 +290,6 @@ pub fn llvm_global_constant_to_data(
     _ => raise IRTranslateError("Unsupported constant type in global constant.")
   }
 }
-
 
 ///|
 pub fn Function::translate_llvm_function(

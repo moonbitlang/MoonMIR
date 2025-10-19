@@ -170,6 +170,7 @@ pub(all) enum RvAsm {
   Word(UInt)
   Quad(UInt64)
   Zero(UInt)
+  Section(String) // .section directive
 
   // Speicial inst
   // Load Address
@@ -354,6 +355,10 @@ pub impl Show for RvAsm with output(self, logger) {
     }
     Global(name) => {
       logger.write_string(".global \{name}")
+      return
+    }
+    Section(name) => {
+      logger.write_string(".section \{name}")
       return
     }
     _ => ()

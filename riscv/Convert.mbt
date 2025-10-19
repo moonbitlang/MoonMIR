@@ -119,11 +119,20 @@ pub fn mir_module_to_riscv(
 ///|
 pub fn mir_global_to_riscv(global_value : @MoonMIR.GlobalValue) -> Array[RvAsm] {
   let insts : Array[RvAsm] = Array::new()
-  insts.push(Label(global_value.label))
   match global_value.content {
-    String(s) => insts.push(Asciz(s))
-    Zero(size) => insts.push(Zero(size))
-    Data(data) =>
+    Zero(size) => {
+      insts.push(Section(".bss"))
+      insts.push(Label(global_value.label))
+      insts.push(Zero(size))
+    }
+    String(s) => {
+      insts.push(Section(".rodata"))
+      insts.push(Label(global_value.label))
+      insts.push(Asciz(s))
+    }
+    Data(data) => {
+      insts.push(Section(".data"))
+      insts.push(Label(global_value.label))
       for d in data {
         match d {
           Quad(v) => insts.push(Quad(v))
@@ -132,6 +141,7 @@ pub fn mir_global_to_riscv(global_value : @MoonMIR.GlobalValue) -> Array[RvAsm] 
           Byte(v) => insts.push(Byte(v))
         }
       }
+    }
   }
   insts
 }
