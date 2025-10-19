@@ -20,22 +20,6 @@ test "Simple Int32 Binary IRTranslate Test" {
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
   let mir_func = mir_mod.get_function("add").unwrap()
-  let expected =
-    #|func add(a0, a1) {
-    #|entry:
-    #|  v0 = move.i64 a0
-    #|  v1 = move.i64 a1
-    #|  v2 = add.i32 v0, v1
-    #|  v3 = sub.i32 v0, v1
-    #|  v4 = mul.i32 v0, v1
-    #|  v5 = div.i32 v0, v1
-    #|  v6 = rem.i32 v0, v1
-    #|  v7 = and.i32 v0, v1
-    #|  v8 = or.i32 v0, v1
-    #|  a0 = move.i64 v8
-    #|  ret
-    #|}
-    #|
   inspect(
     mir_func,
     content=(
@@ -112,19 +96,6 @@ test "Simple Float Binary IRTranslate Test" {
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
   let mir_func = mir_mod.get_function("add").unwrap()
-  let expected =
-    #|func add(fa0, fa1) {
-    #|entry:
-    #|  vf0 = move.f64 fa0
-    #|  vf1 = move.f64 fa1
-    #|  vf2 = fadd.f32 vf0, vf1
-    #|  vf3 = fsub.f32 vf0, vf1
-    #|  vf4 = fmul.f32 vf0, vf1
-    #|  vf5 = fdiv.f32 vf0, vf1
-    #|  fa0 = move.f64 vf5
-    #|  ret
-    #|}
-    #|
   inspect(
     mir_func,
     content=(
@@ -285,20 +256,6 @@ test "ICmp IRTranslate Test" {
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
   let mir_func = mir_mod.get_function("demo").unwrap()
-  let expected =
-    #|func demo(a0, a1) {
-    #|entry:
-    #|  v0 = move.i64 a0
-    #|  v1 = move.i64 a1
-    #|  v2 = lt.i32 v0, v1
-    #|  v3 = le.i32 v0, v1
-    #|  v4 = gt.i32 v0, v1
-    #|  v5 = ge.i32 v0, v1
-    #|  v6 = eq.i32 v0, v1
-    #|  v7 = ne.i32 v0, v1
-    #|  ret
-    #|}
-    #|
   inspect(
     mir_func,
     content=(
@@ -336,20 +293,6 @@ test "FCmp IRTranslate Test" {
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
   let mir_func = mir_mod.get_function("demo").unwrap()
-  let expected =
-    #|func demo(fa0, fa1) {
-    #|entry:
-    #|  vf0 = move.f64 fa0
-    #|  vf1 = move.f64 fa1
-    #|  v0 = flt.f32 vf0, vf1
-    #|  v1 = fle.f32 vf0, vf1
-    #|  v2 = fgt.f32 vf0, vf1
-    #|  v3 = fge.f32 vf0, vf1
-    #|  v4 = feq.f32 vf0, vf1
-    #|  v5 = fne.f32 vf0, vf1
-    #|  ret
-    #|}
-    #|
   inspect(
     mir_func,
     content=(
@@ -384,28 +327,6 @@ test "Branch IRTranslate Test" {
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
   let mir_func = mir_mod.get_function("demo").unwrap()
-  let expected =
-    #|func demo(a0, a1) {
-    #|entry:
-    #|  v0 = move.i64 a0
-    #|  v1 = move.i64 a1
-    #|  blt v0, v1, demo_L1, demo_L2
-    #|
-    #|; preds: entry
-    #|demo_L1:
-    #|  a0 = move.i64 v0
-    #|  ret
-    #|
-    #|; preds: entry
-    #|demo_L2:
-    #|  jmp demo_L3
-    #|
-    #|; preds: demo_L2
-    #|demo_L3:
-    #|  a0 = move.i64 v1
-    #|  ret
-    #|}
-    #|
   inspect(
     mir_func,
     content=(
