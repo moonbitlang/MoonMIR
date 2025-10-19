@@ -2245,16 +2245,42 @@ fn f64_div_mir_to_aarch64(
 fn f32_neg_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f32_neg_mir_to_aarch64")
+  guard inst is { opcode: FUnary(FNeg, 32), .. } else {
+    println(
+      "Compiler ICE: f32_neg_mir_to_aarch64 called with non-f32 neg instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [FRegister(d)], uses: [FRegister(r1)], .. } => {
+      let dst = FReg::from_mir_freg_32(d)
+      let src1 = FReg::from_mir_freg_32(r1)
+      [FnegS(dst, src1)]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f64_neg_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f64_neg_mir_to_aarch64")
+  guard inst is { opcode: FUnary(FNeg, 64), .. } else {
+    println(
+      "Compiler ICE: f64_neg_mir_to_aarch64 called with non-f64 neg instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [FRegister(d)], uses: [FRegister(r1)], .. } => {
+      let dst = FReg::from_mir_freg(d)
+      let src1 = FReg::from_mir_freg(r1)
+      [FnegD(dst, src1)]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 // Floating point comparisons
@@ -2307,80 +2333,220 @@ fn f64_cmp_eq_mir_to_aarch64(
 fn f32_cmp_ne_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f32_cmp_ne_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Fne, 32), .. } else {
+    println(
+      "Compiler ICE: f32_cmp_ne_mir_to_aarch64 called with non-f32 ne instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg_32(r1)
+      let src2 = FReg::from_mir_freg_32(r2)
+      [FcmpS(src1, src2), Cset(dst, "ne")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f64_cmp_ne_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f64_cmp_ne_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Fne, 64), .. } else {
+    println(
+      "Compiler ICE: f64_cmp_ne_mir_to_aarch64 called with non-f64 ne instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg(r1)
+      let src2 = FReg::from_mir_freg(r2)
+      [FcmpD(src1, src2), Cset(dst, "ne")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f32_cmp_lt_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f32_cmp_lt_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Flt, 32), .. } else {
+    println(
+      "Compiler ICE: f32_cmp_lt_mir_to_aarch64 called with non-f32 lt instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg_32(r1)
+      let src2 = FReg::from_mir_freg_32(r2)
+      [FcmpS(src1, src2), Cset(dst, "lt")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f64_cmp_lt_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f64_cmp_lt_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Flt, 64), .. } else {
+    println(
+      "Compiler ICE: f64_cmp_lt_mir_to_aarch64 called with non-f64 lt instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg(r1)
+      let src2 = FReg::from_mir_freg(r2)
+      [FcmpD(src1, src2), Cset(dst, "lt")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f32_cmp_le_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f32_cmp_le_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Fle, 32), .. } else {
+    println(
+      "Compiler ICE: f32_cmp_le_mir_to_aarch64 called with non-f32 le instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg_32(r1)
+      let src2 = FReg::from_mir_freg_32(r2)
+      [FcmpS(src1, src2), Cset(dst, "le")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f64_cmp_le_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f64_cmp_le_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Fle, 64), .. } else {
+    println(
+      "Compiler ICE: f64_cmp_le_mir_to_aarch64 called with non-f64 le instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg(r1)
+      let src2 = FReg::from_mir_freg(r2)
+      [FcmpD(src1, src2), Cset(dst, "le")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f32_cmp_gt_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f32_cmp_gt_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Fgt, 32), .. } else {
+    println(
+      "Compiler ICE: f32_cmp_gt_mir_to_aarch64 called with non-f32 gt instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg_32(r1)
+      let src2 = FReg::from_mir_freg_32(r2)
+      [FcmpS(src1, src2), Cset(dst, "gt")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f64_cmp_gt_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f64_cmp_gt_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Fgt, 64), .. } else {
+    println(
+      "Compiler ICE: f64_cmp_gt_mir_to_aarch64 called with non-f64 gt instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg(r1)
+      let src2 = FReg::from_mir_freg(r2)
+      [FcmpD(src1, src2), Cset(dst, "gt")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f32_cmp_ge_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f32_cmp_ge_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Fge, 32), .. } else {
+    println(
+      "Compiler ICE: f32_cmp_ge_mir_to_aarch64 called with non-f32 ge instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg_32(r1)
+      let src2 = FReg::from_mir_freg_32(r2)
+      [FcmpS(src1, src2), Cset(dst, "ge")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn f64_cmp_ge_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement f64_cmp_ge_mir_to_aarch64")
+  guard inst is { opcode: FCmp(Fge, 64), .. } else {
+    println(
+      "Compiler ICE: f64_cmp_ge_mir_to_aarch64 called with non-f64 ge instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src1 = FReg::from_mir_freg(r1)
+      let src2 = FReg::from_mir_freg(r2)
+      [FcmpD(src1, src2), Cset(dst, "ge")]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 // Floating point load/store
@@ -2580,16 +2746,42 @@ fn f64_movei_mir_to_aarch64(
 fn i32_movef_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement i32_movef_mir_to_aarch64")
+  guard inst is { opcode: IMoveF(32), .. } else {
+    println(
+      "Compiler ICE: i32_movef_mir_to_aarch64 called with non-i32 movef instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src = FReg::from_mir_freg_32(r)
+      [FmovStoW(dst, src)]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
 fn i64_movef_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  ignore(inst)
-  raise MIRToAArch64Error("TODO: implement i64_movef_mir_to_aarch64")
+  guard inst is { opcode: IMoveF(64), .. } else {
+    println(
+      "Compiler ICE: i64_movef_mir_to_aarch64 called with non-i64 movef instruction: \{inst}",
+    )
+    panic()
+  }
+  match inst {
+    { defs: [IRegister(d)], uses: [FRegister(r)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src = FReg::from_mir_freg(r)
+      [FmovDtoX(dst, src)]
+    }
+    _ =>
+      raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
+  }
 }
 
 ///|
