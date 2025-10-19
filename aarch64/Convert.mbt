@@ -2629,7 +2629,7 @@ fn cast_mir_to_aarch64(
     }
     (FPToSI(32, 32), [IRegister(dst)], [FRegister(src)]) => {
       let dst_reg = Reg::from_mir_reg(dst)
-      let src_reg = FReg::from_mir_freg(src)
+      let src_reg = FReg::from_mir_freg_32(src)
       [FcvtStoW(dst_reg, src_reg)]
     }
     (FPToSI(64, 64), [IRegister(dst)], [FRegister(src)]) => {
@@ -2639,7 +2639,7 @@ fn cast_mir_to_aarch64(
     }
     (FPToSI(32, 64), [IRegister(dst)], [FRegister(src)]) => {
       let dst_reg = Reg::from_mir_reg(dst)
-      let src_reg = FReg::from_mir_freg(src)
+      let src_reg = FReg::from_mir_freg_32(src)
       [FcvtStoX(dst_reg, src_reg)]
     }
     (SIToFP(32, 64), [FRegister(dst)], [IRegister(src)]) => {
@@ -2653,22 +2653,22 @@ fn cast_mir_to_aarch64(
       [FcvtXtoD(dst_reg, src_reg)]
     }
     (SIToFP(32, 32), [FRegister(dst)], [IRegister(src)]) => {
-      let dst_reg = FReg::from_mir_freg(dst)
+      let dst_reg = FReg::from_mir_freg_32(dst)
       let src_reg = Reg::from_mir_reg(src)
       [FcvtWtoS(dst_reg, src_reg)]
     }
     (SIToFP(64, 32), [FRegister(dst)], [IRegister(src)]) => {
-      let dst_reg = FReg::from_mir_freg(dst)
+      let dst_reg = FReg::from_mir_freg_32(dst)
       let src_reg = Reg::from_mir_reg(src)
       [FcvtXtoS(dst_reg, src_reg)]
     }
     (FPExt(32, 64), [FRegister(dst)], [FRegister(src)]) => {
       let dst_reg = FReg::from_mir_freg(dst)
-      let src_reg = FReg::from_mir_freg(src)
+      let src_reg = FReg::from_mir_freg_32(src)
       [FcvtStoD(dst_reg, src_reg)]
     }
     (FPTrunc(64, 32), [FRegister(dst)], [FRegister(src)]) => {
-      let dst_reg = FReg::from_mir_freg(dst)
+      let dst_reg = FReg::from_mir_freg_32(dst)
       let src_reg = FReg::from_mir_freg(src)
       [FcvtDtoS(dst_reg, src_reg)]
     }

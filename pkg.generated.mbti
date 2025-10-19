@@ -584,6 +584,7 @@ pub(all) enum Operand {
   FRegister(FRegister)
   Mem(IRegister, Int64)
   MemLoc(IRegister, Int64)
+  MemGroup(IRegister, Array[Int64])
   Imm(Int64)
   FImm(Double)
   Label(String)

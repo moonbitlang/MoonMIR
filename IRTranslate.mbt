@@ -448,10 +448,11 @@ fn Function::traverse_llvm_instructions(
   }
 }
 
+///|
 fn Function::visit_llvm_inst(
-  self: Function,
-  llvm_inst: &@IR.Instruction,
-  data_layout: @IR.DataLayout,
+  self : Function,
+  llvm_inst : &@IR.Instruction,
+  data_layout : @IR.DataLayout,
 ) -> Unit raise MIRError {
   match llvm_inst.asInstEnum() {
     AllocaInst({ data_ty, align, .. }) => {
@@ -477,9 +478,10 @@ fn Function::visit_llvm_inst(
           self.bind_llvm_value_to_fregister(llvm_inst, dst)
         }
         VoidType(_) => ()
-        StructType(_) | ArrayType(_) => {
-          self.bind_struct_or_array_value_to_mem_group(llvm_inst, llvm_ty, data_layout)
-        }
+        StructType(_) | ArrayType(_) =>
+          self.bind_struct_or_array_value_to_mem_group(
+            llvm_inst, llvm_ty, data_layout,
+          )
         _ =>
           raise IRTranslateError(
             "Cannot bind LLVM instruction type \{llvm_ty} to a register, inst is \{llvm_inst}",
@@ -489,25 +491,32 @@ fn Function::visit_llvm_inst(
   }
 }
 
+///|
 fn Function::bind_struct_or_array_value_to_mem_group(
-  self: Function,
-  llvm_inst: &@IR.Instruction,
-  ty: &@IR.Type,
-  data_layout: @IR.DataLayout,
+  self : Function,
+  llvm_inst : &@IR.Instruction,
+  ty : &@IR.Type,
+  data_layout : @IR.DataLayout,
 ) -> Unit raise MIRError {
   guard llvm_inst.asInstEnum() is LoadInst(load_inst) else {
-    raise IRTranslateError("Struct value binding only supports LoadInst, got \{llvm_inst}")
+    raise IRTranslateError(
+      "Struct value binding only supports LoadInst, got \{llvm_inst}",
+    )
   }
   let { ptr, .. } = load_inst
   let ptr_op = if self.get_operand_from_llvm_value(ptr) is Some(op) {
     op
   } else {
     guard ptr.tryAsInst() is Some(ptr_inst) else {
-      raise IRTranslateError("Struct LoadInst pointer is not found in value_map")
+      raise IRTranslateError(
+        "Struct LoadInst pointer is not found in value_map",
+      )
     }
     self.visit_llvm_inst(ptr_inst, data_layout)
     guard self.get_operand_from_llvm_value(ptr) is Some(op) else {
-      raise IRTranslateError("Struct LoadInst pointer is not found in value_map after visiting")
+      raise IRTranslateError(
+        "Struct LoadInst pointer is not found in value_map after visiting",
+      )
     }
     op
   }
@@ -516,22 +525,25 @@ fn Function::bind_struct_or_array_value_to_mem_group(
   }
   let offsets = match ty.asTypeEnum() {
     StructType(sty) =>
-      self.bind_struct_value_to_mem_group(base,0, sty, data_layout)
+      self.bind_struct_value_to_mem_group(base, 0, sty, data_layout)
     ArrayType(aty) =>
-      self.bind_array_value_to_mem_group(base,0, aty, data_layout)
+      self.bind_array_value_to_mem_group(base, 0, aty, data_layout)
     _ =>
-      raise IRTranslateError("Type \{ty} is not struct or array for struct/array value binding")
+      raise IRTranslateError(
+        "Type \{ty} is not struct or array for struct/array value binding",
+      )
   }
   let op = MemGroup(base, offsets)
   self.value_map.set(llvm_inst, op)
 }
 
+///|
 fn Function::bind_struct_value_to_mem_group(
-  self: Function,
-  base: IRegister,
-  offset: Int64,
-  sty: @IR.StructType,
-  data_layout: @IR.DataLayout,
+  self : Function,
+  base : IRegister,
+  offset : Int64,
+  sty : @IR.StructType,
+  data_layout : @IR.DataLayout,
 ) -> Array[Int64] raise MIRError {
   let { elements: element_types, .. } = sty
   let offsets : Array[Int64] = Array::new()
@@ -540,12 +552,14 @@ fn Function::bind_struct_value_to_mem_group(
     let this_offset = this_offset.to_int64() + offset
     offsets.push(this_offset)
     let nested_offsets = match ety.asTypeEnum() {
-      StructType(nested_sty) => {
-        self.bind_struct_value_to_mem_group(base, this_offset, nested_sty, data_layout)
-      }
-      ArrayType(nested_aty) => {
-        self.bind_array_value_to_mem_group(base, this_offset, nested_aty, data_layout)
-      }
+      StructType(nested_sty) =>
+        self.bind_struct_value_to_mem_group(
+          base, this_offset, nested_sty, data_layout,
+        )
+      ArrayType(nested_aty) =>
+        self.bind_array_value_to_mem_group(
+          base, this_offset, nested_aty, data_layout,
+        )
       _ => []
     }
     offsets.append(nested_offsets)
@@ -553,12 +567,13 @@ fn Function::bind_struct_value_to_mem_group(
   offsets
 }
 
+///|
 fn Function::bind_array_value_to_mem_group(
-  self: Function,
-  base: IRegister,
-  offset: Int64,
-  aty: @IR.ArrayType,
-  data_layout: @IR.DataLayout,
+  self : Function,
+  base : IRegister,
+  offset : Int64,
+  aty : @IR.ArrayType,
+  data_layout : @IR.DataLayout,
 ) -> Array[Int64] raise MIRError {
   let element_type = aty.getElementType()
   let element_size = data_layout.getTypeAllocSize(element_type).to_int64()
@@ -568,12 +583,14 @@ fn Function::bind_array_value_to_mem_group(
     let this_offset = offset + i.to_int64() * element_size
     offsets.push(this_offset)
     let nested_offsets = match element_type.asTypeEnum() {
-      StructType(nested_sty) => {
-        self.bind_struct_value_to_mem_group(base, this_offset, nested_sty, data_layout)
-      }
-      ArrayType(nested_aty) => {
-        self.bind_array_value_to_mem_group(base, this_offset, nested_aty, data_layout)
-      }
+      StructType(nested_sty) =>
+        self.bind_struct_value_to_mem_group(
+          base, this_offset, nested_sty, data_layout,
+        )
+      ArrayType(nested_aty) =>
+        self.bind_array_value_to_mem_group(
+          base, this_offset, nested_aty, data_layout,
+        )
       _ => []
     }
     offsets.append(nested_offsets)
@@ -783,9 +800,10 @@ pub fn translate_llvm_store_inst(
         builder.build_storei(data_size, src=tmp, base~, offset~),
       ]
     }
-    MemGroup(src_base, offsets) => {
-      return translate_multiple_load_store(llvm_inst, builder, func, data_layout, src_base, offsets, base);
-    }
+    MemGroup(src_base, offsets) =>
+      return translate_multiple_load_store(
+        llvm_inst, builder, func, data_layout, src_base, offsets, base, offset,
+      )
     src_op =>
       raise IRTranslateError(
         "StoreInst: value operand is not a register, immediate, or label: \{src_op}",
@@ -793,6 +811,7 @@ pub fn translate_llvm_store_inst(
   }
 }
 
+///|
 fn translate_multiple_load_store(
   _llvm_inst : @IR.StoreInst,
   builder : IRBuilder,
@@ -801,23 +820,34 @@ fn translate_multiple_load_store(
   src_base : IRegister,
   offsets : Array[Int64],
   dst_base : IRegister,
+  dst_base_offset : Int64,
 ) -> Array[Instruction] raise MIRError {
   let minsts : Array[Instruction] = Array::new()
-  
+
   // For each offset in the MemGroup, we need to load from src_base + offset
-  // and store to dst_base + offset
+  // and store to dst_base + (dst_base_offset + offset)
   // Use 32-bit load/store for most fields, as they are typically int/float
   for offset in offsets {
     // Load the value from source location (src_base + offset)
     let temp_reg = func.new_virtual_reg()
-    let load_inst = builder.build_loadi(32, dst=temp_reg, base=src_base, offset~)
+    let load_inst = builder.build_loadi(
+      32,
+      dst=temp_reg,
+      base=src_base,
+      offset~,
+    )
     minsts.push(load_inst)
-    
-    // Store the value to destination location (dst_base + offset)
-    let store_inst = builder.build_storei(32, src=temp_reg, base=dst_base, offset~)
+
+    // Store the value to destination location (dst_base + dst_base_offset + offset)
+    let dst_offset = dst_base_offset + offset
+    let store_inst = builder.build_storei(
+      32,
+      src=temp_reg,
+      base=dst_base,
+      offset=dst_offset,
+    )
     minsts.push(store_inst)
   }
-  
   minsts
 }
 
