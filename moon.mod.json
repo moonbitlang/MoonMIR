@@ -2,9 +2,6 @@
   "name": "Kaida-Amethyst/MoonMIR",
   "version": "0.1.0",
   "deps": {
-    "Kaida-Amethyst/MoonLLVM": {
-      "path": "../Aether/"
-    },
     "Kaida-Amethyst/mbtcc": {
       "path": "../mbtcc/"
     },
@@ -12,7 +9,8 @@
       "path": "../TinyMoonbit/"
     },
     "moonbitlang/x": "0.4.34",
-    "Kaida-Amethyst/either": "0.1.0"
+    "Kaida-Amethyst/either": "0.1.0",
+    "Kaida-Amethyst/MoonLLVM": "0.1.9"
   },
   "readme": "README.md",
   "repository": "",
