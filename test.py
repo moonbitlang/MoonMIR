@@ -143,9 +143,6 @@ def run_single_test(c_file_path: str, target: str) -> bool:
                 print(f"{Style.YELLOW}  - Return codes differ: [{runner}: {moon_result.returncode}] vs [std: {std_result.returncode}]{Style.RESET}")
             if not stdout_ok:
                 print(f"{Style.YELLOW}  - Standard outputs differ.{Style.RESET}")
-                # Uncomment for detailed diff
-                # print(f"{Style.CYAN}--- Moon Output ---\n{moon_result.stdout}{Style.RESET}")
-                # print(f"{Style.CYAN}--- Standard Output ---\n{std_result.stdout}{Style.RESET}")
             if not stderr_ok:
                 print(f"{Style.YELLOW}  - Standard errors differ.{Style.RESET}")
             return False
@@ -179,19 +176,31 @@ def run_test_suite(target: str, tests: list[str]) -> list:
 def main():
     parser = argparse.ArgumentParser(
         description="Moonbit-C Test Runner for RISC-V and AArch64.",
-        formatter_class=argparse.RawTextHelpFormatter
+        formatter_class=argparse.RawTextHelpFormatter,
+        add_help=False # We handle help manually
+    )
+    parser.add_argument(
+        "-h", "--help",
+        action="help",
+        default=argparse.SUPPRESS,
+        help="Show this help message and exit."
     )
     parser.add_argument(
         "-f", "--file",
         type=str,
-        help="Run a single test on a specific C file.\nDefaults to aarch64 target unless --target is specified."
+        help="Run a single test on a specific C file.\nIf --target is not given, runs on both riscv64 and aarch64."
     )
     parser.add_argument(
         "--target",
         type=str,
-        choices=["riscv64", "aarch64"],
-        help="Specify the target architecture to test.\n- 'riscv64': Run all RISC-V tests.\n- 'aarch64': Run all AArch64 tests.\nIf used with -f, specifies the target for that single file."
+        choices=["riscv64", "aarch64", "all"],
+        help="Specify the target architecture to test.\n- 'riscv64': Run all RISC-V tests.\n- 'aarch64': Run all AArch64 tests.\n- 'all': Run all tests for both backends (default for suite)."
     )
+
+    # If no arguments are provided, print help and exit.
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
 
     args = parser.parse_args()
 
@@ -199,30 +208,41 @@ def main():
         print(f"{Style.RED}{Style.FAILED} Critical Error: '{RUNTIME_C}' not found. Aborting.{Style.RESET}")
         sys.exit(1)
 
-    failed_summary = {}
-
+    # --- Single File Test Logic ---
     if args.file:
-        # Run a single file test
-        target = args.target if args.target else "aarch64"
-        if not run_single_test(args.file, target):
-            print(f"\nSummary: Test for {args.file} on {target} failed.")
+        targets_to_run = []
+        if not args.target or args.target == 'all':
+            targets_to_run = ['riscv64', 'aarch64']
         else:
-            print(f"\nSummary: Test for {args.file} on {target} passed.")
+            targets_to_run.append(args.target)
+        
+        failed_count = 0
+        for target in targets_to_run:
+            if not run_single_test(args.file, target):
+                failed_count += 1
+        
+        print("\n------------------------------------------")
+        print(f"Summary for file: {args.file}")
+        if failed_count > 0:
+            print(f"{Style.RED}{failed_count}/{len(targets_to_run)} target(s) failed.{Style.RESET}")
+            sys.exit(1)
+        else:
+            print(f"{Style.GREEN}All {len(targets_to_run)} target(s) passed!{Style.RESET}")
+        return # End execution after single file test
 
-    elif args.target:
-        # Run all tests for a specific target
-        if args.target == "riscv64":
+    # --- Test Suite Logic ---
+    failed_summary = {}
+    if args.target:
+        run_riscv = args.target in ["riscv64", "all"]
+        run_aarch64 = args.target in ["aarch64", "all"]
+
+        if run_riscv:
             failed_summary["riscv64"] = run_test_suite("riscv64", RISCV64_TESTS)
-        elif args.target == "aarch64":
+        if run_aarch64:
             failed_summary["aarch64"] = run_test_suite("aarch64", AARCH64_TESTS)
     
-    else:
-        # Run all tests for all targets
-        failed_summary["riscv64"] = run_test_suite("riscv64", RISCV64_TESTS)
-        failed_summary["aarch64"] = run_test_suite("aarch64", AARCH64_TESTS)
-
     # Print summary for suite runs
-    if not args.file:
+    if failed_summary:
         print(f"\n{Style.MAGENTA}=========================================={Style.RESET}")
         print(f"{Style.MAGENTA}{Style.SUMMARY} Test Suite Summary{Style.RESET}")
         print(f"{Style.MAGENTA}=========================================={Style.RESET}")
@@ -245,7 +265,7 @@ def main():
             else:
                 print(f"\n{Style.GREEN}{Style.PASSED} All {len(suite_tests)} tests passed for {target.upper()}!{Style.RESET}")
         
-        print("------------------------------------------")
+        print("\n------------------------------------------")
         if all_passed:
             print(f"{Style.GREEN}{Style.CELEBRATE} All {total_tests} tests passed across all suites! {Style.RESET}")
         else:
