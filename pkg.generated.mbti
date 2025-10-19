@@ -8,6 +8,8 @@ import(
 )
 
 // Values
+fn llvm_global_constant_to_data(&@IR.Constant) -> Array[GlobalValueData] raise MIRError
+
 fn translate_bitcast(Int, Operand, Operand, IRBuilder, Function) -> Array[Instruction] raise MIRError
 
 fn translate_fpext(Int, Int, Operand, Operand, IRBuilder, Function) -> Array[Instruction] raise MIRError

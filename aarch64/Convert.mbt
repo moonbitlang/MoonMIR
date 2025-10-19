@@ -111,6 +111,10 @@ pub fn mir_module_to_aarch64(
     let func_insts = mir_function_to_aarch64(func)
     insts.append(func_insts)
   }
+  // Add .data section directive before global variables  
+  if mod.global_values.length() > 0 {
+    insts.push(DataSection)
+  }
   for gv in mod.global_values {
     let gv_insts = mir_global_to_aarch64(gv)
     insts.append(gv_insts)
@@ -2512,9 +2516,9 @@ fn loadaddr_mir_to_aarch64(
   match inst {
     { defs: [IRegister(d)], uses: [Label(label)], .. } => {
       let dst = Reg::from_mir_reg(d)
-      // 在macOS上，使用adr指令来加载地址，这比adrp+add更兼容
-      // adr指令可以加载PC相对地址，范围是±1MB
-      [Adr(dst, label)]
+      // Use adrp + add for loading addresses, which works for any address in the address space
+      // adr instruction has a limited range of ±1MB from PC, which may not be sufficient for global variables
+      [Adrp(dst, "\{label}@PAGE"), AddLo12(dst, dst, "\{label}@PAGEOFF")]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")

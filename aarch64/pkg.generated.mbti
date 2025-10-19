@@ -28,6 +28,7 @@ impl Show for MIRToAArch64Error
 // Types and methods
 pub(all) enum AArch64Asm {
   Global(String)
+  DataSection
   Asciz(String)
   Byte(Byte)
   Half(UInt16)

@@ -292,6 +292,7 @@ pub impl Show for FReg with output(self, logger) {
 pub(all) enum AArch64Asm {
   // Assembler directives
   Global(String)
+  DataSection // .data directive
   Asciz(String)
   Byte(Byte)
   Half(UInt16)
@@ -467,6 +468,10 @@ pub impl Show for AArch64Asm with output(self, logger) {
     }
     Global(name) => {
       logger.write_string(".global \{name}")
+      return
+    }
+    DataSection => {
+      logger.write_string(".data")
       return
     }
     _ => ()
@@ -646,7 +651,7 @@ pub impl Show for AArch64Asm with output(self, logger) {
 
     // Address loading
     Adrp(rd, label) => "adrp \{rd}, \{label}"
-    AddLo12(rd, rs, label) => "add \{rd}, \{rs}, :lo12:\{label}"
+    AddLo12(rd, rs, label) => "add \{rd}, \{rs}, \{label}"
     Adr(rd, label) => "adr \{rd}, \{label}"
     _ => ""
   }
