@@ -29,6 +29,8 @@ impl Show for MIRToAArch64Error
 pub(all) enum AArch64Asm {
   Global(String)
   DataSection
+  RodataSection
+  BssSection
   Asciz(String)
   Byte(Byte)
   Half(UInt16)
@@ -191,6 +193,38 @@ pub(all) enum FReg {
   D29
   D30
   D31
+  S0
+  S1
+  S2
+  S3
+  S4
+  S5
+  S6
+  S7
+  S8
+  S9
+  S10
+  S11
+  S12
+  S13
+  S14
+  S15
+  S16
+  S17
+  S18
+  S19
+  S20
+  S21
+  S22
+  S23
+  S24
+  S25
+  S26
+  S27
+  S28
+  S29
+  S30
+  S31
 }
 fn FReg::compare(Self, Self) -> Int // from trait `Compare`
 fn FReg::equal(Self, Self) -> Bool // from trait `Eq`

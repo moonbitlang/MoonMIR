@@ -888,7 +888,7 @@ pub fn Instruction::legalize_fcmp(
         builder.build_fcmp(fcmpop, bits, dst=rdst, src1=r1, src2=v2),
       ]
     }
-    { defs: [IRegister(_)], uses: [IRegister(_), IRegister(_)], .. } as inst =>
+    { defs: [IRegister(_)], uses: [FRegister(_), FRegister(_)], .. } as inst =>
       [inst]
     _ => raise LegalizeError("Unhandled FCmp legalization case: \{self}")
   }

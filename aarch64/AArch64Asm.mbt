@@ -247,6 +247,38 @@ pub(all) enum FReg {
   D29 // Temporary register
   D30 // Temporary register
   D31 // Temporary register
+  S0 // 32-bit floating point register (alias for D0)
+  S1 // 32-bit floating point register (alias for D1)
+  S2 // 32-bit floating point register (alias for D2)
+  S3 // 32-bit floating point register (alias for D3)
+  S4 // 32-bit floating point register (alias for D4)
+  S5 // 32-bit floating point register (alias for D5)
+  S6 // 32-bit floating point register (alias for D6)
+  S7 // 32-bit floating point register (alias for D7)
+  S8 // 32-bit floating point register (alias for D8)
+  S9 // 32-bit floating point register (alias for D9)
+  S10 // 32-bit floating point register (alias for D10)
+  S11 // 32-bit floating point register (alias for D11)
+  S12 // 32-bit floating point register (alias for D12)
+  S13 // 32-bit floating point register (alias for D13)
+  S14 // 32-bit floating point register (alias for D14)
+  S15 // 32-bit floating point register (alias for D15)
+  S16 // 32-bit floating point register (alias for D16)
+  S17 // 32-bit floating point register (alias for D17)
+  S18 // 32-bit floating point register (alias for D18)
+  S19 // 32-bit floating point register (alias for D19)
+  S20 // 32-bit floating point register (alias for D20)
+  S21 // 32-bit floating point register (alias for D21)
+  S22 // 32-bit floating point register (alias for D22)
+  S23 // 32-bit floating point register (alias for D23)
+  S24 // 32-bit floating point register (alias for D24)
+  S25 // 32-bit floating point register (alias for D25)
+  S26 // 32-bit floating point register (alias for D26)
+  S27 // 32-bit floating point register (alias for D27)
+  S28 // 32-bit floating point register (alias for D28)
+  S29 // 32-bit floating point register (alias for D29)
+  S30 // 32-bit floating point register (alias for D30)
+  S31 // 32-bit floating point register (alias for D31)
 } derive(Eq, Compare, Hash)
 
 ///|
@@ -284,6 +316,38 @@ pub impl Show for FReg with output(self, logger) {
     D29 => "d29"
     D30 => "d30"
     D31 => "d31"
+    S0 => "s0"
+    S1 => "s1"
+    S2 => "s2"
+    S3 => "s3"
+    S4 => "s4"
+    S5 => "s5"
+    S6 => "s6"
+    S7 => "s7"
+    S8 => "s8"
+    S9 => "s9"
+    S10 => "s10"
+    S11 => "s11"
+    S12 => "s12"
+    S13 => "s13"
+    S14 => "s14"
+    S15 => "s15"
+    S16 => "s16"
+    S17 => "s17"
+    S18 => "s18"
+    S19 => "s19"
+    S20 => "s20"
+    S21 => "s21"
+    S22 => "s22"
+    S23 => "s23"
+    S24 => "s24"
+    S25 => "s25"
+    S26 => "s26"
+    S27 => "s27"
+    S28 => "s28"
+    S29 => "s29"
+    S30 => "s30"
+    S31 => "s31"
   }
   logger.write_string(s)
 }
@@ -293,6 +357,8 @@ pub(all) enum AArch64Asm {
   // Assembler directives
   Global(String)
   DataSection // .data directive
+  RodataSection // .rodata directive
+  BssSection // .bss directive
   Asciz(String)
   Byte(Byte)
   Half(UInt16)
@@ -474,6 +540,14 @@ pub impl Show for AArch64Asm with output(self, logger) {
       logger.write_string(".data")
       return
     }
+    RodataSection => {
+      logger.write_string(".section __TEXT,__cstring")
+      return
+    }
+    BssSection => {
+      logger.write_string(".bss")
+      return
+    }
     _ => ()
   }
   let s = match self {
@@ -610,7 +684,7 @@ pub impl Show for AArch64Asm with output(self, logger) {
     // Move between general and FP registers
     FmovXtoD(fd, rs) => "fmov \{fd}, \{rs}"
     FmovDtoX(rd, fs) => "fmov \{rd}, \{fs}"
-    FmovWtoS(fs, rs) => "fmov \{fs}, \{rs}"
+    FmovWtoS(fs, rs) => "fmov \{fs}, \{rs.to_w_string()}"
     FmovStoW(rd, fs) => "fmov \{rd}, \{fs}"
 
     // Comparison

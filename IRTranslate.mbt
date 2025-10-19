@@ -342,7 +342,14 @@ pub fn Function::translate_params(self : Self, loc~ : SourceLoc) -> Unit {
   let entry_bb = self.get_entry_block().unwrap()
   let buiilder = IRBuilder::new(self, entry_bb)
   for arg, param in llvm_func.arguments.zip_to_iter2(self.params) {
-    let data_size = 64 // Riscv64
+    // Get the actual type size from LLVM argument type
+    let arg_ty = arg.getType()
+    let data_size = match arg_ty.asTypeEnum() {
+      Int1Type(_) | Int8Type(_) | Int16Type(_) | Int32Type(_) | FloatType(_) =>
+        32
+      Int64Type(_) | PointerType(_) | DoubleType(_) => 64
+      _ => 64 // Default to 64 for other types
+    }
     if param is IRegister(r) {
       let tmp = self.new_virtual_reg()
       let move_inst = buiilder.build_imove(data_size, dst=tmp, src=r) catch {
@@ -2373,11 +2380,17 @@ pub fn translate_llvm_call_inst(
       }
       (FRegister(src), true) if call_freg_cnt < num_arg_fregs => {
         let dst = FAReg(call_freg_cnt)
-        let inst = builder.build_fmove(64, dst~, src~)
+        // Get the argument type width
+        let arg_ty = arg.getType()
+        let arg_width = match arg_ty.asTypeEnum() {
+          FloatType(_) => 32
+          DoubleType(_) => 64
+          _ => 64 // Default to 64 for other types
+        }
+        let inst = builder.build_fmove(arg_width, dst~, src~)
         if src != dst {
           minsts.push(inst)
         }
-        minsts.push(inst)
         call_freg_cnt += 1
       }
       (FRegister(src), true) => {
@@ -2430,13 +2443,26 @@ pub fn translate_llvm_call_inst(
       }
       (FImm(src), true) if call_freg_cnt < num_arg_fregs => {
         let dst = FAReg(call_freg_cnt)
+        // Get the argument type width
+        let arg_ty = arg.getType()
+        let arg_width = match arg_ty.asTypeEnum() {
+          FloatType(_) => 32
+          DoubleType(_) => 64
+          _ => 64 // Default to 64 for other types
+        }
         let ireg = func.new_virtual_reg()
-        let inst1 = builder.build_imove_imm(
-          64,
-          dst=ireg,
-          src=src.reinterpret_as_int64(),
-        )
-        let inst2 = builder.build_fmove_from_ireg(64, dst~, src=ireg)
+        // Convert double bit representation to appropriate type
+        let bit_value = match arg_width {
+          32 => {
+            // Convert double to float bit representation
+            let float_val = src.to_float()
+            float_val.reinterpret_as_int().to_int64()
+          }
+          64 => src.reinterpret_as_int64()
+          _ => src.reinterpret_as_int64()
+        }
+        let inst1 = builder.build_imove_imm(arg_width, dst=ireg, src=bit_value)
+        let inst2 = builder.build_fmove_from_ireg(arg_width, dst~, src=ireg)
         minsts.push(inst1)
         minsts.push(inst2)
         call_freg_cnt += 1
