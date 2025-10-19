@@ -521,7 +521,7 @@ fn Function::bind_struct_or_array_value_to_mem_group(
     op
   }
   guard ptr_op is IRegister(base) else {
-    raise IRTranslateError("Struct LoadInst pointer is not a register")
+    raise IRTranslateError("Struct LoadInst pointer is not a register, it is \{ptr_op}")
   }
   let offsets = match ty.asTypeEnum() {
     StructType(sty) =>
@@ -881,7 +881,19 @@ fn translate_multiple_load_store(
 ///   #|  ret
 ///   #|}
 ///   #|
-/// inspect(actual, content = expected)
+/// inspect(actual, content = (
+///   #|func add(a0, a1, fa0, fa1) {
+/// #|entry:
+/// #|  v0 = move.i32 a0
+/// #|  v1 = move.i32 a1
+/// #|  vf0 = move.f64 fa0
+/// #|  vf1 = move.f64 fa1
+/// #|  v2 = add.i32 v0, v1
+/// #|  vf2 = fadd.f64 vf0, vf1
+/// #|  ret
+/// #|}
+/// #|
+/// ))
 /// ```
 pub fn translate_llvm_binary_inst(
   llvm_inst : @IR.BinaryInst,
@@ -922,7 +934,17 @@ pub fn translate_llvm_binary_inst(
 ///   #|  ret
 ///   #|}
 ///   #|
-/// inspect(actual, content = expected)
+/// inspect(actual, content = (
+///   #|func add(fa0, fa1) {
+/// #|entry:
+/// #|  vf0 = move.f32 fa0
+/// #|  vf1 = move.f32 fa1
+/// #|  vf2 = fadd.f32 vf0, vf1
+/// #|  fa0 = move.f64 vf2
+/// #|  ret
+/// #|}
+/// #|
+/// ))
 /// ```
 pub fn translate_llvm_float_binary_inst(
   llvm_inst : @IR.BinaryInst,
@@ -1062,7 +1084,17 @@ pub fn translate_llvm_float_binary_inst(
 ///   #|  ret
 ///   #|}
 ///   #|
-/// inspect(actual, content = expected)
+/// inspect(actual, content = (
+///   #|func add(a0, a1) {
+/// #|entry:
+/// #|  v0 = move.i32 a0
+/// #|  v1 = move.i32 a1
+/// #|  v2 = add.i32 v0, v1
+/// #|  a0 = move.i64 v2
+/// #|  ret
+/// #|}
+/// #|
+/// ))
 /// ```
 pub fn translate_llvm_int_binary_inst(
   llvm_inst : @IR.BinaryInst,
@@ -1167,7 +1199,16 @@ pub fn translate_llvm_int_binary_inst(
 ///  #|}
 ///  #|
 ///
-/// inspect(actual, content = expected)
+/// inspect(actual, content = (
+///   #|func neg(fa0) {
+/// #|entry:
+/// #|  vf0 = move.f32 fa0
+/// #|  vf1 = fneg.f32 vf0
+/// #|  fa0 = move.f64 vf1
+/// #|  ret
+/// #|}
+/// #|
+/// ))
 /// ```
 pub fn translate_llvm_fneg_inst(
   llvm_inst : @IR.FNegInst,
@@ -1248,7 +1289,21 @@ pub fn translate_llvm_fneg_inst(
 ///   #|}
 ///   #|
 ///
-/// inspect(mir_func, content=expected)
+/// inspect(mir_func, content=(
+///   #|func demo(a0, a1) {
+///   #|entry:
+///   #|  v0 = move.i32 a0
+///   #|  v1 = move.i32 a1
+///   #|  v2 = lt.i32 v0, v1
+///   #|  v3 = le.i32 v0, v1
+///   #|  v4 = gt.i32 v0, v1
+///   #|  v5 = ge.i32 v0, v1
+///   #|  v6 = eq.i32 v0, v1
+///   #|  v7 = ne.i32 v0, v1
+///   #|  ret
+///   #|}
+///   #|
+/// ))
 /// ```
 pub fn translate_llvm_icmp_inst(
   llvm_inst : @IR.ICmpInst,
@@ -1518,7 +1573,29 @@ pub fn translate_llvm_fcmp_inst(
 ///   #|}
 ///   #|
 /// 
-/// inspect(mir_func, content=expected)
+/// inspect(mir_func, content=(
+///   #|func demo(a0, a1) {
+///   #|entry:
+///   #|  v0 = move.i32 a0
+///   #|  v1 = move.i32 a1
+///   #|  blt v0, v1, demo_L1, demo_L2
+///   #|
+///   #|; preds: entry
+///   #|demo_L1:
+///   #|  a0 = move.i64 v0
+///   #|  ret
+///   #|
+///   #|; preds: entry
+///   #|demo_L2:
+///   #|  jmp demo_L3
+///   #|
+///   #|; preds: demo_L2
+///   #|demo_L3:
+///   #|  a0 = move.i64 v1
+///   #|  ret
+///   #|}
+///   #|
+/// ))
 /// ```
 pub fn translate_llvm_branch_inst(
   llvm_inst : @IR.BranchInst,
@@ -1574,7 +1651,29 @@ pub fn translate_llvm_branch_inst(
 ///   #|}
 ///   #|
 /// 
-/// inspect(mir_func, content=expected)
+/// inspect(mir_func, content=(
+///   #|func demo(a0, a1) {
+///   #|entry:
+///   #|  v0 = move.i32 a0
+///   #|  v1 = move.i32 a1
+///   #|  blt v0, v1, demo_L1, demo_L2
+///   #|
+///   #|; preds: entry
+///   #|demo_L1:
+///   #|  a0 = move.i64 v0
+///   #|  ret
+///   #|
+///   #|; preds: entry
+///   #|demo_L2:
+///   #|  jmp demo_L3
+///   #|
+///   #|; preds: demo_L2
+///   #|demo_L3:
+///   #|  a0 = move.i64 v1
+///   #|  ret
+///   #|}
+///   #|
+/// ))
 /// ```
 pub fn translate_llvm_conditional_branch(
   llvm_inst : @IR.BranchInst,
@@ -1790,7 +1889,29 @@ pub fn translate_llvm_conditional_branch(
 ///   #|}
 ///   #|
 /// 
-/// inspect(mir_func, content=expected)
+/// inspect(mir_func, content=(
+///   #|func demo(a0, a1) {
+///   #|entry:
+///   #|  v0 = move.i32 a0
+///   #|  v1 = move.i32 a1
+///   #|  blt v0, v1, demo_L1, demo_L2
+///   #|
+///   #|; preds: entry
+///   #|demo_L1:
+///   #|  a0 = move.i64 v0
+///   #|  ret
+///   #|
+///   #|; preds: entry
+///   #|demo_L2:
+///   #|  jmp demo_L3
+///   #|
+///   #|; preds: demo_L2
+///   #|demo_L3:
+///   #|  a0 = move.i64 v1
+///   #|  ret
+///   #|}
+///   #|
+/// ))
 /// ```
 pub fn translate_llvm_unconditional_branch(
   llvm_inst : @IR.BranchInst,

@@ -63,6 +63,91 @@ fn Instruction::legalize_ibinary(
     )
     panic()
   }
+
+  // If bits is 8 or 16, we need to extend/promote to 32 bits
+  if bits == 8 || bits == 16 {
+    // For 8 and 16 bit operations, we need to:
+    // 1. Zero-extend or sign-extend operands to 32 bits
+    // 2. Perform the operation in 32 bits
+    // 3. Truncate back to the original size if needed
+    guard self is { defs: [dst_def], uses, .. } else {
+      return [self] // If not in expected form, return as-is
+    }
+
+    // Extend operands to 32 bits
+    let extended_uses : Array[Operand] = Array::new()
+    for use_op in uses {
+      match use_op {
+        IRegister(_) => {
+          let ext_reg = func.new_virtual_reg()
+          extended_uses.push(IRegister(ext_reg))
+        }
+        _ =>
+          // For immediates and other operand types, keep as-is
+          extended_uses.push(use_op)
+      }
+    }
+
+    // Create a 32-bit binary operation with extended operands
+    let temp_dst = func.new_virtual_reg()
+    let result_insts : Array[Instruction] = Array::new()
+
+    // Build extension instructions for register operands
+    for i, use_op in uses {
+      match use_op {
+        IRegister(r) =>
+          match extended_uses[i] {
+            IRegister(ext_reg) =>
+              result_insts.push(
+                builder.build_zext(
+                  from_ty_size=bits,
+                  to_ty_size=32,
+                  dst=ext_reg,
+                  src=r,
+                ),
+              )
+            _ => ()
+          }
+        _ => ()
+      }
+    }
+
+    // Build the 32-bit binary operation
+    guard extended_uses.length() >= 2 else { return [self] }
+    let op1 = extended_uses[0]
+    let op2 = extended_uses[1]
+    match (op1, op2) {
+      (IRegister(r1), IRegister(r2)) =>
+        result_insts.push(
+          builder.build_ibinary(binop, 32, dst=temp_dst, src1=r1, src2=r2),
+        )
+      (IRegister(r1), Imm(i2)) =>
+        result_insts.push(
+          builder.build_ibinary_imm(binop, 32, dst=temp_dst, src1=r1, src2=i2),
+        )
+      _ => return [self] // Unsupported operand combination
+    }
+
+    // Truncate back to original size if destination is a register
+    match dst_def {
+      IRegister(dst) =>
+        result_insts.push(
+          builder.build_trunc(
+            from_ty_size=32,
+            to_ty_size=bits,
+            dst~,
+            src=temp_dst,
+          ),
+        )
+      Mem(base, offset) =>
+        // If destination is memory, just store the 32-bit result with appropriate size
+        result_insts.push(
+          builder.build_storei(bits, src=temp_dst, base~, offset~),
+        )
+      _ => return [self]
+    }
+    return result_insts
+  }
   match self {
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1), Mem(b2, o2)], .. } => {
       let (v1, v2) = func.keeped_treg2()

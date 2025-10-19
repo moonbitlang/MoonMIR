@@ -16,7 +16,7 @@ RISCV64_TESTS = [
     "while", "while2", "nested_while", "branch", "many_args", "order_args", 
     "ptr", "struct", "struct1", "struct2", "struct3", "struct4",
     "array", "heap_arr", "arr_struct", "matrix",
-    "linked_list", "bst", "hash_table", "binary_search", "bubble_sort", 
+    "linked_list", "bst", "hash_table", "trie", "binary_search", "bubble_sort", 
     "merge_sort", "quick_sort", "heap_sort", "dijkstra", "lcs", "dsu"
 ]
 
@@ -25,7 +25,7 @@ AARCH64_TESTS = [
     "while", "while2", "nested_while", "branch", "many_args", "order_args",
     "ptr", "struct",  "struct1", "struct2", "struct3", "struct4", "struct_array",
     "stack", "array", "heap_arr", "arr_struct", "matrix", 
-    "linked_list", "bst", "hash_table", "queue", "binary_search", 
+    "linked_list", "bst", "hash_table", "trie", "queue", "binary_search", 
     "bubble_sort", "merge_sort", "quick_sort", "heap_sort", "dijkstra", 
     "lcs", "dsu", "prim"
 ]
