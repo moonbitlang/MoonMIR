@@ -2246,9 +2246,10 @@ fn f32_move_mir_to_riscv(
       // RISC-V requires loading immediate to integer register first, then move to float register
       let dst = FReg::from_mir_freg(d)
       let tmp_reg = Reg::T5 // Use a temporary register
-      // For f32, we use the bit representation of the double value (simplified approach)
-      let bit_value = imm_val.reinterpret_as_int64()
-      [Li(tmp_reg, bit_value.to_string()), FmvXW(dst, tmp_reg)]
+      // For f32, we need to convert double to float first, then get its 32-bit representation
+      let float_val = imm_val.to_float()
+      let bit_value = float_val.reinterpret_as_int()
+      [Li(tmp_reg, bit_value.to_int64().to_string()), FmvXW(dst, tmp_reg)]
     }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")

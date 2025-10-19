@@ -2121,9 +2121,9 @@ fn f32_sub_mir_to_aarch64(
   }
   match inst {
     { defs: [FRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
-      let dst = FReg::from_mir_freg(d)
-      let src1 = FReg::from_mir_freg(r1)
-      let src2 = FReg::from_mir_freg(r2)
+      let dst = FReg::from_mir_freg_32(d)
+      let src1 = FReg::from_mir_freg_32(r1)
+      let src2 = FReg::from_mir_freg_32(r2)
       [FsubS(dst, src1, src2)]
     }
     _ =>
@@ -2165,9 +2165,9 @@ fn f32_mul_mir_to_aarch64(
   }
   match inst {
     { defs: [FRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
-      let dst = FReg::from_mir_freg(d)
-      let src1 = FReg::from_mir_freg(r1)
-      let src2 = FReg::from_mir_freg(r2)
+      let dst = FReg::from_mir_freg_32(d)
+      let src1 = FReg::from_mir_freg_32(r1)
+      let src2 = FReg::from_mir_freg_32(r2)
       [FmulS(dst, src1, src2)]
     }
     _ =>
@@ -2209,9 +2209,9 @@ fn f32_div_mir_to_aarch64(
   }
   match inst {
     { defs: [FRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
-      let dst = FReg::from_mir_freg(d)
-      let src1 = FReg::from_mir_freg(r1)
-      let src2 = FReg::from_mir_freg(r2)
+      let dst = FReg::from_mir_freg_32(d)
+      let src1 = FReg::from_mir_freg_32(r1)
+      let src2 = FReg::from_mir_freg_32(r2)
       [FdivS(dst, src1, src2)]
     }
     _ =>
@@ -2272,8 +2272,8 @@ fn f32_cmp_eq_mir_to_aarch64(
   match inst {
     { defs: [IRegister(d)], uses: [FRegister(r1), FRegister(r2)], .. } => {
       let dst = Reg::from_mir_reg(d)
-      let src1 = FReg::from_mir_freg(r1)
-      let src2 = FReg::from_mir_freg(r2)
+      let src1 = FReg::from_mir_freg_32(r1)
+      let src2 = FReg::from_mir_freg_32(r2)
       [FcmpS(src1, src2), Cset(dst, "eq")]
     }
     _ =>
