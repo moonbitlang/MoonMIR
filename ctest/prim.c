@@ -24,7 +24,7 @@ int main() {
         {0, 42, 66, 31, 0}
     };
 
-    printf("Edge : Weight\n");
+    print_str("Edge : Weight\n");
     int total_weight = 0;
 
     while (no_edge < V - 1) {
@@ -50,7 +50,9 @@ int main() {
         selected[y] = 1;
         no_edge++;
     }
-    printf("Total weight: %d\n", total_weight);
+    print_str("Total weight: ");
+    print_int(total_weight);
+    newline();
 
     return 0;
 }

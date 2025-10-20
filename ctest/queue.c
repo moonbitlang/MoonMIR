@@ -25,30 +25,36 @@ int isEmpty(Queue* q) {
 
 void enqueue(Queue* q, int item) {
     if (isFull(q)) {
-        printf("Queue is full! Cannot enqueue %d\n", item);
+        print_str("Queue is full! Cannot enqueue");
+        print_int(item);
+        newline();
         return;
     }
     q->rear = (q->rear + 1) % MAX_SIZE;
     q->data[q->rear] = item;
     q->size++;
-    printf("Enqueued: %d\n", item);
+    print_str("Enqueued: ");
+    print_int(item);
+    newline();
 }
 
 int dequeue(Queue* q) {
     if (isEmpty(q)) {
-        printf("Queue is empty! Cannot dequeue.\n");
+        print_str("Queue is empty! Cannot dequeue.\n");
         return -1; // Indicate error
     }
     int item = q->data[q->front];
     q->front = (q->front + 1) % MAX_SIZE;
     q->size--;
-    printf("Dequeued: %d\n", item);
+    print_str("Dequeued: ");
+    print_int(item);
+    newline();
     return item;
 }
 
 int peek(Queue* q) {
     if (isEmpty(q)) {
-        printf("Queue is empty! No peek value.\n");
+        print_str("Queue is empty! No peek value.\n");
         return -1;
     }
     return q->data[q->front];
@@ -61,7 +67,9 @@ int main() {
     enqueue(&q, 10);
     enqueue(&q, 20);
     enqueue(&q, 30);
-    printf("Peek: %d\n", peek(&q));
+    print_str("Peek: ");
+    print_int(peek(&q));
+    newline();
     dequeue(&q);
     enqueue(&q, 40);
     enqueue(&q, 50);
@@ -75,3 +83,4 @@ int main() {
 
     return 0;
 }
+

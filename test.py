@@ -15,9 +15,10 @@ RISCV64_TESTS = [
     "simple_ret", "simple_add", "simple_fib", "bin_int", "fib", "if", "for", 
     "while", "while2", "nested_while", "branch", "many_args", "order_args", 
     "ptr", "struct", "struct1", "struct2", "struct3", "struct4",
-    "array", "heap_arr", "arr_struct", "matrix",
-    "linked_list", "bst", "hash_table", "trie", "binary_search", "bubble_sort", 
-    "merge_sort", "quick_sort", "heap_sort", "dijkstra", "lcs", "dsu"
+    "stack", "array", "heap_arr", "arr_struct", "matrix",
+    "linked_list", "bst", "hash_table", "trie", "queue", "binary_search", 
+    "bubble_sort", "merge_sort", "quick_sort", "heap_sort", "dijkstra", 
+    "lcs", "dsu", "prim"
 ]
 
 AARCH64_TESTS = [

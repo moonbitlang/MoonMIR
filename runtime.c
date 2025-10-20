@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 void print_int(int val) {
-  printf("%d\n", val);
+  printf("%d", val);
 }
 
 void newline() {
@@ -10,5 +10,9 @@ void newline() {
 }
 
 void print_string(const char *str) {
+  printf("%s", str);
+}
+
+void print_str(const char *str) {
   printf("%s", str);
 }
