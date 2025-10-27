@@ -2615,6 +2615,14 @@ pub fn translate_llvm_call_inst(
 ) -> Array[Instruction] raise MIRError {
   let { callee, args, .. } = llvm_inst
   let { num_arg_regs, num_arg_fregs, arch_name, .. } = func.mod.arch_config
+  let callee = match callee {
+    Left(func) => func
+    Right(_func_ptr) => {
+      raise IRTranslateError(
+        "CallInst: function pointer calls not supported yet",
+      )
+    }
+  }
   let callee_name = callee.getName().unwrap()
 
   // Check if the callee is a variadic function
