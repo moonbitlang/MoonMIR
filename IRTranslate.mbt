@@ -1962,14 +1962,119 @@ pub fn translate_llvm_switch_inst(
   func : Function,
   data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
-  if false {
-    raise IRTranslateError("SwitchInst translation not implemented yet")
+  let { condition, defaultDest, cases, .. } = llvm_inst
+  
+  // Get the condition operand
+  guard func.get_operand_from_llvm_value(condition) is Some(cond_op) else {
+    raise IRTranslateError("SwitchInst: condition operand not found in value_map")
   }
-  ignore(llvm_inst)
-  ignore(builder)
-  ignore(func)
-  ignore(data_layout)
-  []
+  guard cond_op is IRegister(cond_reg) else {
+    raise IRTranslateError("SwitchInst: condition operand is not an integer register")
+  }
+  
+  // Get the default destination label
+  guard func.get_operand_from_llvm_value(defaultDest) is Some(default_op) else {
+    raise IRTranslateError("SwitchInst: defaultDest operand not found in value_map")
+  }
+  guard default_op is Label(default_label) else {
+    raise IRTranslateError("SwitchInst: defaultDest operand is not a label")
+  }
+  
+  // Get the data size for comparison
+  let data_size = data_layout.getTypeAllocSizeInBits(condition.getType())
+  
+  // Setup successors and predecessors for the current basic block
+  let current_bb = builder.bb
+  let machine_default_bb = func.bbmap.get(default_label).unwrap()
+  
+  // If there are no cases, just jump to default
+  if cases.length() == 0 {
+    machine_default_bb.preds.push(current_bb)
+    current_bb.succs.push(machine_default_bb)
+    let jmp_inst = builder.build_jmp(target_label=default_label)
+    return [jmp_inst]
+  }
+  
+  // For each case destination, setup successors and predecessors
+  for case in cases {
+    let (_, case_dest) = case
+    guard func.get_operand_from_llvm_value(case_dest) is Some(case_op) else {
+      raise IRTranslateError("SwitchInst: case destination operand not found in value_map")
+    }
+    guard case_op is Label(case_label) else {
+      raise IRTranslateError("SwitchInst: case destination operand is not a label")
+    }
+    let machine_case_bb = func.bbmap.get(case_label).unwrap()
+    machine_case_bb.preds.push(current_bb)
+    current_bb.succs.push(machine_case_bb)
+  }
+  
+  // Generate instructions in the current basic block
+  let minsts : Array[Instruction] = Array::new()
+  
+  // Strategy: Generate a chain of basic blocks, each checking one case
+  // The first case is checked in the current basic block
+  let mut prev_bb = current_bb
+  
+  for i, case in cases.iter2() {
+    let (case_value, case_dest) = case
+    let case_imm = case_value.getValueAsInt64()
+    
+    guard func.get_operand_from_llvm_value(case_dest) is Some(case_op) else {
+      raise IRTranslateError("SwitchInst: case destination operand not found in value_map")
+    }
+    guard case_op is Label(case_label) else {
+      raise IRTranslateError("SwitchInst: case destination operand is not a label")
+    }
+    
+    // Determine the false label (where to go if this case doesn't match)
+    let false_label = if i + 1 < cases.length() {
+      // Create a new basic block for the next case check
+      "\{func.name}_switch\{llvm_inst.uid}_check\{i + 1}"
+    } else {
+      // Last case, jump to default if it doesn't match
+      default_label
+    }
+    
+    // Generate beq instruction in the current/previous basic block
+    let curr_builder = IRBuilder::new(func, prev_bb)
+    let inst = curr_builder.build_branch_imm(
+      Beq,
+      data_size,
+      lhs=cond_reg,
+      rhs=case_imm,
+      true_label=case_label,
+      false_label~,
+    )
+    
+    // Add instruction to the appropriate basic block
+    if i == 0 {
+      // First case: add to the return array
+      minsts.push(inst)
+    } else {
+      // Subsequent cases: add directly to the new basic block
+      prev_bb.push(inst)
+    }
+    
+    // Create a new basic block for the next case check (if not the last case)
+    if i + 1 < cases.length() {
+      let next_check_label = "\{func.name}_switch\{llvm_inst.uid}_check\{i + 1}"
+      let next_check_bb = func.append_basic_block(next_check_label)
+      
+      // Setup the predecessor for the next check block
+      next_check_bb.preds.push(prev_bb)
+      prev_bb.succs.push(next_check_bb)
+      
+      // Update prev_bb for the next iteration
+      prev_bb = next_check_bb
+    } else {
+      // Last case: setup default as successor
+      machine_default_bb.preds.push(prev_bb)
+      prev_bb.succs.push(machine_default_bb)
+    }
+  }
+  
+  minsts
 }
 
 ///|
