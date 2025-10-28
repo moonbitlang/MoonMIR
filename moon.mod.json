@@ -8,6 +8,9 @@
     "Kaida-Amethyst/TinyMoonBit": {
       "path": "../TinyMoonbit/"
     },
+    "Kaida-Amethyst/MiniMoonbit": {
+      "path": "../MiniMoonbit/"
+    },
     "moonbitlang/x": "0.4.34",
     "Kaida-Amethyst/either": "0.1.0",
     "Kaida-Amethyst/MoonLLVM": {

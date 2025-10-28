@@ -1,0 +1,11 @@
+{
+  "is-main": true,
+  "import" : [
+    "Kaida-Amethyst/MoonLLVM/IR",
+    "Kaida-Amethyst/MoonMIR",
+    "Kaida-Amethyst/MoonMIR/riscv",
+    "Kaida-Amethyst/MoonMIR/aarch64",
+    "Kaida-Amethyst/MiniMoonbit/codegen",
+    "moonbitlang/x/fs"
+  ]
+}
