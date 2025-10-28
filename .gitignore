@@ -5,3 +5,4 @@ target/
 *.s
 *.ll
 IR.mbti
+__pycache__
