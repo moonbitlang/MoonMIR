@@ -27,6 +27,22 @@ pub(all) struct ArchConfig {
 }
 
 ///|
+/// Check if an immediate value is valid for arithmetic instructions
+pub fn ArchConfig::is_valid_imm(self : ArchConfig, imm : Int64) -> Bool {
+  match self.arch_name {
+    "riscv64" =>
+      // RISC-V arithmetic immediates are 12-bit signed (-2048 to 2047)
+      imm >= -2048L && imm <= 2047L
+    "aarch64" =>
+      // AArch64 arithmetic immediates are 12-bit unsigned (0 to 4095)
+      // or 12-bit unsigned shifted left by 12
+      (imm >= 0L && imm <= 4095L) ||
+      (imm >= 0L && imm <= 16773120L && imm % 4096L == 0L)
+    _ => true // Unknown architecture, assume all immediates are valid
+  }
+}
+
+///|
 pub fn ArchConfig::riscv64() -> ArchConfig {
   ArchConfig::{
     arch_name: "riscv64",

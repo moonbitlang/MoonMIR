@@ -711,12 +711,18 @@ pub fn translate_llvm_load_inst(
   guard func.get_operand_from_llvm_value(ptr) is Some(ptr_op) else {
     raise IRTranslateError("LoadInst: pointer operand not found in value_map")
   }
-  let (base, offset) = match ptr_op {
-    MemLoc(base, offset) => (base, offset)
-    IRegister(r) => (r, 0L)
+  let (base, offset, minsts) : (IRegister, Int64, Array[Instruction]) = match
+    ptr_op {
+    MemLoc(base, offset) => (base, offset, [])
+    IRegister(r) => (r, 0L, [])
+    Label(label) => {
+      let tmp = func.new_virtual_reg()
+      let inst = builder.build_load_addr(tmp, label)
+      (tmp, 0L, [inst])
+    }
     _ =>
       raise IRTranslateError(
-        "LoadInst: pointer operand is not a memory address or integer register",
+        "LoadInst: pointer operand is not a memory address or integer register, it is \{ptr_op}, ptr is \{ptr}",
       )
   }
   let data_size = data_layout.getTypeAllocSizeInBits(vty)
@@ -726,7 +732,7 @@ pub fn translate_llvm_load_inst(
     return []
   }
   let minst = match dst_op {
-    MemGroup(_) => return [] // Will be handled in store.
+    MemGroup(_) => return minsts // Will be handled in store.
     IRegister(dst) => builder.build_loadi(data_size, dst~, base~, offset~)
     FRegister(dst) => builder.build_loadf(data_size, dst~, base~, offset~)
     dst_op =>
@@ -734,7 +740,8 @@ pub fn translate_llvm_load_inst(
         "LoadInst: destination operand is not an integer or floating-point register: \{dst_op}",
       )
   }
-  [minst]
+  minsts.push(minst)
+  minsts
 }
 
 ///|
@@ -780,16 +787,22 @@ pub fn translate_llvm_store_inst(
   guard func.get_operand_from_llvm_value(ptr) is Some(ptr_op) else {
     raise IRTranslateError("StoreInst: pointer operand not found in value_map")
   }
-  let (base, offset) = match ptr_op {
-    MemLoc(base, offset) => (base, offset)
-    IRegister(r) => (r, 0L)
+  let (base, offset, minsts) : (IRegister, Int64, Array[Instruction]) = match
+    ptr_op {
+    MemLoc(base, offset) => (base, offset, [])
+    IRegister(r) => (r, 0L, [])
+    Label(label) => {
+      let tmp = func.new_virtual_reg()
+      let inst = builder.build_load_addr(tmp, label)
+      (tmp, 0L, [inst])
+    }
     _ =>
       raise IRTranslateError(
         "StoreInst: pointer operand is not a memory address or integer register",
       )
   }
   let data_size = data_layout.getTypeAllocSizeInBits(value.getType())
-  match src_op {
+  let store_insts = match src_op {
     IRegister(src) => [builder.build_storei(data_size, src~, base~, offset~)]
     FRegister(src) => [builder.build_storef(data_size, src~, base~, offset~)]
     Imm(src) => {
@@ -813,15 +826,21 @@ pub fn translate_llvm_store_inst(
         builder.build_storei(data_size, src=tmp, base~, offset~),
       ]
     }
-    MemGroup(src_base, offsets) =>
-      return translate_multiple_load_store(
-        llvm_inst, builder, func, data_layout, src_base, offsets, base, offset,
+    MemGroup(src_base, offsets) => {
+      minsts.append(
+        translate_multiple_load_store(
+          llvm_inst, builder, func, data_layout, src_base, offsets, base, offset,
+        ),
       )
+      return minsts
+    }
     src_op =>
       raise IRTranslateError(
         "StoreInst: value operand is not a register, immediate, or label: \{src_op}",
       )
   }
+  minsts.append(store_insts)
+  minsts
 }
 
 ///|

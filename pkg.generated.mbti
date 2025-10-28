@@ -99,6 +99,7 @@ pub(all) struct ArchConfig {
 }
 fn ArchConfig::aarch64() -> Self
 fn ArchConfig::debug() -> Self
+fn ArchConfig::is_valid_imm(Self, Int64) -> Bool
 fn ArchConfig::riscv64() -> Self
 
 pub(all) enum ArgPattern {

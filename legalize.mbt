@@ -168,11 +168,21 @@ fn Instruction::legalize_ibinary(
     }
     { defs: [Mem(base, offset)], uses: [Mem(b1, o1), Imm(i2)], .. } => {
       let v1 = func.keeped_treg1()
-      [
-        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
-        builder.build_ibinary_imm(binop, bits, dst=v1, src1=v1, src2=i2),
-        builder.build_storei(bits, src=v1, base~, offset~),
-      ]
+      if func.mod.arch_config.is_valid_imm(i2) {
+        [
+          builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+          builder.build_ibinary_imm(binop, bits, dst=v1, src1=v1, src2=i2),
+          builder.build_storei(bits, src=v1, base~, offset~),
+        ]
+      } else {
+        let v2 = func.new_virtual_reg()
+        [
+          builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+          builder.build_imove_imm(bits, dst=v2, src=i2),
+          builder.build_ibinary(binop, bits, dst=v1, src1=v1, src2=v2),
+          builder.build_storei(bits, src=v1, base~, offset~),
+        ]
+      }
     }
     { defs: [Mem(base, offset)], uses: [IRegister(r1), Mem(b2, o2)], .. } => {
       let v2 = func.keeped_treg1()
@@ -191,18 +201,37 @@ fn Instruction::legalize_ibinary(
     }
     { defs: [Mem(base, offset)], uses: [IRegister(r1), Imm(i2)], .. } => {
       let vdst = func.keeped_treg1()
-      [
-        builder.build_ibinary_imm(binop, bits, dst=vdst, src1=r1, src2=i2),
-        builder.build_storei(bits, src=vdst, base~, offset~),
-      ]
+      if func.mod.arch_config.is_valid_imm(i2) {
+        [
+          builder.build_ibinary_imm(binop, bits, dst=vdst, src1=r1, src2=i2),
+          builder.build_storei(bits, src=vdst, base~, offset~),
+        ]
+      } else {
+        let v2 = func.new_virtual_reg()
+        [
+          builder.build_imove_imm(bits, dst=v2, src=i2),
+          builder.build_ibinary(binop, bits, dst=vdst, src1=r1, src2=v2),
+          builder.build_storei(bits, src=vdst, base~, offset~),
+        ]
+      }
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1), Mem(b2, o2)], .. } if binop.is_commutative() => {
       let v = func.keeped_treg1()
-      [
-        builder.build_loadi(bits, dst=v, base=b2, offset=o2),
-        builder.build_ibinary_imm(binop, bits, dst=v, src1=v, src2=i1),
-        builder.build_storei(bits, src=v, base~, offset~),
-      ]
+      if func.mod.arch_config.is_valid_imm(i1) {
+        [
+          builder.build_loadi(bits, dst=v, base=b2, offset=o2),
+          builder.build_ibinary_imm(binop, bits, dst=v, src1=v, src2=i1),
+          builder.build_storei(bits, src=v, base~, offset~),
+        ]
+      } else {
+        let v2 = func.new_virtual_reg()
+        [
+          builder.build_loadi(bits, dst=v, base=b2, offset=o2),
+          builder.build_imove_imm(bits, dst=v2, src=i1),
+          builder.build_ibinary(binop, bits, dst=v, src1=v, src2=v2),
+          builder.build_storei(bits, src=v, base~, offset~),
+        ]
+      }
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1), Mem(b2, o2)], .. } => {
       let (v1, v2) = func.keeped_treg2()
@@ -215,10 +244,19 @@ fn Instruction::legalize_ibinary(
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1), IRegister(r2)], .. } if binop.is_commutative() => {
       let v = func.keeped_treg1()
-      [
-        builder.build_ibinary_imm(binop, bits, dst=v, src1=r2, src2=i1),
-        builder.build_storei(bits, src=v, base~, offset~),
-      ]
+      if func.mod.arch_config.is_valid_imm(i1) {
+        [
+          builder.build_ibinary_imm(binop, bits, dst=v, src1=r2, src2=i1),
+          builder.build_storei(bits, src=v, base~, offset~),
+        ]
+      } else {
+        let v2 = func.new_virtual_reg()
+        [
+          builder.build_imove_imm(bits, dst=v2, src=i1),
+          builder.build_ibinary(binop, bits, dst=v, src1=r2, src2=v2),
+          builder.build_storei(bits, src=v, base~, offset~),
+        ]
+      }
     }
     { defs: [Mem(base, offset)], uses: [Imm(i1), IRegister(r2)], .. } => {
       let v1 = func.keeped_treg1()
@@ -266,10 +304,19 @@ fn Instruction::legalize_ibinary(
     }
     { defs: [IRegister(rdst)], uses: [Mem(b1, o1), Imm(i2)], .. } => {
       let v1 = func.keeped_treg1()
-      [
-        builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
-        builder.build_ibinary_imm(binop, bits, dst=rdst, src1=v1, src2=i2),
-      ]
+      if func.mod.arch_config.is_valid_imm(i2) {
+        [
+          builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+          builder.build_ibinary_imm(binop, bits, dst=rdst, src1=v1, src2=i2),
+        ]
+      } else {
+        let v2 = func.new_virtual_reg()
+        [
+          builder.build_loadi(bits, dst=v1, base=b1, offset=o1),
+          builder.build_imove_imm(bits, dst=v2, src=i2),
+          builder.build_ibinary(binop, bits, dst=rdst, src1=v1, src2=v2),
+        ]
+      }
     }
     { defs: [IRegister(rdst)], uses: [IRegister(r1), Mem(b2, o2)], .. } => {
       let v2 = func.keeped_treg1()
@@ -279,14 +326,35 @@ fn Instruction::legalize_ibinary(
       ]
     }
     { defs: [IRegister(_)], uses: [IRegister(_), IRegister(_)], .. } => [self]
-    { defs: [IRegister(_)], uses: [IRegister(_), Imm(_)], .. } => [self]
+    { defs: [IRegister(rdst)], uses: [IRegister(r1), Imm(i2)], .. } =>
+      // Check if immediate is valid for the target architecture
+      if func.mod.arch_config.is_valid_imm(i2) {
+        [self]
+      } else {
+        // Load large immediate into a register first
+        let tmp_reg = func.keeped_treg1()
+        [
+          builder.build_imove_imm(bits, dst=tmp_reg, src=i2),
+          builder.build_ibinary(binop, bits, dst=rdst, src1=r1, src2=tmp_reg),
+        ]
+      }
     {
       opcode: IBinary(binop, bits),
       defs: [IRegister(rdst)],
       uses: [Imm(i), IRegister(r2)],
       ..,
     } if binop.is_commutative() =>
-      [builder.build_ibinary_imm(binop, bits, dst=rdst, src1=r2, src2=i)]
+      // Check if immediate is valid for the target architecture
+      if func.mod.arch_config.is_valid_imm(i) {
+        [builder.build_ibinary_imm(binop, bits, dst=rdst, src1=r2, src2=i)]
+      } else {
+        // Load large immediate into a register first
+        let tmp_reg = func.keeped_treg1()
+        [
+          builder.build_imove_imm(bits, dst=tmp_reg, src=i),
+          builder.build_ibinary(binop, bits, dst=rdst, src1=r2, src2=tmp_reg),
+        ]
+      }
     { defs: [IRegister(rdst)], uses: [Imm(i), IRegister(r2)], .. } => {
       let v1 = func.keeped_treg1()
       [

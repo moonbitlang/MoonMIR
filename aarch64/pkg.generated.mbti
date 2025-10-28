@@ -133,6 +133,7 @@ pub(all) enum AArch64Asm {
   FcmpD(FReg, FReg)
   FcmpS(FReg, FReg)
   Cset(Reg, String)
+  Sxtw(Reg, Reg)
   B(String)
   Beq(String)
   Bne(String)
