@@ -32,8 +32,8 @@ AARCH64_TESTS = [
 ]
 
 # C source directory
-C_SOURCE_DIR = "ctest"
-RUNTIME_C = "runtime.c"
+C_SOURCE_DIR = "real_tests/C"
+RUNTIME_C = "real_tests/cruntime.c"
 
 # ==============================================================================
 # Style and Formatting

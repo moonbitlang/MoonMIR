@@ -2636,6 +2636,11 @@ pub fn translate_llvm_return_inst(
     let minst = builder.build_ret()
     return [minst]
   }
+  // Check if return type is void
+  if retVal.getType().asTypeEnum() is VoidType(_) {
+    let minst = builder.build_ret()
+    return [minst]
+  }
   guard func.get_operand_from_llvm_value(retVal) is Some(ret_op) else {
     raise IRTranslateError(
       "ReturnInst: return value operand not found in value_map",
