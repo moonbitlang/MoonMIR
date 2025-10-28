@@ -163,20 +163,25 @@ pub fn mir_global_to_aarch64(
   global_value : @MoonMIR.GlobalValue,
 ) -> Array[AArch64Asm] {
   let insts : Array[AArch64Asm] = Array::new()
+  // Add underscore prefix for AArch64 symbols on macOS
+  let label_with_prefix = match global_value.label.has_prefix("_") {
+    true => global_value.label
+    false => "_\{global_value.label}"
+  }
   match global_value.content {
     String(s) => {
       insts.push(RodataSection)
-      insts.push(Label(global_value.label))
+      insts.push(Label(label_with_prefix))
       insts.push(Asciz(s))
     }
     Zero(size) => {
       insts.push(BssSection)
-      insts.push(Label(global_value.label))
+      insts.push(Label(label_with_prefix))
       insts.push(Zero(size))
     }
     Data(data) => {
       insts.push(DataSection)
-      insts.push(Label(global_value.label))
+      insts.push(Label(label_with_prefix))
       for d in data {
         match d {
           Quad(v) => insts.push(Quad(v))
@@ -2797,9 +2802,17 @@ fn loadaddr_mir_to_aarch64(
   match inst {
     { defs: [IRegister(d)], uses: [Label(label)], .. } => {
       let dst = Reg::from_mir_reg(d)
+      // Add underscore prefix for AArch64 symbols on macOS
+      let label_with_prefix = match label.has_prefix("_") {
+        true => label
+        false => "_\{label}"
+      }
       // Use adrp + add for loading addresses, which works for any address in the address space
       // adr instruction has a limited range of ±1MB from PC, which may not be sufficient for global variables
-      [Adrp(dst, "\{label}@PAGE"), AddLo12(dst, dst, "\{label}@PAGEOFF")]
+      [
+        Adrp(dst, "\{label_with_prefix}@PAGE"),
+        AddLo12(dst, dst, "\{label_with_prefix}@PAGEOFF"),
+      ]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")

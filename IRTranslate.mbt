@@ -1963,30 +1963,36 @@ pub fn translate_llvm_switch_inst(
   data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
   let { condition, defaultDest, cases, .. } = llvm_inst
-  
+
   // Get the condition operand
   guard func.get_operand_from_llvm_value(condition) is Some(cond_op) else {
-    raise IRTranslateError("SwitchInst: condition operand not found in value_map")
+    raise IRTranslateError(
+      "SwitchInst: condition operand not found in value_map",
+    )
   }
   guard cond_op is IRegister(cond_reg) else {
-    raise IRTranslateError("SwitchInst: condition operand is not an integer register")
+    raise IRTranslateError(
+      "SwitchInst: condition operand is not an integer register",
+    )
   }
-  
+
   // Get the default destination label
   guard func.get_operand_from_llvm_value(defaultDest) is Some(default_op) else {
-    raise IRTranslateError("SwitchInst: defaultDest operand not found in value_map")
+    raise IRTranslateError(
+      "SwitchInst: defaultDest operand not found in value_map",
+    )
   }
   guard default_op is Label(default_label) else {
     raise IRTranslateError("SwitchInst: defaultDest operand is not a label")
   }
-  
+
   // Get the data size for comparison
   let data_size = data_layout.getTypeAllocSizeInBits(condition.getType())
-  
+
   // Setup successors and predecessors for the current basic block
   let current_bb = builder.bb
   let machine_default_bb = func.bbmap.get(default_label).unwrap()
-  
+
   // If there are no cases, just jump to default
   if cases.length() == 0 {
     machine_default_bb.preds.push(current_bb)
@@ -1994,39 +2000,45 @@ pub fn translate_llvm_switch_inst(
     let jmp_inst = builder.build_jmp(target_label=default_label)
     return [jmp_inst]
   }
-  
+
   // For each case destination, setup successors and predecessors
   for case in cases {
     let (_, case_dest) = case
     guard func.get_operand_from_llvm_value(case_dest) is Some(case_op) else {
-      raise IRTranslateError("SwitchInst: case destination operand not found in value_map")
+      raise IRTranslateError(
+        "SwitchInst: case destination operand not found in value_map",
+      )
     }
     guard case_op is Label(case_label) else {
-      raise IRTranslateError("SwitchInst: case destination operand is not a label")
+      raise IRTranslateError(
+        "SwitchInst: case destination operand is not a label",
+      )
     }
     let machine_case_bb = func.bbmap.get(case_label).unwrap()
     machine_case_bb.preds.push(current_bb)
     current_bb.succs.push(machine_case_bb)
   }
-  
+
   // Generate instructions in the current basic block
   let minsts : Array[Instruction] = Array::new()
-  
+
   // Strategy: Generate a chain of basic blocks, each checking one case
   // The first case is checked in the current basic block
   let mut prev_bb = current_bb
-  
   for i, case in cases.iter2() {
     let (case_value, case_dest) = case
     let case_imm = case_value.getValueAsInt64()
-    
     guard func.get_operand_from_llvm_value(case_dest) is Some(case_op) else {
-      raise IRTranslateError("SwitchInst: case destination operand not found in value_map")
+      raise IRTranslateError(
+        "SwitchInst: case destination operand not found in value_map",
+      )
     }
     guard case_op is Label(case_label) else {
-      raise IRTranslateError("SwitchInst: case destination operand is not a label")
+      raise IRTranslateError(
+        "SwitchInst: case destination operand is not a label",
+      )
     }
-    
+
     // Determine the false label (where to go if this case doesn't match)
     let false_label = if i + 1 < cases.length() {
       // Create a new basic block for the next case check
@@ -2035,7 +2047,7 @@ pub fn translate_llvm_switch_inst(
       // Last case, jump to default if it doesn't match
       default_label
     }
-    
+
     // Generate beq instruction in the current/previous basic block
     let curr_builder = IRBuilder::new(func, prev_bb)
     let inst = curr_builder.build_branch_imm(
@@ -2046,7 +2058,7 @@ pub fn translate_llvm_switch_inst(
       true_label=case_label,
       false_label~,
     )
-    
+
     // Add instruction to the appropriate basic block
     if i == 0 {
       // First case: add to the return array
@@ -2055,16 +2067,16 @@ pub fn translate_llvm_switch_inst(
       // Subsequent cases: add directly to the new basic block
       prev_bb.push(inst)
     }
-    
+
     // Create a new basic block for the next case check (if not the last case)
     if i + 1 < cases.length() {
       let next_check_label = "\{func.name}_switch\{llvm_inst.uid}_check\{i + 1}"
       let next_check_bb = func.append_basic_block(next_check_label)
-      
+
       // Setup the predecessor for the next check block
       next_check_bb.preds.push(prev_bb)
       prev_bb.succs.push(next_check_bb)
-      
+
       // Update prev_bb for the next iteration
       prev_bb = next_check_bb
     } else {
@@ -2073,7 +2085,6 @@ pub fn translate_llvm_switch_inst(
       prev_bb.succs.push(machine_default_bb)
     }
   }
-  
   minsts
 }
 
@@ -2725,13 +2736,10 @@ pub fn translate_llvm_call_inst(
 ) -> Array[Instruction] raise MIRError {
   let { callee, args, .. } = llvm_inst
   let { num_arg_regs, num_arg_fregs, arch_name, .. } = func.mod.arch_config
-  
+
   // Handle both direct function calls and indirect function pointer calls
-  let (is_indirect_call, callee_op, callee_name_opt) : (
-    Bool,
-    Operand?,
-    String?,
-  ) = match callee {
+  let (is_indirect_call, callee_op, callee_name_opt) : (Bool, Operand?, String?) = match
+    callee {
     Left(llvm_func) => {
       let name = llvm_func.getName().unwrap()
       (false, None, Some(name))
@@ -3058,20 +3066,19 @@ pub fn translate_llvm_call_inst(
         )
     }
   }
-  
+
   // Generate the call instruction
   let call_inst = match (is_indirect_call, callee_op, callee_name_opt) {
     (false, _, Some(callee_name)) => builder.build_call(callee_name)
-    (true, Some(op), _) => {
+    (true, Some(op), _) =>
       // For indirect calls, create a Call instruction with the function pointer register as the first use
       Instruction::new(Call, [], [op], builder.bb)
-    }
     _ =>
       raise IRTranslateError(
         "CallInst: invalid state in call instruction generation",
       )
   }
-  
+
   // Add argument registers to the call instruction uses
   for i = 0; i < call_ireg_cnt && i < num_arg_regs; i = i + 1 {
     call_inst.uses.push(IRegister(AReg(i)))
