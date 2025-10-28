@@ -46,23 +46,27 @@ fn Function::store_load_caller_saved_registers(self : Self) -> Unit {
     }
   }
 
-  // Check if a register is used to return values from function calls
-  fn is_return_register(op : Operand) -> Bool {
-    match op {
-      IRegister(AReg(0)) => true // a0 is the integer return register
-      FRegister(FAReg(0)) => true // fa0 is the float return register
-      _ => false
-    }
-  }
-
   let reg_stack_map : Map[Operand, Int64] = Map::new()
   let call_insts = self.collect_insts_with_opcode(Call)
   for inst in call_insts {
-    for op in inst.live_out.iter().filter(is_caller_saved_register) {
-      // Skip return registers - they should not be restored after the call
-      // as they contain the return value
-      if is_return_register(op) {
-        continue
+    // Detect if the next instruction captures return value from a0/fa0.
+    let bb = inst.bb
+    let _ = bb.insts.search_by(i => i == inst)
+    // capture checks not needed after skipping return regs
+    // Collect caller-saved registers to preserve: live-out ∪ live-in
+    let mut to_preserve : Array[Operand] = Array::new()
+    inst.live_out.each(op => if is_caller_saved_register(op) {
+      to_preserve.push(op)
+    })
+    inst.live_in.each(op => if is_caller_saved_register(op) &&
+      !to_preserve.contains(op) {
+      to_preserve.push(op)
+    })
+    for op in to_preserve {
+      // Skip return registers entirely (call writes them)
+      match op {
+        IRegister(AReg(0)) | FRegister(FAReg(0)) => continue
+        _ => ()
       }
       let { func, bb, .. } = inst
       let builder = IRBuilder::new(func, bb)
@@ -85,20 +89,26 @@ fn Function::store_load_caller_saved_registers(self : Self) -> Unit {
         }
       }
       let _ = inst.bb.insert_inst_before(before=inst, store_inst)
-      // Load after call
-      let load_inst = match op {
-        IRegister(dst) =>
-          try! builder.build_loadi(64, dst~, base=FramePtr, offset~)
-        FRegister(dst) =>
-          try! builder.build_loadf(64, dst~, base=FramePtr, offset~)
-        _ => {
-          println(
-            "Compiler ICE: Unexpected register type in caller-saved registers",
-          )
-          panic()
-        }
+      // Load after call (but never restore a0/fa0 to avoid clobbering return values)
+      let should_restore = match op {
+        IRegister(AReg(0)) | FRegister(FAReg(0)) => false
+        _ => true
       }
-      let _ = inst.bb.insert_inst_after(after=inst, load_inst)
+      if should_restore {
+        let load_inst = match op {
+          IRegister(dst) =>
+            try! builder.build_loadi(64, dst~, base=FramePtr, offset~)
+          FRegister(dst) =>
+            try! builder.build_loadf(64, dst~, base=FramePtr, offset~)
+          _ => {
+            println(
+              "Compiler ICE: Unexpected register type in caller-saved registers",
+            )
+            panic()
+          }
+        }
+        let _ = inst.bb.insert_inst_after(after=inst, load_inst)
+      }
 
     }
   }
