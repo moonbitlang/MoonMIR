@@ -462,6 +462,10 @@ fn Function::visit_llvm_inst(
       self.bind_llvm_value_to_mem(llvm_inst, FramePtrPrim, -var_stack_loc)
     }
     _ => {
+      // Skip instructions whose results are never used (dead code)
+      if llvm_inst.user_empty() {
+        return
+      }
       let llvm_ty = llvm_inst.getType()
       match llvm_ty.asTypeEnum() {
         Int1Type(_)
@@ -717,9 +721,9 @@ pub fn translate_llvm_load_inst(
   }
   let data_size = data_layout.getTypeAllocSizeInBits(vty)
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError(
-      "LoadInst: destination operand not found in value_map",
-    )
+    // If the destination operand is not found, it means this load instruction
+    // was skipped because its result is never used (dead code)
+    return []
   }
   let minst = match dst_op {
     MemGroup(_) => return [] // Will be handled in store.
@@ -2463,9 +2467,9 @@ pub fn translate_llvm_gep_inst(
     )
   }
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError(
-      "GetElementPtrInst: destination operand not found in value_map",
-    )
+    // If the destination operand is not found, it means this GEP instruction
+    // was skipped because its result is never used (dead code)
+    return []
   }
   guard dst_op is IRegister(ptr_reg) else {
     raise IRTranslateError(
@@ -3089,9 +3093,9 @@ pub fn translate_llvm_call_inst(
   minsts.push(call_inst)
   if !(llvm_inst.getType().asTypeEnum() is VoidType(_)) {
     guard func.get_operand_from_llvm_value(llvm_inst) is Some(ret_op) else {
-      raise IRTranslateError(
-        "CallInst: return value operand not found in value_map",
-      )
+      // If the return value operand is not found, it means this call's return value
+      // was never used (dead code), but we still need to execute the call for side effects
+      return minsts
     }
     // Get the return type width
     let ret_ty = llvm_inst.getType()

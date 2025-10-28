@@ -486,6 +486,9 @@ pub(all) enum AArch64Asm {
   // Conditional set
   Cset(Reg, String) // cset x1, condition
 
+  // Sign/Zero extension
+  Sxtw(Reg, Reg) // sxtw x1, w2 (sign extend word to 64-bit)
+
   // Branches
   B(String) // b label
   Beq(String) // b.eq label
@@ -697,6 +700,9 @@ pub impl Show for AArch64Asm with output(self, logger) {
 
     // Conditional set
     Cset(rd, cond) => "cset \{rd}, \{cond}"
+
+    // Sign/Zero extension
+    Sxtw(rd, rs) => "sxtw \{rd}, \{rs.to_w_string()}"
 
     // Branches
     B(label) => "b \{label}"

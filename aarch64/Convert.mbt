@@ -345,12 +345,16 @@ fn i32_add_mir_to_aarch64(
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Add32(dst, src1, src2)]
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
+      [Add32(dst, src1, src2), Sxtw(dst, dst)]
     }
     { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
-      [Add32Imm(dst, src1, i2.to_int())]
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
+      [Add32Imm(dst, src1, i2.to_int()), Sxtw(dst, dst)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -399,12 +403,16 @@ fn i32_sub_mir_to_aarch64(
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Sub32(dst, src1, src2)]
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
+      [Sub32(dst, src1, src2), Sxtw(dst, dst)]
     }
     { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
-      [Sub32Imm(dst, src1, i2.to_int())]
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
+      [Sub32Imm(dst, src1, i2.to_int()), Sxtw(dst, dst)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -453,13 +461,17 @@ fn i32_mul_mir_to_aarch64(
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Mul32(dst, src1, src2)]
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
+      [Mul32(dst, src1, src2), Sxtw(dst, dst)]
     }
     { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
       let src2 = X16 // Use IP0 as temporary register
-      [MovImm32(src2, i2.to_int()), Mul32(dst, src1, src2)]
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
+      [MovImm32(src2, i2.to_int()), Mul32(dst, src1, src2), Sxtw(dst, dst)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -509,13 +521,17 @@ fn i32_div_mir_to_aarch64(
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Sdiv32(dst, src1, src2)]
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
+      [Sdiv32(dst, src1, src2), Sxtw(dst, dst)]
     }
     { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
       let src2 = X16 // Use IP0 as temporary register
-      [MovImm32(src2, i2.to_int()), Sdiv32(dst, src1, src2)]
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
+      [MovImm32(src2, i2.to_int()), Sdiv32(dst, src1, src2), Sxtw(dst, dst)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -567,18 +583,28 @@ fn i32_rem_mir_to_aarch64(
       let src2 = Reg::from_mir_reg(r2)
       let tmp = X17 // Use IP1 as temporary register
       // ARM64 doesn't have remainder instruction, use div + mul + sub
-      [Sdiv32(tmp, src1, src2), Mul32(tmp, tmp, src2), Sub32(dst, src1, tmp)]
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
+      [
+        Sdiv32(tmp, src1, src2),
+        Mul32(tmp, tmp, src2),
+        Sub32(dst, src1, tmp),
+        Sxtw(dst, dst),
+      ]
     }
     { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
       let src2 = X16 // Use IP0 as temporary register
       let tmp = X17 // Use IP1 as temporary register
+      // AArch64 32-bit operations don't automatically sign-extend like RISC-V
+      // We need to explicitly sign-extend the result to 64-bit
       [
         MovImm32(src2, i2.to_int()),
         Sdiv32(tmp, src1, src2),
         Mul32(tmp, tmp, src2),
         Sub32(dst, src1, tmp),
+        Sxtw(dst, dst),
       ]
     }
     _ =>
@@ -773,7 +799,9 @@ fn move_mir_to_aarch64(
     { opcode: IMove(32), defs: [IRegister(d)], uses: [IRegister(r)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src = Reg::from_mir_reg(r)
-      [Mov32(dst, src)]
+      // AArch64 32-bit move zero-extends, but MoonMIR expects sign-extension
+      // We need to explicitly sign-extend the result to 64-bit
+      [Mov32(dst, src), Sxtw(dst, dst)]
     }
     { opcode: IMove(64), defs: [IRegister(d)], uses: [IRegister(r)], .. } => {
       let dst = Reg::from_mir_reg(d)
@@ -792,7 +820,11 @@ fn move_mir_to_aarch64(
     }
     { opcode: IMove(32), defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
-      load_immediate_32(dst, i2.to_int())
+      let load_insts = load_immediate_32(dst, i2.to_int())
+      // AArch64 32-bit operations zero-extend, but MoonMIR expects sign-extension
+      // We need to explicitly sign-extend the result to 64-bit
+      load_insts.push(Sxtw(dst, dst))
+      load_insts
     }
     { opcode: IMove(64), defs: [IRegister(d)], uses: [Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
@@ -1333,23 +1365,34 @@ fn cmp_gt_mir_to_aarch64(
 fn cmp_le_mir_to_aarch64(
   inst : @MoonMIR.Instruction,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {
-  guard inst is { opcode: ICmp(Le, _), .. } else {
-    println(
-      "Compiler ICE: cmp_le_mir_to_aarch64 called with non-le instruction: \{inst}",
-    )
-    panic()
+  let bits = match inst.opcode {
+    ICmp(Le, b) => b
+    _ => {
+      println(
+        "Compiler ICE: cmp_le_mir_to_aarch64 called with non-le instruction: \{inst}",
+      )
+      panic()
+    }
   }
   match inst {
     { defs: [IRegister(d)], uses: [IRegister(r1), IRegister(r2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Cmp64(src1, src2), Cset(dst, "le")]
+      if bits == 32 {
+        [Cmp32(src1.to_wreg(), src2.to_wreg()), Cset(dst, "le")]
+      } else {
+        [Cmp64(src1, src2), Cset(dst, "le")]
+      }
     }
     { defs: [IRegister(d)], uses: [IRegister(r1), Imm(i2)], .. } => {
       let dst = Reg::from_mir_reg(d)
       let src1 = Reg::from_mir_reg(r1)
-      [Cmp64Imm(src1, i2.to_int()), Cset(dst, "le")]
+      if bits == 32 {
+        [Cmp32Imm(src1.to_wreg(), i2.to_int()), Cset(dst, "le")]
+      } else {
+        [Cmp64Imm(src1, i2.to_int()), Cset(dst, "le")]
+      }
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
