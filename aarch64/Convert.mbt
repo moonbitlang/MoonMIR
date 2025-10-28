@@ -2711,8 +2711,8 @@ fn f32_move_mir_to_aarch64(
       let tmp_reg = X16 // Use IP0 as temporary register
       // For f32, we need to convert double to float first, then get its bit representation
       let float_val = imm_val.to_float()
-      let bit_value = float_val.reinterpret_as_int()
-      load_immediate_32(tmp_reg, bit_value) + [FmovWtoS(dst, tmp_reg)]
+      let bit_value = float_val.reinterpret_as_int().to_int64()
+      [MovImm64(tmp_reg, bit_value), FmovWtoS(dst, tmp_reg)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -2741,7 +2741,7 @@ fn f64_move_mir_to_aarch64(
       let tmp_reg = X16 // Use IP0 as temporary register
       // Convert double to its bit representation
       let bit_value = imm_val.reinterpret_as_int64()
-      load_immediate_64(tmp_reg, bit_value) + [FmovXtoD(dst, tmp_reg)]
+      [MovImm64(tmp_reg, bit_value), FmovXtoD(dst, tmp_reg)]
     }
     _ =>
       raise MIRToAArch64Error("Error: Unsupported MoonMIR instruction: \{inst}")
