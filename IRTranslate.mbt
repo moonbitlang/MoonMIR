@@ -2725,27 +2725,50 @@ pub fn translate_llvm_call_inst(
 ) -> Array[Instruction] raise MIRError {
   let { callee, args, .. } = llvm_inst
   let { num_arg_regs, num_arg_fregs, arch_name, .. } = func.mod.arch_config
-  let callee = match callee {
-    Left(func) => func
-    Right(_func_ptr) => {
-      raise IRTranslateError(
-        "CallInst: function pointer calls not supported yet",
-      )
+  
+  // Handle both direct function calls and indirect function pointer calls
+  let (is_indirect_call, callee_op, callee_name_opt) : (
+    Bool,
+    Operand?,
+    String?,
+  ) = match callee {
+    Left(llvm_func) => {
+      let name = llvm_func.getName().unwrap()
+      (false, None, Some(name))
+    }
+    Right(func_ptr) => {
+      // Function pointer call - get the operand for the function pointer
+      guard func.get_operand_from_llvm_value(func_ptr) is Some(op) else {
+        raise IRTranslateError(
+          "CallInst: function pointer operand not found in value_map",
+        )
+      }
+      match op {
+        IRegister(_) => (true, Some(op), None)
+        _ =>
+          raise IRTranslateError(
+            "CallInst: function pointer must be in an integer register, got \{op}",
+          )
+      }
     }
   }
-  let callee_name = callee.getName().unwrap()
 
   // Check if the callee is a variadic function
-  // First check MoonMIR functions, then check external LLVM functions
-  let is_variadic_call = match func.mod.get_function(callee_name) {
-    Some(f) => f.is_variadic
-    None =>
-      // Check external functions
-      match func.mod.external_functions.get(callee_name) {
-        Some(llvm_func) => llvm_func.fty.isVarArg
-        None => false // Unknown function, assume non-variadic
-      }
-  }
+  // For indirect calls, we cannot determine if it's variadic, so assume non-variadic
+  let is_variadic_call = llvm_inst.getFunctionType().isVarArg
+  //let is_variadic_call = match callee_name_opt {
+  //  Some(callee_name) =>
+  //    match func.mod.get_function(callee_name) {
+  //      Some(f) => f.is_variadic
+  //      None =>
+  //        // Check external functions
+  //        match func.mod.external_functions.get(callee_name) {
+  //          Some(llvm_func) => llvm_func.fty.isVarArg
+  //          None => false // Unknown function, assume non-variadic
+  //        }
+  //    }
+  //  None => false // Indirect call, assume non-variadic
+  //}
 
   // For AArch64 variadic functions, arguments after the first one should be on stack only
   // The first argument (format string) still goes in register x0
@@ -3035,7 +3058,21 @@ pub fn translate_llvm_call_inst(
         )
     }
   }
-  let call_inst = builder.build_call(callee_name)
+  
+  // Generate the call instruction
+  let call_inst = match (is_indirect_call, callee_op, callee_name_opt) {
+    (false, _, Some(callee_name)) => builder.build_call(callee_name)
+    (true, Some(op), _) => {
+      // For indirect calls, create a Call instruction with the function pointer register as the first use
+      Instruction::new(Call, [], [op], builder.bb)
+    }
+    _ =>
+      raise IRTranslateError(
+        "CallInst: invalid state in call instruction generation",
+      )
+  }
+  
+  // Add argument registers to the call instruction uses
   for i = 0; i < call_ireg_cnt && i < num_arg_regs; i = i + 1 {
     call_inst.uses.push(IRegister(AReg(i)))
   }
