@@ -3199,6 +3199,10 @@ pub fn BasicBlock::phi_elimination(self : Self) -> Unit raise MIRError {
         let inst = builder.build_fmove(data_size, dst~, src~)
         self.push_inst_before_terminator(inst)
       }
+      (FRegister(dst), FImm(src)) => {
+        let inst = builder.build_fmove_imm(data_size, dst~, src~)
+        self.push_inst_before_terminator(inst)
+      }
       phi =>
         raise IRTranslateError(
           "PHINode: Unsupported operand types for phi elimination \{phi}",
