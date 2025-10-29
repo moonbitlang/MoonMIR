@@ -1551,7 +1551,8 @@ fn branch_le_mir_to_riscv(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Ble(src1, src2, true_label), J(false_label)]
+      // a <= b  <=>  b >= a
+      [Bge(src2, src1, true_label), J(false_label)]
     }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
@@ -1581,7 +1582,8 @@ fn branch_gt_mir_to_riscv(
     } => {
       let src1 = Reg::from_mir_reg(r1)
       let src2 = Reg::from_mir_reg(r2)
-      [Bgt(src1, src2, true_label), J(false_label)]
+      // a > b  <=>  b < a
+      [Blt(src2, src1, true_label), J(false_label)]
     }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
