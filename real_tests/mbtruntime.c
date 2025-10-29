@@ -188,6 +188,9 @@ void print_str(const char *str) {
   printf("%s", str);
 }
 
+void print_real(double value) {
+  printf("%f", value);
+}
 
 int main() {
   moonbit_main();

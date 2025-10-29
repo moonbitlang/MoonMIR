@@ -9,6 +9,10 @@ pub fn Module::alloc_register(self : Module) -> Unit raise MIRError {
 pub fn Function::alloc_register(self : Function) -> Unit raise MIRError {
   // Step 1. Liveness Analysis
   self.live_analysis()
+  //if self.name == "moonbit_main" {
+  //  println("============== After liveness analysis ==============")
+  //  println(self)
+  //}
 
   // Step 2. Build the interference graph.
   let interf_graph = self.build_interference_graph()

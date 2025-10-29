@@ -67,8 +67,11 @@ pub fn Function::live_analysis(self : Self) -> Unit {
 
   while !bb_queue.is_empty() {
     let bb = bb_queue.pop_front().unwrap()
-    // If the basic block does not use any registers, skip it.
+    // If the basic block does not use any registers, just copy it's liveout 
+    // to it's livein and continue
     if !bb.use_any_register() {
+      bb.live_out = bb.compute_live_out_from_succs()
+      bb.live_in = bb.live_out.copy()
       append_preds(bb)
       continue
     }
