@@ -97,6 +97,7 @@ fn main {
   }
   if args.contains("--stop-after=IRTranslate") {
     println(mir_mod)
+    return
   }
   if args.contains("--print-all") {
     println("==================== MoonMIR ================")

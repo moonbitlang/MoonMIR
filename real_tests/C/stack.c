@@ -27,17 +27,16 @@ int isEmpty(struct Stack* stack) {
 
 void push(struct Stack* stack, int item) {
     if (isFull(stack)) {
-        print_str("Stack overflow\n");
+        printf("Stack overflow\n");
         return;
     }
     stack->array[++stack->top] = item;
-    print_int(item);
-    print_str("pushed to stack\n");
+    printf("%d pushed to stack\n", item);
 }
 
 int pop(struct Stack* stack) {
     if (isEmpty(stack)) {
-        print_str("Stack underflow\n");
+        printf("Stack underflow\n");
         return -1; // Return a sentinel value for error
     }
     return stack->array[stack->top--];
@@ -57,18 +56,12 @@ int main() {
     push(stack, 20);
     push(stack, 30);
 
-    print_int(pop(stack));
-    print_str(" popped from stack\n");
-    print_str("Top element is ");
-    print_int(peek(stack));
-    newline();
-    print_int(pop(stack));
-    print_str("popped from stack\n");
+    printf("%d popped from stack\n", pop(stack));
+    printf("Top element is %d\n", peek(stack));
+    printf("%d popped from stack\n", pop(stack));
 
     push(stack, 40);
-    print_str("Top element is");
-    print_int(peek(stack));
-    newline();
+    printf("Top element is %d\n", peek(stack));
     
     free(stack->array);
     free(stack);

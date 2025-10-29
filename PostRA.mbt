@@ -108,8 +108,8 @@ fn Function::store_load_caller_saved_registers(self : Self) -> Unit {
           }
         }
         let _ = inst.bb.insert_inst_after(after=inst, load_inst)
-      }
 
+      }
     }
   }
 }
@@ -266,11 +266,22 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
 }
 
 ///|
+priv struct InstToFix {
+  inst : Instruction
+  bb : BasicBlock
+  r : IRegister
+  dst : IRegister
+}
+
+///|
 pub fn Function::adjust_mem_operands(self : Function) -> Unit {
   let { var_stack_size, reg_stack_size, .. } = self
   let total_stack_size = var_stack_size + reg_stack_size
   // Ensure total stack size is 16-byte aligned (same as in prologue_epilogue_insertion)
   let total_stack_size = (total_stack_size + 16 - 1) / 16 * 16
+
+  // First pass: collect instructions that need to be modified
+  let insts_to_fix : Array[InstToFix] = Array::new()
   for inst in self.inst_iter() {
     if inst
       is {
@@ -281,6 +292,39 @@ pub fn Function::adjust_mem_operands(self : Function) -> Unit {
       inst.uses[0] = IRegister(StackPtr)
       inst.uses[1] = Imm(i + var_stack_size)
     }
+    // Collect instructions where FramePtrPrim is added with a register
+    if inst
+      is {
+        opcode: IBinary(Add, _),
+        defs: [IRegister(d)],
+        uses: [IRegister(FramePtrPrim), IRegister(r)],
+        ..,
+      } {
+      insts_to_fix.push({ inst, bb: inst.bb, r, dst: d })
+    }
+  }
+
+  // Second pass: fix collected instructions
+  for item in insts_to_fix {
+    let { inst, bb, r, dst } = item
+    let builder = IRBuilder::new(self, bb)
+    // Create: dst = StackPtr + var_stack_size
+    let add_offset_inst = try! builder.build_ibinary_imm(
+        Add,
+        64,
+        dst~,
+        src1=StackPtr,
+        src2=var_stack_size,
+      )
+    // Insert before current instruction
+    let _ = bb.insert_inst_before(before=inst, add_offset_inst)
+    // Modify current instruction to: dst = dst + r
+    inst.uses[0] = IRegister(dst)
+    inst.uses[1] = IRegister(r)
+  }
+
+  // Third pass: handle other operands
+  for inst in self.inst_iter() {
     for i, def in inst.defs {
       match def {
         Mem(FramePtr, offset) =>
