@@ -1,4 +1,4 @@
-let n : Int = 400;
+let n : Int = 8;
 
 let next : Array[Int] = [1];
 

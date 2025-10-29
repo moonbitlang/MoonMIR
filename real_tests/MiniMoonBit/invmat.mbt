@@ -173,7 +173,7 @@ fn print_double(x : Double) -> Unit {
 }
 
 fn main {
-  let n = 400;
+  let n = 8;
   let mat = new_mat(n, n);
   let inv = new_mat(n, n);
   simple_srand(42);

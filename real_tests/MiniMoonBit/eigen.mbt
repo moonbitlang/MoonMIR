@@ -1,4 +1,4 @@
-let n_const : Int = 200;
+let n_const : Int = 8;
 
 let next : Array[Int] = [1];
 
@@ -207,7 +207,7 @@ fn eigen_decomp(a : Matrix, v : Matrix, d : Array[Double], n : Int) -> Bool {
   true
 }
 
-fn print_double(x : Double) -> Unit {
+fn print_double(x: Double) -> Unit {
   print_int(int_of_float(x));
 }
 

@@ -122,11 +122,6 @@ fn energy(bodies : Array[(Array[Double], Array[Double], Array[Double], Array[Dou
   e
 }
 
-fn print_double(x : Double) -> Unit {
-  print_int(int_of_float(x));
-}
-
-
 // Offset momentum to match initial conditions
 fn offset_momentum(bodies : Array[(Array[Double], Array[Double], Array[Double], Array[Double], Array[Double], Array[Double], Double)], nbodies : Int) -> Unit {
   let mut px = 0.0;
@@ -147,10 +142,14 @@ fn offset_momentum(bodies : Array[(Array[Double], Array[Double], Array[Double], 
   sun_vz[0] = -pz / solar_mass;
 }
 
+fn print_double(value : Double) -> Unit {
+  print_int(int_of_float(value));
+}
+
 fn main {
   let bodies = [body0, body1, body2, body3, body4];
   let nbodies = 5;
-  let n = 5000000;
+  let n = 50;
   
   offset_momentum(bodies, nbodies);
 

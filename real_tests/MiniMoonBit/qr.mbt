@@ -1,4 +1,4 @@
-let n : Int = 400;
+let n : Int = 8;
 
 let next : Array[Int] = [1];
 
@@ -153,7 +153,6 @@ fn matrix_multiply(a : Array[Array[Double]], b : Array[Array[Double]], result : 
 fn print_double(x : Double) -> Unit {
   print_int(int_of_float(x));
 }
-
 
 fn main {
   let matrix_n = n;

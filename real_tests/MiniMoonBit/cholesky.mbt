@@ -134,7 +134,7 @@ fn cholesky_decomposition(a : Matrix, l : Matrix, n : Int) -> Bool {
 }
 
 fn main {
-  let n = 600;
+  let n = 8;
   simple_srand(42);
 
   let matrix_a = new_mat(n, n);

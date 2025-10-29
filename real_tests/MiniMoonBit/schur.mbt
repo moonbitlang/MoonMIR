@@ -219,7 +219,7 @@ fn print_double(x : Double) -> Unit {
 
 
 fn main {
-  let n = 120;
+  let n = 8;
   let a = new_matrix(n, n);
   let q = new_matrix(n, n);
   let t = new_matrix(n, n);

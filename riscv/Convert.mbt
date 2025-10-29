@@ -105,13 +105,13 @@ pub fn mir_module_to_riscv(
   .values()
   .filter(f => f.is_external)
   .each(f => insts.push(Global(f.name)))
-  for gv in mod.global_values {
-    let gv_insts = mir_global_to_riscv(gv)
-    insts.append(gv_insts)
-  }
   for _, func in mod.functions {
     let func_insts = mir_function_to_riscv(func)
     insts.append(func_insts)
+  }
+  for gv in mod.global_values {
+    let gv_insts = mir_global_to_riscv(gv)
+    insts.append(gv_insts)
   }
   insts
 }
