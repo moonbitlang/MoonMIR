@@ -1,3 +1,6 @@
+extern "C" fn print_int(x : Int) = "print_int";
+
+
 let x = 10;
 
 fn f(y: Int) -> Int {

@@ -1,3 +1,6 @@
+
+extern "C" fn print_int(x : Int) = "print_int";
+
 fn compose(f: (Int) -> Int, g: (Int) -> Int) -> (Int) -> Int {
   fn composed(x: Int) -> Int {
     g(f(x))

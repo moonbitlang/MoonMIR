@@ -1,3 +1,6 @@
+
+extern "C" fn print_int(x : Int) = "print_int";
+
 struct Point {
   x: Int;
   y: Int;

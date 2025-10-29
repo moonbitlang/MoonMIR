@@ -1,3 +1,6 @@
+extern "C" fn print_int(x : Int) = "print_int";
+extern "C" fn truncate(x : Double) -> Int = "truncate";
+
 fn main {
   let x = truncate(1.23);
   let y = truncate(4.56);

@@ -1,3 +1,6 @@
+extern "C" fn print_int(x : Int) = "print_int";
+extern "C" fn int_of_float(x : Double) -> Int = "int_of_float";
+extern "C" fn sqrt(x : Double) -> Double = "sqrt";
 
 struct Point {
   x: Double;

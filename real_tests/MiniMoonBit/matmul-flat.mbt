@@ -1,3 +1,7 @@
+extern "C" fn print_int(x : Int) = "print_int";
+extern "C" fn print_endline() = "print_endline";
+extern "C" fn truncate(x : Double) -> Int = "truncate";
+
 fn loop3(i: Int, j: Int, k: Int, a: Array[Array[Double]], b: Array[Array[Double]], c: Array[Array[Double]]) -> Unit {
     if 0 <= k {
         c[i][j] = c[i][j] + a[i][k] * b[k][j];

@@ -1,3 +1,9 @@
+
+extern "C" fn print_int(x : Int) = "print_int";
+extern "C" fn int_of_float(x : Double) -> Int = "int_of_float";
+extern "C" fn float_of_int(x : Int) -> Double = "float_of_int";
+extern "C" fn sqrt(x : Double) -> Double = "sqrt";
+
 let n_const : Int = 8;
 
 let next : Array[Int] = [1];
@@ -207,7 +213,7 @@ fn eigen_decomp(a : Matrix, v : Matrix, d : Array[Double], n : Int) -> Bool {
   true
 }
 
-fn print_double(x: Double) -> Unit {
+fn print_double(x : Double) -> Unit {
   print_int(int_of_float(x));
 }
 

@@ -1,3 +1,7 @@
+extern "C" fn print_int(x : Int) = "print_int";
+extern "C" fn sqrt(x : Double) -> Double = "sqrt";
+extern "C" fn int_of_float(x : Double) -> Int = "int_of_float";
+
 // N-Body simulation in MoonBit
 // Converted to MiniMoonbit syntax
 
@@ -122,6 +126,11 @@ fn energy(bodies : Array[(Array[Double], Array[Double], Array[Double], Array[Dou
   e
 }
 
+fn print_double(x : Double) -> Unit {
+  print_int(int_of_float(x));
+}
+
+
 // Offset momentum to match initial conditions
 fn offset_momentum(bodies : Array[(Array[Double], Array[Double], Array[Double], Array[Double], Array[Double], Array[Double], Double)], nbodies : Int) -> Unit {
   let mut px = 0.0;
@@ -140,10 +149,6 @@ fn offset_momentum(bodies : Array[(Array[Double], Array[Double], Array[Double], 
   sun_vx[0] = -px / solar_mass;
   sun_vy[0] = -py / solar_mass;
   sun_vz[0] = -pz / solar_mass;
-}
-
-fn print_double(value : Double) -> Unit {
-  print_int(int_of_float(value));
 }
 
 fn main {

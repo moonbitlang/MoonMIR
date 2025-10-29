@@ -1,4 +1,7 @@
 
+extern "C" fn print_int(x : Int) = "print_int";
+extern "C" fn print_endline() = "print_endline";
+
 struct Integer {
   v: Array[Int];
   plus: (Integer, Integer) -> Unit;

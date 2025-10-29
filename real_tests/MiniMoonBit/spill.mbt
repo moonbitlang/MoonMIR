@@ -1,3 +1,5 @@
+extern "C" fn print_int(x : Int) = "print_int";
+
 fn f(a: Int, b: Int, c: Int, d: Int) -> Int {
   let e = a + b;
   let f = a + c;

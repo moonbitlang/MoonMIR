@@ -1,3 +1,4 @@
+extern "C" fn print_int(x : Int) = "print_int";
 
 fn clamp(lower: Int, upper: Int, value: Int) -> Int {
   if value > lower && value < upper {

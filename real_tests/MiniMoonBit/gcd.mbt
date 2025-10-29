@@ -1,3 +1,6 @@
+
+extern "C" fn print_int(x : Int) = "print_int";
+
 fn gcd(m: Int, n: Int) -> Int {
   if m == 0 {
     n

@@ -1,3 +1,6 @@
+extern "C" fn print_int(x : Int) = "print_int";
+extern "C" fn truncate(x : Double) -> Int = "truncate";
+
 fn inprod(v1: Array[Double], v2: Array[Double], len: Int) -> Double {
   let mut res : Double = 0.0;
   let mut idx = 0;

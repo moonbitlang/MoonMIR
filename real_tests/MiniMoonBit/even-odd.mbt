@@ -1,3 +1,6 @@
+extern "C" fn print_int(x : Int) = "print_int";
+
+
 let t = 123;
 let f = 456;
 

@@ -1,3 +1,5 @@
+extern "C" fn print_int(x : Int) = "print_int";
+
 fn sum(acc: Int, x: Int) -> Int {
   if x <= 0 {
     acc

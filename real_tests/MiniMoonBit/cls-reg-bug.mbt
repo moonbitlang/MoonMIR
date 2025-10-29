@@ -1,3 +1,6 @@
+
+extern "C" fn print_int(x : Int) = "print_int";
+
 fn h(p: (Int, Int, Int, Int, Int, Int, Int, Int, Int, Int)) -> Int {
     let (v1, v2, v3, v4, v5, v6, v7, v8, v9, v10) = p;
     fn g(z: Int) -> Int {

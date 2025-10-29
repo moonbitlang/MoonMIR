@@ -1,3 +1,7 @@
+extern "C" fn print_int(x : Int) = "print_int";
+extern "C" fn print_endline() = "print_endline";
+extern "C" fn truncate(x : Double) -> Int = "truncate";
+
 fn matmul(l: Int, m: Int, n: Int, a: Array[Array[Double]], b: Array[Array[Double]], c: Array[Array[Double]]) -> Unit {
   let mut i = 0;
   while i < l {

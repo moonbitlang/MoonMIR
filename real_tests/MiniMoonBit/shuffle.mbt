@@ -1,3 +1,5 @@
+extern "C" fn print_int(x : Int) = "print_int";
+
 fn foo(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int) -> Unit {
   let _ =  print_int(a);
   let _ =  print_int(b);

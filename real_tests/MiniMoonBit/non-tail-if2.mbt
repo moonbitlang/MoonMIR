@@ -1,3 +1,5 @@
+extern "C" fn print_int(x : Int) = "print_int";
+
 fn main {
   fn f() -> Int {
     12345

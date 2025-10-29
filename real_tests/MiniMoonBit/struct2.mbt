@@ -1,3 +1,5 @@
+extern "C" fn print_int(x : Int) = "print_int";
+
 struct Vector {
   data: Array[Int];
   size: Int;

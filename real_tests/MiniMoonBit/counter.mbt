@@ -1,4 +1,5 @@
 
+extern "C" fn print_int(x : Int) = "print_int";
 
 fn counter(arr: Array[Int], arr_size: Int, cond: Array[(Int) -> Bool], cond_size: Int) -> Int {
   let mut cnt = 0;

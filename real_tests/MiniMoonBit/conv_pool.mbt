@@ -1,3 +1,7 @@
+
+extern "C" fn print_int(x : Int) = "print_int";
+extern "C" fn truncate(x : Double) -> Int = "truncate";
+
 fn relu(x: Double) -> Double {
   if x >= 0.0 {
     x

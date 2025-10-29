@@ -1,3 +1,5 @@
+extern "C" fn print_int(x : Int) = "print_int";
+
 fn f(u: Unit) -> Int {
   123
 }
