@@ -1053,7 +1053,6 @@ pub fn Instruction::legalize_fcmp(
 //FMoveI(_) => self.legalize_fmovei(builder)
 //IMoveF(_) => self.legalize_imovef(builder)
 
-
 ///|
 pub fn Instruction::legalize_fload(
   self : Instruction,

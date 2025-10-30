@@ -1274,12 +1274,18 @@ pub fn translate_llvm_fneg_inst(
     FImm(f) => {
       let ireg = func.new_virtual_reg()
       let src = func.new_virtual_freg()
+      // Convert double bit representation to appropriate type
+      let bit_value = match data_size {
+        32 => {
+          // Convert double to float bit representation
+          let float_val = f.to_float()
+          float_val.reinterpret_as_int().to_int64()
+        }
+        64 => f.reinterpret_as_int64()
+        _ => f.reinterpret_as_int64()
+      }
       [
-        builder.build_imove_imm(
-          data_size,
-          dst=ireg,
-          src=f.reinterpret_as_int64(),
-        ),
+        builder.build_imove_imm(data_size, dst=ireg, src=bit_value),
         builder.build_fmove_from_ireg(data_size, dst=src, src=ireg),
         builder.build_fneg(data_size, dst~, src~),
       ]
