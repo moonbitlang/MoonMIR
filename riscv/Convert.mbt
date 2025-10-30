@@ -2361,13 +2361,11 @@ fn i64_movef_mir_to_riscv(
     panic()
   }
   match inst {
-    { defs: [IRegister(_d)], uses: [FRegister(_r)], .. } =>
-      // RISC-V doesn't have a direct fmv.x.d instruction in RV64
-      // Need to use a different approach or ensure this is handled correctly
-      // For now, we'll raise an error
-      raise MIRToRiscvError(
-        "fmv.x.d not directly supported, needs special handling",
-      )
+    { defs: [IRegister(d)], uses: [FRegister(r)], .. } => {
+      let dst = Reg::from_mir_reg(d)
+      let src = FReg::from_mir_freg(r)
+      [FmvXD(dst, src)]
+    }
     _ =>
       raise MIRToRiscvError("Error: Unsupported MoonMIR instruction: \{inst}")
   }

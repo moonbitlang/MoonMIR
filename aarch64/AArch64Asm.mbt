@@ -688,7 +688,7 @@ pub impl Show for AArch64Asm with output(self, logger) {
     FmovXtoD(fd, rs) => "fmov \{fd}, \{rs}"
     FmovDtoX(rd, fs) => "fmov \{rd}, \{fs}"
     FmovWtoS(fs, rs) => "fmov \{fs}, \{rs.to_w_string()}"
-    FmovStoW(rd, fs) => "fmov \{rd}, \{fs}"
+    FmovStoW(rd, fs) => "fmov \{rd.to_w_string()}, \{fs}"
 
     // Comparison
     Cmp64(rs1, rs2) => "cmp \{rs1}, \{rs2}"

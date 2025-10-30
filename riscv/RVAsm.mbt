@@ -253,6 +253,7 @@ pub(all) enum RvAsm {
   FeqD(Reg, FReg, FReg)
   FleD(Reg, FReg, FReg)
   FmvDX(FReg, Reg)
+  FmvXD(Reg, FReg)
   // pseudo instructions
   Nop
   La(Reg, String)
@@ -431,6 +432,7 @@ pub impl Show for RvAsm with output(self, logger) {
     FeqD(rd, fs1, fs2) => "feq.d \{rd}, \{fs1}, \{fs2}"
     FleD(rd, fs1, fs2) => "fle.d \{rd}, \{fs1}, \{fs2}"
     FmvDX(fd, rs) => "fmv.d.x \{fd}, \{rs}"
+    FmvXD(rd, fs) => "fmv.x.d \{rd}, \{fs}"
     Nop => "nop"
     La(rd, label) => "la \{rd}, \{label}"
     Li(rd, imm) => "li \{rd}, \{imm}"

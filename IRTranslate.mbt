@@ -1758,20 +1758,28 @@ pub fn translate_llvm_conditional_branch(
         "BranchInst: condition operand not found in value_map",
       )
     }
-    guard cond_op is IRegister(lhs) else {
-      raise IRTranslateError(
-        "BranchInst: condition operand is not an integer register",
-      )
+    match cond_op {
+      IRegister(lhs) => {
+        let minst = builder.build_branch_imm(
+          Bne,
+          64,
+          lhs~,
+          rhs=0L,
+          true_label~,
+          false_label~,
+        )
+        return [minst]
+      }
+      Imm(val) => {
+        // Handle constant condition: branch to true_label if non-zero, false_label if zero
+        let target_label = if val != 0L { true_label } else { false_label }
+        return [builder.build_jmp(target_label~)]
+      }
+      _ =>
+        raise IRTranslateError(
+          "BranchInst: condition operand is not an integer register or immediate, it is \{cond_op}",
+        )
     }
-    let minst = builder.build_branch_imm(
-      Bne,
-      64,
-      lhs~,
-      rhs=0L,
-      true_label~,
-      false_label~,
-    )
-    return [minst]
   }
 
   //
@@ -1787,20 +1795,28 @@ pub fn translate_llvm_conditional_branch(
         "BranchInst: condition operand not found in value_map",
       )
     }
-    guard cond_op is IRegister(lhs) else {
-      raise IRTranslateError(
-        "BranchInst: condition operand is not an integer register",
-      )
+    match cond_op {
+      IRegister(lhs) => {
+        let minst = builder.build_branch_imm(
+          Bne,
+          64,
+          lhs~,
+          rhs=0L,
+          true_label~,
+          false_label~,
+        )
+        return [minst]
+      }
+      Imm(val) => {
+        // Handle constant condition: branch to true_label if non-zero, false_label if zero
+        let target_label = if val != 0L { true_label } else { false_label }
+        return [builder.build_jmp(target_label~)]
+      }
+      _ =>
+        raise IRTranslateError(
+          "BranchInst: condition operand is not an integer register or immediate, it is \{cond_op}",
+        )
     }
-    let minst = builder.build_branch_imm(
-      Bne,
-      64,
-      lhs~,
-      rhs=0L,
-      true_label~,
-      false_label~,
-    )
-    return [minst]
   }
 
   // If the comparison instruction only used in this branch,
