@@ -18,11 +18,3 @@
 -4616189618054758400
 0.500000
 4602678819172646912
-42
-0.000000
-42
-Round-trip Int->Float->Int successful
-123456789
-0.000000
-123456789
-Round-trip Int64->Double->Int64 successful

@@ -463,7 +463,7 @@ fn Function::visit_llvm_inst(
     }
     _ => {
       // Skip instructions whose results are never used (dead code)
-      if llvm_inst.user_empty() {
+      if llvm_inst.user_empty() && !(llvm_inst.asValueEnum() is CallInst(_)) {
         return
       }
       let llvm_ty = llvm_inst.getType()
@@ -3128,9 +3128,9 @@ pub fn translate_llvm_call_inst(
   minsts.push(call_inst)
   if !(llvm_inst.getType().asTypeEnum() is VoidType(_)) {
     guard func.get_operand_from_llvm_value(llvm_inst) is Some(ret_op) else {
-      // If the return value operand is not found, it means this call's return value
-      // was never used (dead code), but we still need to execute the call for side effects
-      return minsts
+      raise IRTranslateError(
+        "CallInst: return value operand not found in value_map",
+      )
     }
     // Get the return type width
     let ret_ty = llvm_inst.getType()
@@ -3151,6 +3151,17 @@ pub fn translate_llvm_call_inst(
       }
       _ => ()
     }
+  } else {
+    // Even the call inst has no return value, still need a move from a0/fa0
+    // Why we do that?
+    // Because we need to ensure in register allocation phase
+    // others varible not use a0/fa0 after the call instruction
+    let tmp_reg = func.new_virtual_reg()
+    let tmp_freg = func.new_virtual_freg()
+    let mv_a0 = builder.build_imove(64, dst=tmp_reg, src=AReg(0))
+    let mv_fa0 = builder.build_fmove(64, dst=tmp_freg, src=FAReg(0))
+    minsts.push(mv_a0)
+    minsts.push(mv_fa0)
   }
   minsts
 }

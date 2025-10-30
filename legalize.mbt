@@ -1053,6 +1053,7 @@ pub fn Instruction::legalize_fcmp(
 //FMoveI(_) => self.legalize_fmovei(builder)
 //IMoveF(_) => self.legalize_imovef(builder)
 
+
 ///|
 pub fn Instruction::legalize_fload(
   self : Instruction,
@@ -1137,6 +1138,7 @@ pub fn Instruction::legalize_fmove(
         builder.build_storef(bits, src=vdst, base~, offset~),
       ]
     }
+    { defs: [FRegister(d)], uses: [FRegister(s)], .. } if d == s => []
     { defs: [FRegister(_)], uses: [FRegister(_)], .. } as inst => [inst]
     { defs: [FRegister(rdst)], uses: [FImm(imm_val)], .. } =>
       // Handle immediate value to floating point register move

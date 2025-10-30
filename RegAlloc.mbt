@@ -9,7 +9,7 @@ pub fn Module::alloc_register(self : Module) -> Unit raise MIRError {
 pub fn Function::alloc_register(self : Function) -> Unit raise MIRError {
   // Step 1. Liveness Analysis
   self.live_analysis()
-  //if self.name == "moonbit_main" {
+  //if self.name == "analyze_float_bits" {
   //  println("============== After liveness analysis ==============")
   //  println(self)
   //}
