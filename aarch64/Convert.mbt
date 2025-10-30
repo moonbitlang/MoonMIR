@@ -914,10 +914,8 @@ fn call_mir_to_aarch64(
   let f = inst.uses[0]
   match f {
     Label(func_name) => {
-      let fname = match func_name.has_prefix("_") {
-        true => func_name
-        false => "_\{func_name}"
-      }
+      // On macOS, all C functions need an underscore prefix in assembly
+      let fname = "_\{func_name}"
       [Bl(fname)]
     }
     IRegister(r) => {
