@@ -3150,10 +3150,18 @@ pub fn translate_llvm_call_inst(
       IRegister(dst) => {
         let inst = builder.build_imove(ret_width, dst~, src=AReg(0))
         minsts.push(inst)
+        // need extra inst `move v, fa0` to avoid fa0 being used after call
+        let tmp_freg = func.new_virtual_freg()
+        let mv_fa0 = builder.build_fmove(64, dst=tmp_freg, src=FAReg(0))
+        minsts.push(mv_fa0)
       }
       FRegister(dst) => {
         let inst = builder.build_fmove(ret_width, dst~, src=FAReg(0))
         minsts.push(inst)
+        // need extra inst `move v, a0` to avoid a0 being used after call
+        let tmp_reg = func.new_virtual_reg()
+        let mv_a0 = builder.build_imove(64, dst=tmp_reg, src=AReg(0))
+        minsts.push(mv_a0)
       }
       _ => ()
     }
