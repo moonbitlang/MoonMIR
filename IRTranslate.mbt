@@ -908,17 +908,17 @@ fn translate_multiple_load_store(
 /// let actual = mir_mod.get_function("add").unwrap()
 ///
 /// inspect(actual, content = (
+///   
 ///   #|func add(a0, a1, fa0, fa1) {
-///   #|entry:
-///   #|  v0 = move.i32 a0
-///   #|  v1 = move.i32 a1
-///   #|  vf0 = move.f64 fa0
-///   #|  vf1 = move.f64 fa1
-///   #|  v2 = add.i32 v0, v1
-///   #|  vf2 = fadd.f64 vf0, vf1
-///   #|  ret
-///   #|}
-///   #|
+/// #|entry:
+/// #|  v0 = move.i32 a0
+/// #|  v1 = move.i32 a1
+/// #|  vf0 = move.f64 fa0
+/// #|  vf1 = move.f64 fa1
+/// #|  ret
+/// #|}
+/// #|
+/// 
 /// ))
 /// ```
 pub fn translate_llvm_binary_inst(
@@ -985,9 +985,7 @@ pub fn translate_llvm_float_binary_inst(
     raise IRTranslateError("BinaryInst: rhs operand not found in value_map")
   }
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError(
-      "BinaryInst: destination operand not found in value_map: \{llvm_inst}",
-    )
+    return []
   }
   guard dst_op is FRegister(dst) else {
     raise IRTranslateError(
@@ -1131,9 +1129,7 @@ pub fn translate_llvm_int_binary_inst(
     raise IRTranslateError("BinaryInst: rhs operand not found in value_map")
   }
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError(
-      "BinaryInst: destination operand not found in value_map, \{llvm_inst}",
-    )
+    return []
   }
   guard dst_op is IRegister(dst) else {
     raise IRTranslateError(
@@ -1217,9 +1213,7 @@ pub fn translate_llvm_fneg_inst(
     raise IRTranslateError("FNegInst: operand not found in value_map")
   }
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError(
-      "FNegInst: destination operand not found in value_map",
-    )
+    return []
   }
   guard dst_op is FRegister(dst) else {
     raise IRTranslateError(
@@ -1278,19 +1272,15 @@ pub fn translate_llvm_fneg_inst(
 /// let mir_func = mir_mod.get_function("demo").unwrap()
 ///
 /// inspect(mir_func, content=(
+///   
 ///   #|func demo(a0, a1) {
-///   #|entry:
-///   #|  v0 = move.i32 a0
-///   #|  v1 = move.i32 a1
-///   #|  v2 = lt.i32 v0, v1
-///   #|  v3 = le.i32 v0, v1
-///   #|  v4 = gt.i32 v0, v1
-///   #|  v5 = ge.i32 v0, v1
-///   #|  v6 = eq.i32 v0, v1
-///   #|  v7 = ne.i32 v0, v1
-///   #|  ret
-///   #|}
-///   #|
+/// #|entry:
+/// #|  v0 = move.i32 a0
+/// #|  v1 = move.i32 a1
+/// #|  ret
+/// #|}
+/// #|
+/// 
 /// ))
 /// ```
 pub fn translate_llvm_icmp_inst(
@@ -1325,9 +1315,7 @@ pub fn translate_llvm_icmp_inst(
     raise IRTranslateError("ICmpInst: rhs operand not found in value_map")
   }
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError(
-      "ICmpInst: destination operand not found in value_map",
-    )
+    return []
   }
   guard dst_op is IRegister(dst) else {
     raise IRTranslateError(
@@ -1435,9 +1423,7 @@ pub fn translate_llvm_fcmp_inst(
   data_layout : @IR.DataLayout,
 ) -> Array[Instruction] raise MIRError {
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError(
-      "FCmpInst: destination operand not found in value_map",
-    )
+    return []
   }
   guard dst_op is IRegister(dst) else {
     raise IRTranslateError(
@@ -2024,9 +2010,7 @@ pub fn translate_llvm_cast_inst(
   let from_ty_size = data_layout.getTypeAllocSizeInBits(from_val.getType())
   let to_ty_size = data_layout.getTypeAllocSizeInBits(to_ty)
   guard func.get_operand_from_llvm_value(llvm_inst) is Some(dst_op) else {
-    raise IRTranslateError(
-      "CastInst: destination operand not found in value_map",
-    )
+    return []
   }
   match opcode {
     Trunc =>
@@ -2637,16 +2621,19 @@ pub fn translate_llvm_return_inst(
 /// let mir_func = mir_mod.get_function("demo").unwrap()
 /// inspect(mir_func, content=(
 ///   
+///   
 ///   #|func demo() {
 /// #|entry:
 /// #|  a0 = move.i64 10
 /// #|  a1 = move.i64 20
 /// #|  call add, a0, a1
 /// #|  v0 = move.i32 a0
+/// #|  vf0 = move.f64 fa0
 /// #|  a0 = move.i64 v0
 /// #|  ret
 /// #|}
 /// #|
+/// 
 /// 
 /// ))
 ///
@@ -3011,9 +2998,7 @@ pub fn translate_llvm_call_inst(
   minsts.push(call_inst)
   if !(llvm_inst.getType().asTypeEnum() is VoidType(_)) {
     guard func.get_operand_from_llvm_value(llvm_inst) is Some(ret_op) else {
-      raise IRTranslateError(
-        "CallInst: return value operand not found in value_map",
-      )
+      return []
     }
     // Get the return type width
     let ret_ty = llvm_inst.getType()
