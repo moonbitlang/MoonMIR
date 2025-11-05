@@ -16,7 +16,7 @@ typealias @deque.Deque
 ///   #|  e
 ///   #|}
 ///
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 ///
 /// // IRTranslate
 /// let rv64 = ArchConfig::riscv64()

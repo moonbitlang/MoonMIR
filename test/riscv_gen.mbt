@@ -9,7 +9,7 @@ test "Simple Insts RiscV" {
     #|  let e = c % d;
     #|  e
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
 
   // IRTranslate
   let mir_mod = Module::new(rv64)
@@ -41,7 +41,7 @@ test "Simple Insts RiscV" {
 //    #|  let b = a + b;
 //    #|  let _ = plus1(b);
 //    #|}
-//  let llvm_mod = @TinyMoonBit.compile(code)
+//  let llvm_mod = @MiniMoonBit.compile(code)
 //  // IRTranslate
 //  let mir_mod = Module::new(rv64)
 //  mir_mod.translate_llvm_module(llvm_mod)

@@ -14,7 +14,7 @@ test "Simple Int32 Binary IRTranslate Test" {
     #|  let g = x | y
     #|  g
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
 
   // IRTranslate
   let mir_mod = Module::new(rv64)
@@ -49,7 +49,7 @@ test "Simple Int64 Binary IRTranslate Test" {
     #|  let g = x | y
     #|  g
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
 
   // IRTranslate
   let mir_mod = Module::new(rv64)
@@ -78,7 +78,7 @@ test "Simple Float Binary IRTranslate Test" {
     #|  let d = x / y
     #|  d
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
 
   // IRTranslate
   let mir_mod = Module::new(rv64)
@@ -108,7 +108,7 @@ test "Simple Double Binary IRTranslate Test" {
     #|  let d = x / y
     #|  d
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
 
   // IRTranslate
   let mir_mod = Module::new(rv64)
@@ -134,7 +134,7 @@ test "Simple Alloca, Store and Load IRTranslate Test" {
     #|  let mut a = 10  // a is in memory
     #|  return a
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
@@ -161,7 +161,7 @@ test "Complex Int Binary IRTranslate Test" {
     #|  let c = 50 - a
     #|  return 0
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
@@ -184,12 +184,12 @@ test "Complex Int Binary IRTranslate Test" {
 test "Complex Float Binary IRTranslate Test" {
   let code =
     #|fn demo() -> Float {
-    #|  let mut a = 1.0f  // a is in memory
-    #|  let b = a + 2.0f
-    #|  let c = 5.0f - a
-    #|  return 0.0f
+    #|  let mut a = 1.0F  // a is in memory
+    #|  let b = a + 2.0F
+    #|  let c = 5.0F - a
+    #|  return 0.0F
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
@@ -222,7 +222,7 @@ test "ICmp IRTranslate Test" {
     #|  let h = a != b
     #|  return
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
@@ -254,7 +254,7 @@ test "FCmp IRTranslate Test" {
     #|  let h = a != b
     #|  return
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
@@ -283,7 +283,7 @@ test "Branch IRTranslate Test" {
     #|  }
     #|  return b
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
@@ -326,7 +326,7 @@ test "While IRTranslate Test" {
     #|  }
     #|  return a
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)
@@ -371,7 +371,7 @@ test "Call IRTranslate Test" {
     #|  let a = add(10, 20)
     #|  return a
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)

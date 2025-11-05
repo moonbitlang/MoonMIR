@@ -9,7 +9,7 @@ test "Simple Insts Live Analysis" {
     #|  let e = c % d;
     #|  e
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
 
   // IRTranslate
   let mir_mod = Module::new(rv64)
@@ -49,7 +49,7 @@ test "Cond Branch Insts Register Allocation" {
     #|    x - y
     #|  }
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
 
   // IRTranslate
   let mir_mod = Module::new(rv64)
@@ -132,7 +132,7 @@ test "Register Allocation Spill" {
     #|  let zr = zr + z8 + z9;
     #|  xr + yr + zr
     #|}
-  let llvm_mod = @TinyMoonBit.compile(code)
+  let llvm_mod = @MiniMoonBit.compile(code)
   // IRTranslate
   let mir_mod = Module::new(rv64)
   mir_mod.translate_llvm_module(llvm_mod)

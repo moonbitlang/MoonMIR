@@ -681,7 +681,7 @@ pub fn translate_llvm_inst(
 ///   #|  let mut a = 10  // a is in memory
 ///   #|  return a
 ///   #|}
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// let rv64 = ArchConfig::riscv64()
 /// // IRTranslate
 /// let mir_mod = Module::new(rv64)
@@ -754,7 +754,7 @@ pub fn translate_llvm_load_inst(
 ///   #|  let mut a = 10  // a is in memory
 ///   #|  return a
 ///   #|}
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// let rv64 = ArchConfig::riscv64()
 /// // IRTranslate
 /// let mir_mod = Module::new(rv64)
@@ -901,7 +901,7 @@ fn translate_multiple_load_store(
 ///   #|  return
 ///   #|}
 ///
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// let rv64_config = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64_config)
 /// mir_mod.translate_llvm_module(llvm_mod)
@@ -944,7 +944,7 @@ pub fn translate_llvm_binary_inst(
 ///   #|  x + y
 ///   #|}
 ///
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// let rv64_config = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64_config)
 /// mir_mod.translate_llvm_module(llvm_mod)
@@ -1082,7 +1082,7 @@ pub fn translate_llvm_float_binary_inst(
 ///   #|  x + y
 ///   #|}
 ///
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// let rv64_config = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64_config)
 /// mir_mod.translate_llvm_module(llvm_mod)
@@ -1184,7 +1184,7 @@ pub fn translate_llvm_int_binary_inst(
 ///   #|  -x
 ///   #|}
 ///
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// let rv64_config = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64_config)
 ///
@@ -1264,7 +1264,7 @@ pub fn translate_llvm_fneg_inst(
 ///   #|  let h = a != b
 ///   #|  return
 ///   #|}
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// // IRTranslate
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
@@ -1395,7 +1395,7 @@ pub fn translate_llvm_icmp_inst(
 ///     #|  let h = a != b
 ///     #|  return
 ///     #|}
-///   let llvm_mod = @TinyMoonBit.compile(code)
+///   let llvm_mod = @MiniMoonBit.compile(code)
 ///   // IRTranslate
 ///   let mir_mod = Module::new(rv64)
 ///   mir_mod.translate_llvm_module(llvm_mod)
@@ -1518,7 +1518,7 @@ pub fn translate_llvm_fcmp_inst(
 ///   #|  }
 ///   #|  return b
 ///   #|}
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// // IRTranslate
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
@@ -1574,7 +1574,7 @@ pub fn translate_llvm_branch_inst(
 ///   #|  }
 ///   #|  return b
 ///   #|}
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// // IRTranslate
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
@@ -1806,7 +1806,7 @@ pub fn translate_llvm_conditional_branch(
 ///   #|  }
 ///   #|  return b
 ///   #|}
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// // IRTranslate
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)
@@ -2613,7 +2613,7 @@ pub fn translate_llvm_return_inst(
 ///   #|  let a = add(10, 20)
 ///   #|  return a
 ///   #|}
-/// let llvm_mod = @TinyMoonBit.compile(code)
+/// let llvm_mod = @MiniMoonBit.compile(code)
 /// // IRTranslate
 /// let rv64 = ArchConfig::riscv64()
 /// let mir_mod = Module::new(rv64)

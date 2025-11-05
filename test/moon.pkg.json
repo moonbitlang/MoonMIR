@@ -2,6 +2,9 @@
   "import" : [
     "Kaida-Amethyst/MoonMIR",
     "Kaida-Amethyst/MoonMIR/riscv",
-    "Kaida-Amethyst/TinyMoonBit"
+    {
+      "path":"Kaida-Amethyst/MiniMoonBit/codegen",
+      "alias": "MiniMoonBit"
+    },
   ]
 }

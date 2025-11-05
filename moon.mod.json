@@ -5,10 +5,7 @@
     "Kaida-Amethyst/mbtcc": {
       "path": "../mbtcc/"
     },
-    "Kaida-Amethyst/TinyMoonBit": {
-      "path": "../TinyMoonbit/"
-    },
-    "Kaida-Amethyst/MiniMoonbit": {
+    "Kaida-Amethyst/MiniMoonBit": {
       "path": "../MiniMoonbit/"
     },
     "moonbitlang/x": "0.4.34",

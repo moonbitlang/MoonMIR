@@ -5,7 +5,7 @@
     "Kaida-Amethyst/MoonMIR",
     "Kaida-Amethyst/MoonMIR/riscv",
     "Kaida-Amethyst/MoonMIR/aarch64",
-    "Kaida-Amethyst/MiniMoonbit/codegen",
+    "Kaida-Amethyst/MiniMoonBit/codegen",
     "moonbitlang/x/fs"
   ]
 }
