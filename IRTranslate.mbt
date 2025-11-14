@@ -2673,19 +2673,6 @@ pub fn translate_llvm_call_inst(
   // Check if the callee is a variadic function
   // For indirect calls, we cannot determine if it's variadic, so assume non-variadic
   let is_variadic_call = llvm_inst.getFunctionType().isVarArg
-  //let is_variadic_call = match callee_name_opt {
-  //  Some(callee_name) =>
-  //    match func.mod.get_function(callee_name) {
-  //      Some(f) => f.is_variadic
-  //      None =>
-  //        // Check external functions
-  //        match func.mod.external_functions.get(callee_name) {
-  //          Some(llvm_func) => llvm_func.fty.isVarArg
-  //          None => false // Unknown function, assume non-variadic
-  //        }
-  //    }
-  //  None => false // Indirect call, assume non-variadic
-  //}
 
   // For AArch64 variadic functions, arguments after the first one should be on stack only
   // The first argument (format string) still goes in register x0
