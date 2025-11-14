@@ -826,6 +826,24 @@ pub fn translate_llvm_store_inst(
         builder.build_storei(data_size, src=tmp, base~, offset~),
       ]
     }
+    MemLoc(src_base, src_offset) => {
+      // MemLoc as a value means it's a pointer/address value
+      // Compute the address (src_base + src_offset) and store that address
+      let tmp = func.new_virtual_reg()
+      if src_offset == 0L {
+        // Just move the base register
+        [
+          builder.build_imove(64, dst=tmp, src=src_base),
+          builder.build_storei(data_size, src=tmp, base~, offset~),
+        ]
+      } else {
+        // Compute address: tmp = src_base + src_offset
+        [
+          builder.build_ibinary_imm(Add, 64, dst=tmp, src1=src_base, src2=src_offset),
+          builder.build_storei(data_size, src=tmp, base~, offset~),
+        ]
+      }
+    }
     MemGroup(src_base, offsets) => {
       minsts.append(
         translate_multiple_load_store(
