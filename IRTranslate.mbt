@@ -672,35 +672,6 @@ pub fn translate_llvm_inst(
 }
 
 ///|
-///
-/// IRTranslate from LLVM IR to MoonMIR for LoadInst.
-///
-/// ```mbt
-/// let code =
-///   #|fn demo() -> Int {
-///   #|  let mut a = 10  // a is in memory
-///   #|  return a
-///   #|}
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// let rv64 = ArchConfig::riscv64()
-/// // IRTranslate
-/// let mir_mod = Module::new(rv64)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.get_function("demo").unwrap()
-///
-/// let expected =
-///   #|func demo() {
-///   #|entry:
-///   #|  v1 = move.i32 10
-///   #|  store.i32 (fp' - 4), v1
-///   #|  v0 = load.i32 (fp' - 4)
-///   #|  a0 = move.i64 v0
-///   #|  ret
-///   #|}
-///   #|
-///
-/// inspect(mir_func, content=expected)
-/// ```
 pub fn translate_llvm_load_inst(
   llvm_inst : @IR.LoadInst,
   builder : IRBuilder,
@@ -745,35 +716,7 @@ pub fn translate_llvm_load_inst(
 }
 
 ///|
-///
 /// IRTranslate from LLVM IR to MoonMIR for StoreInst.
-///
-/// ```mbt
-/// let code =
-///   #|fn demo() -> Int {
-///   #|  let mut a = 10  // a is in memory
-///   #|  return a
-///   #|}
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// let rv64 = ArchConfig::riscv64()
-/// // IRTranslate
-/// let mir_mod = Module::new(rv64)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.get_function("demo").unwrap()
-///
-/// let expected =
-///   #|func demo() {
-///   #|entry:
-///   #|  v1 = move.i32 10
-///   #|  store.i32 (fp' - 4), v1
-///   #|  v0 = load.i32 (fp' - 4)
-///   #|  a0 = move.i64 v0
-///   #|  ret
-///   #|}
-///   #|
-///
-/// inspect(mir_func, content=expected)
-/// ```
 pub fn translate_llvm_store_inst(
   llvm_inst : @IR.StoreInst,
   builder : IRBuilder,
@@ -839,7 +782,13 @@ pub fn translate_llvm_store_inst(
       } else {
         // Compute address: tmp = src_base + src_offset
         [
-          builder.build_ibinary_imm(Add, 64, dst=tmp, src1=src_base, src2=src_offset),
+          builder.build_ibinary_imm(
+            Add,
+            64,
+            dst=tmp,
+            src1=src_base,
+            src2=src_offset,
+          ),
           builder.build_storei(data_size, src=tmp, base~, offset~),
         ]
       }
@@ -908,37 +857,7 @@ fn translate_multiple_load_store(
 }
 
 ///|
-///
 /// IRTranslate from LLVM IR to MoonMIR for Int or Float binary instructions.
-///
-/// ```mbt
-/// let code =
-///   #|fn add(x: Int, y: Int, fx: Double, fy: Double) -> Unit {
-///   #|  let a = x + y 
-///   #|  let fa = fx + fy
-///   #|  return
-///   #|}
-///
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// let rv64_config = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64_config)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let actual = mir_mod.get_function("add").unwrap()
-///
-/// inspect(actual, content = (
-///   
-///   #|func add(a0, a1, fa0, fa1) {
-/// #|entry:
-/// #|  v0 = move.i32 a0
-/// #|  v1 = move.i32 a1
-/// #|  vf0 = move.f64 fa0
-/// #|  vf1 = move.f64 fa1
-/// #|  ret
-/// #|}
-/// #|
-/// 
-/// ))
-/// ```
 pub fn translate_llvm_binary_inst(
   llvm_inst : @IR.BinaryInst,
   builder : IRBuilder,
@@ -953,33 +872,7 @@ pub fn translate_llvm_binary_inst(
 }
 
 ///|
-///
 /// IRTranslate from LLVM IR to MIR for floating-point BinaryInst
-///
-/// ```mbt
-/// let code =
-///   #|fn add(x: Float, y: Float) -> Float {
-///   #|  x + y
-///   #|}
-///
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// let rv64_config = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64_config)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let actual = mir_mod.get_function("add").unwrap()
-///
-/// inspect(actual, content = (
-///   #|func add(fa0, fa1) {
-///   #|entry:
-///   #|  vf0 = move.f32 fa0
-///   #|  vf1 = move.f32 fa1
-///   #|  vf2 = fadd.f32 vf0, vf1
-///   #|  fa0 = move.f64 vf2
-///   #|  ret
-///   #|}
-///   #|
-/// ))
-/// ```
 pub fn translate_llvm_float_binary_inst(
   llvm_inst : @IR.BinaryInst,
   builder : IRBuilder,
@@ -1093,31 +986,6 @@ pub fn translate_llvm_float_binary_inst(
 ///|
 ///
 /// IRTranslate from LLVM IR to MIR for Int BinaryInst
-///
-/// ```mbt
-/// let code = 
-///   #|fn add(x: Int, y: Int) -> Int {
-///   #|  x + y
-///   #|}
-///
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// let rv64_config = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64_config)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let actual = mir_mod.get_function("add").unwrap()
-///
-/// inspect(actual, content = (
-///   #|func add(a0, a1) {
-///   #|entry:
-///   #|  v0 = move.i32 a0
-///   #|  v1 = move.i32 a1
-///   #|  v2 = add.i32 v0, v1
-///   #|  a0 = move.i64 v2
-///   #|  ret
-///   #|}
-///   #|
-/// ))
-/// ```
 pub fn translate_llvm_int_binary_inst(
   llvm_inst : @IR.BinaryInst,
   builder : IRBuilder,
@@ -1195,31 +1063,6 @@ pub fn translate_llvm_int_binary_inst(
 ///|
 ///
 /// IRTranslate from LLVM IR to MoonMIR for FNegInst
-///
-/// ```mbt
-/// let code =
-///   #|fn neg(x: Float) -> Float {
-///   #|  -x
-///   #|}
-///
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// let rv64_config = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64_config)
-///
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let actual = mir_mod.get_function("neg").unwrap()
-///
-/// inspect(actual, content = (
-///   #|func neg(fa0) {
-///   #|entry:
-///   #|  vf0 = move.f32 fa0
-///   #|  vf1 = fneg.f32 vf0
-///   #|  fa0 = move.f64 vf1
-///   #|  ret
-///   #|}
-///   #|
-/// ))
-/// ```
 pub fn translate_llvm_fneg_inst(
   llvm_inst : @IR.FNegInst,
   builder : IRBuilder,
@@ -1268,39 +1111,7 @@ pub fn translate_llvm_fneg_inst(
 }
 
 ///|
-///
 /// IRTranslate from LLVM IR to MoonMIR for ICmpInst.
-///
-/// ```mbt
-/// let code = 
-///   #|fn demo(a: Int, b: Int) -> Unit {
-///   #|  let c = a < b
-///   #|  let d = a <= b
-///   #|  let e = a > b
-///   #|  let f = a >= b
-///   #|  let g = a == b
-///   #|  let h = a != b
-///   #|  return
-///   #|}
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// // IRTranslate
-/// let rv64 = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.get_function("demo").unwrap()
-///
-/// inspect(mir_func, content=(
-///   
-///   #|func demo(a0, a1) {
-/// #|entry:
-/// #|  v0 = move.i32 a0
-/// #|  v1 = move.i32 a1
-/// #|  ret
-/// #|}
-/// #|
-/// 
-/// ))
-/// ```
 pub fn translate_llvm_icmp_inst(
   llvm_inst : @IR.ICmpInst,
   builder : IRBuilder,
@@ -1401,39 +1212,6 @@ pub fn translate_llvm_icmp_inst(
 }
 
 ///|
-///
-/// test "FCmp IRTranslate Test" {
-///   let code = 
-///     #|fn demo(a: Float, b: Float) -> Unit {
-///     #|  let c = a < b
-///     #|  let d = a <= b
-///     #|  let e = a > b
-///     #|  let f = a >= b
-///     #|  let g = a == b
-///     #|  let h = a != b
-///     #|  return
-///     #|}
-///   let llvm_mod = @MiniMoonBit.compile(code)
-///   // IRTranslate
-///   let mir_mod = Module::new(rv64)
-///   mir_mod.translate_llvm_module(llvm_mod)
-///   let mir_func = mir_mod.get_function("demo").unwrap()
-///   let expected =
-///     #|func demo(fa0, fa1) {
-///     #|entry:
-///     #|  v0 = flt.f32 fa0, fa1
-///     #|  v1 = fle.f32 fa0, fa1
-///     #|  v2 = fgt.f32 fa0, fa1
-///     #|  v3 = fge.f32 fa0, fa1
-///     #|  v4 = feq.f32 fa0, fa1
-///     #|  v5 = fne.f32 fa0, fa1
-///     #|  ret
-///     #|}
-///     #|
-/// 
-///   inspect(mir_func, content=expected)
-/// }
-/// ```
 pub fn translate_llvm_fcmp_inst(
   llvm_inst : @IR.FCmpInst,
   builder : IRBuilder,
@@ -1525,48 +1303,6 @@ pub fn translate_llvm_fcmp_inst(
 }
 
 ///|
-///
-/// IRTranslate from LLVM IR to MoonMIR for BranchInst.
-///
-/// ```mbt
-/// let code = 
-///   #|fn demo(a: Int, b: Int) -> Int {
-///   #|  if a < b {
-///   #|    return a
-///   #|  }
-///   #|  return b
-///   #|}
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// // IRTranslate
-/// let rv64 = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.get_function("demo").unwrap()
-/// 
-/// inspect(mir_func, content=(
-///   #|func demo(a0, a1) {
-///   #|entry:
-///   #|  v0 = move.i32 a0
-///   #|  v1 = move.i32 a1
-///   #|  blt v0, v1, demo_L1, demo_L2
-///   #|
-///   #|; preds: entry
-///   #|demo_L1:
-///   #|  a0 = move.i64 v0
-///   #|  ret
-///   #|
-///   #|; preds: entry
-///   #|demo_L2:
-///   #|  jmp demo_L3
-///   #|
-///   #|; preds: demo_L2
-///   #|demo_L3:
-///   #|  a0 = move.i64 v1
-///   #|  ret
-///   #|}
-///   #|
-/// ))
-/// ```
 pub fn translate_llvm_branch_inst(
   llvm_inst : @IR.BranchInst,
   builder : IRBuilder,
@@ -1581,48 +1317,7 @@ pub fn translate_llvm_branch_inst(
 }
 
 ///|
-///
 /// IRTranslate from LLVM IR to MoonMIR for conditional BranchInst.
-///
-/// ```mbt
-/// let code = 
-///   #|fn demo(a: Int, b: Int) -> Int {
-///   #|  if a < b {
-///   #|    return a
-///   #|  }
-///   #|  return b
-///   #|}
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// // IRTranslate
-/// let rv64 = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.get_function("demo").unwrap()
-/// 
-/// inspect(mir_func, content=(
-///   #|func demo(a0, a1) {
-///   #|entry:
-///   #|  v0 = move.i32 a0
-///   #|  v1 = move.i32 a1
-///   #|  blt v0, v1, demo_L1, demo_L2
-///   #|
-///   #|; preds: entry
-///   #|demo_L1:
-///   #|  a0 = move.i64 v0
-///   #|  ret
-///   #|
-///   #|; preds: entry
-///   #|demo_L2:
-///   #|  jmp demo_L3
-///   #|
-///   #|; preds: demo_L2
-///   #|demo_L3:
-///   #|  a0 = move.i64 v1
-///   #|  ret
-///   #|}
-///   #|
-/// ))
-/// ```
 pub fn translate_llvm_conditional_branch(
   llvm_inst : @IR.BranchInst,
   builder : IRBuilder,
@@ -1813,47 +1508,7 @@ pub fn translate_llvm_conditional_branch(
 }
 
 ///|
-///
 /// IRTranslate from LLVM IR to MoonMIR for unconditional BranchInst.
-///
-/// ```mbt
-/// let code = 
-///   #|fn demo(a: Int, b: Int) -> Int {
-///   #|  if a < b {
-///   #|    return a
-///   #|  }
-///   #|  return b
-///   #|}
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// // IRTranslate
-/// let rv64 = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.get_function("demo").unwrap()
-/// inspect(mir_func, content=(
-///   #|func demo(a0, a1) {
-///   #|entry:
-///   #|  v0 = move.i32 a0
-///   #|  v1 = move.i32 a1
-///   #|  blt v0, v1, demo_L1, demo_L2
-///   #|
-///   #|; preds: entry
-///   #|demo_L1:
-///   #|  a0 = move.i64 v0
-///   #|  ret
-///   #|
-///   #|; preds: entry
-///   #|demo_L2:
-///   #|  jmp demo_L3
-///   #|
-///   #|; preds: demo_L2
-///   #|demo_L3:
-///   #|  a0 = move.i64 v1
-///   #|  ret
-///   #|}
-///   #|
-/// ))
-/// ```
 pub fn translate_llvm_unconditional_branch(
   llvm_inst : @IR.BranchInst,
   builder : IRBuilder,
@@ -2618,44 +2273,7 @@ pub fn translate_llvm_return_inst(
 }
 
 ///|
-///
 /// IRTranslate from LLVM IR to MoonMIR for CallInst.
-///
-/// ```mbt
-/// let code = 
-///   #|fn add(x: Int, y: Int) -> Int {
-///   #|  x + y
-///   #|}
-///   #|
-///   #|fn demo() -> Int {
-///   #|  let a = add(10, 20)
-///   #|  return a
-///   #|}
-/// let llvm_mod = @MiniMoonBit.compile(code)
-/// // IRTranslate
-/// let rv64 = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.get_function("demo").unwrap()
-/// inspect(mir_func, content=(
-///   
-///   
-///   #|func demo() {
-/// #|entry:
-/// #|  a0 = move.i64 10
-/// #|  a1 = move.i64 20
-/// #|  call add, a0, a1
-/// #|  v0 = move.i32 a0
-/// #|  vf0 = move.f64 fa0
-/// #|  a0 = move.i64 v0
-/// #|  ret
-/// #|}
-/// #|
-/// 
-/// 
-/// ))
-///
-/// ```
 pub fn translate_llvm_call_inst(
   llvm_inst : @IR.CallInst,
   builder : IRBuilder,

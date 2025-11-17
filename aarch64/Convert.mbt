@@ -125,16 +125,6 @@ fn FReg::from_mir_freg_32(
 }
 
 ///|
-pub fn llvm_module_to_aarch64(mod : @IR.Module) -> Array[AArch64Asm] raise {
-  let mir_mod = @MoonMIR.Module::new(@MoonMIR.ArchConfig::aarch64())
-  mir_mod.translate_llvm_module(mod)
-  mir_mod.legalize()
-  mir_mod.alloc_register()
-  mir_mod.post_ra()
-  mir_module_to_aarch64(mir_mod)
-}
-
-///|
 pub fn mir_module_to_aarch64(
   mod : @MoonMIR.Module,
 ) -> Array[AArch64Asm] raise MIRToAArch64Error {

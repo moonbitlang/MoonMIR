@@ -1,46 +1,8 @@
 ///|
-typealias @deque.Deque
+using @deque {type Deque}
 
 ///|
-///
 /// Perform live variable analysis on the function.
-///
-/// ```mbt
-/// let code = 
-///   #|fn foo(x: Int, y: Int) -> Int {
-///   #|  let a = x + y;
-///   #|  let b = x - y;
-///   #|  let c = a * b;
-///   #|  let d = a / b;
-///   #|  let e = c % d;
-///   #|  e
-///   #|}
-///
-/// let llvm_mod = @MiniMoonBit.compile(code)
-///
-/// // IRTranslate
-/// let rv64 = ArchConfig::riscv64()
-/// let mir_mod = Module::new(rv64)
-/// mir_mod.translate_llvm_module(llvm_mod)
-/// let mir_func = mir_mod.get_function("foo").unwrap()
-/// mir_func.live_analysis()
-///
-/// inspect(mir_func, content=(
-///   #|func foo(a0, a1) {
-///   #|entry:                       ; live in: a1, a0
-///   #|  v0 = move.i32 a0           # live in: a1, a0
-///   #|  v1 = move.i32 a1           # live in: v0, a1
-///   #|  v2 = add.i32 v0, v1        # live in: v0, v1
-///   #|  v3 = sub.i32 v0, v1        # live in: v2, v0, v1
-///   #|  v4 = mul.i32 v2, v3        # live in: v2, v3
-///   #|  v5 = div.i32 v2, v3        # live in: v4, v2, v3
-///   #|  v6 = rem.i32 v4, v5        # live in: v4, v5
-///   #|  a0 = move.i64 v6           # live in: v6
-///   #|  ret
-///   #|}
-///   #|
-/// ))
-/// ```
 pub fn Function::live_analysis(self : Self) -> Unit {
   let bb_queue : Deque[BasicBlock] = Deque::new()
   self.terminal_blocks.each(bb => bb_queue.push_back(bb))
