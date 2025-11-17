@@ -7,7 +7,7 @@ import(
 )
 
 // Values
-fn llvm_module_to_aarch64(@IR.Module) -> Array[AArch64Asm] raise
+fn compile(@IR.Module) -> AArch64Module raise
 
 fn mir_block_to_aarch64(@MoonMIR.BasicBlock, Int) -> Array[AArch64Asm] raise MIRToAArch64Error
 
@@ -21,8 +21,6 @@ fn mir_module_to_aarch64(@MoonMIR.Module) -> Array[AArch64Asm] raise MIRToAArch6
 
 // Errors
 pub suberror MIRToAArch64Error String
-fn MIRToAArch64Error::output(Self, &Logger) -> Unit // from trait `Show`
-fn MIRToAArch64Error::to_string(Self) -> String // from trait `Show`
 impl Show for MIRToAArch64Error
 
 // Types and methods
@@ -157,9 +155,12 @@ pub(all) enum AArch64Asm {
   Label(String)
   Comment(String)
 }
-fn AArch64Asm::output(Self, &Logger) -> Unit // from trait `Show`
-fn AArch64Asm::to_string(Self) -> String // from trait `Show`
 impl Show for AArch64Asm
+
+pub struct AArch64Module {
+  insts : Array[AArch64Asm]
+}
+impl Show for AArch64Module
 
 pub(all) enum FReg {
   D0
@@ -227,14 +228,6 @@ pub(all) enum FReg {
   S30
   S31
 }
-fn FReg::compare(Self, Self) -> Int // from trait `Compare`
-fn FReg::equal(Self, Self) -> Bool // from trait `Eq`
-fn FReg::hash(Self) -> Int // from trait `Hash`
-fn FReg::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
-#deprecated
-fn FReg::op_equal(Self, Self) -> Bool // from trait `Eq`
-fn FReg::output(Self, &Logger) -> Unit // from trait `Show`
-fn FReg::to_string(Self) -> String // from trait `Show`
 impl Compare for FReg
 impl Eq for FReg
 impl Hash for FReg
@@ -244,14 +237,6 @@ pub(all) struct Mem {
   base : Reg
   offset : Int64
 }
-fn Mem::compare(Self, Self) -> Int // from trait `Compare`
-fn Mem::equal(Self, Self) -> Bool // from trait `Eq`
-fn Mem::hash(Self) -> Int // from trait `Hash`
-fn Mem::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
-#deprecated
-fn Mem::op_equal(Self, Self) -> Bool // from trait `Eq`
-fn Mem::output(Self, &Logger) -> Unit // from trait `Show`
-fn Mem::to_string(Self) -> String // from trait `Show`
 impl Compare for Mem
 impl Eq for Mem
 impl Hash for Mem
@@ -292,14 +277,6 @@ pub(all) enum Reg {
   SP
   XZR
 }
-fn Reg::compare(Self, Self) -> Int // from trait `Compare`
-fn Reg::equal(Self, Self) -> Bool // from trait `Eq`
-fn Reg::hash(Self) -> Int // from trait `Hash`
-fn Reg::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
-#deprecated
-fn Reg::op_equal(Self, Self) -> Bool // from trait `Eq`
-fn Reg::output(Self, &Logger) -> Unit // from trait `Show`
-fn Reg::to_string(Self) -> String // from trait `Show`
 fn Reg::to_wreg(Self) -> WReg
 impl Compare for Reg
 impl Eq for Reg
@@ -340,14 +317,6 @@ pub(all) enum WReg {
   W30
   WZR
 }
-fn WReg::compare(Self, Self) -> Int // from trait `Compare`
-fn WReg::equal(Self, Self) -> Bool // from trait `Eq`
-fn WReg::hash(Self) -> Int // from trait `Hash`
-fn WReg::hash_combine(Self, Hasher) -> Unit // from trait `Hash`
-#deprecated
-fn WReg::op_equal(Self, Self) -> Bool // from trait `Eq`
-fn WReg::output(Self, &Logger) -> Unit // from trait `Show`
-fn WReg::to_string(Self) -> String // from trait `Show`
 impl Compare for WReg
 impl Eq for WReg
 impl Hash for WReg
