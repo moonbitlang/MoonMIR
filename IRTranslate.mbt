@@ -165,7 +165,7 @@ pub fn llvm_global_constant_to_data(
     ConstantFP({ vty, value, .. }) =>
       match vty.asFPTypeEnum() {
         FloatType(_) => {
-          let bits = value.to_float().reinterpret_as_uint()
+          let bits = Float::from_double(value).reinterpret_as_uint()
           [Word(bits)]
         }
         DoubleType(_) => {
@@ -915,7 +915,7 @@ pub fn translate_llvm_float_binary_inst(
             builder.build_imove_imm(
               data_size,
               dst=ireg,
-              src=f.to_float().reinterpret_as_int().to_int64(),
+              src=Float::from_double(f).reinterpret_as_int().to_int64(),
             )
           _ =>
             builder.build_imove_imm(
@@ -936,7 +936,7 @@ pub fn translate_llvm_float_binary_inst(
           builder.build_imove_imm(
             data_size,
             dst=ireg,
-            src=f.to_float().reinterpret_as_int().to_int64(),
+            src=Float::from_double(f).reinterpret_as_int().to_int64(),
           )
         _ =>
           builder.build_imove_imm(
@@ -965,7 +965,7 @@ pub fn translate_llvm_float_binary_inst(
           builder.build_imove_imm(
             data_size,
             dst=ireg,
-            src=f.to_float().reinterpret_as_int().to_int64(),
+            src=Float::from_double(f).reinterpret_as_int().to_int64(),
           )
         _ =>
           builder.build_imove_imm(
@@ -1091,7 +1091,7 @@ pub fn translate_llvm_fneg_inst(
       let bit_value = match data_size {
         32 => {
           // Convert double to float bit representation
-          let float_val = f.to_float()
+          let float_val = Float::from_double(f)
           float_val.reinterpret_as_int().to_int64()
         }
         64 => f.reinterpret_as_int64()
@@ -2437,7 +2437,7 @@ pub fn translate_llvm_call_inst(
         let bit_value = match arg_width {
           32 => {
             // Convert double to float bit representation
-            let float_val = src.to_float()
+            let float_val = Float::from_double(src)
             float_val.reinterpret_as_int().to_int64()
           }
           64 => src.reinterpret_as_int64()

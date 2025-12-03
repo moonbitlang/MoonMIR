@@ -7,21 +7,21 @@ import(
 )
 
 // Values
-fn compile(@IR.Module) -> AArch64Module raise
+pub fn compile(@IR.Module) -> AArch64Module raise
 
-fn mir_block_to_aarch64(@MoonMIR.BasicBlock, Int) -> Array[AArch64Asm] raise MIRToAArch64Error
+pub fn mir_block_to_aarch64(@MoonMIR.BasicBlock, Int) -> Array[AArch64Asm] raise MIRToAArch64Error
 
-fn mir_function_to_aarch64(@MoonMIR.Function) -> Array[AArch64Asm] raise MIRToAArch64Error
+pub fn mir_function_to_aarch64(@MoonMIR.Function) -> Array[AArch64Asm] raise MIRToAArch64Error
 
-fn mir_global_to_aarch64(@MoonMIR.GlobalValue) -> Array[AArch64Asm]
+pub fn mir_global_to_aarch64(@MoonMIR.GlobalValue) -> Array[AArch64Asm]
 
-fn mir_inst_to_aarch64(@MoonMIR.Instruction) -> Array[AArch64Asm] raise MIRToAArch64Error
+pub fn mir_inst_to_aarch64(@MoonMIR.Instruction) -> Array[AArch64Asm] raise MIRToAArch64Error
 
-fn mir_module_to_aarch64(@MoonMIR.Module) -> Array[AArch64Asm] raise MIRToAArch64Error
+pub fn mir_module_to_aarch64(@MoonMIR.Module) -> Array[AArch64Asm] raise MIRToAArch64Error
 
 // Errors
 pub suberror MIRToAArch64Error String
-impl Show for MIRToAArch64Error
+pub impl Show for MIRToAArch64Error
 
 // Types and methods
 pub(all) enum AArch64Asm {
@@ -155,12 +155,12 @@ pub(all) enum AArch64Asm {
   Label(String)
   Comment(String)
 }
-impl Show for AArch64Asm
+pub impl Show for AArch64Asm
 
 pub struct AArch64Module {
   insts : Array[AArch64Asm]
 }
-impl Show for AArch64Module
+pub impl Show for AArch64Module
 
 pub(all) enum FReg {
   D0
@@ -228,19 +228,19 @@ pub(all) enum FReg {
   S30
   S31
 }
-impl Compare for FReg
-impl Eq for FReg
-impl Hash for FReg
-impl Show for FReg
+pub impl Compare for FReg
+pub impl Eq for FReg
+pub impl Hash for FReg
+pub impl Show for FReg
 
 pub(all) struct Mem {
   base : Reg
   offset : Int64
 }
-impl Compare for Mem
-impl Eq for Mem
-impl Hash for Mem
-impl Show for Mem
+pub impl Compare for Mem
+pub impl Eq for Mem
+pub impl Hash for Mem
+pub impl Show for Mem
 
 pub(all) enum Reg {
   X0
@@ -277,11 +277,11 @@ pub(all) enum Reg {
   SP
   XZR
 }
-fn Reg::to_wreg(Self) -> WReg
-impl Compare for Reg
-impl Eq for Reg
-impl Hash for Reg
-impl Show for Reg
+pub fn Reg::to_wreg(Self) -> WReg
+pub impl Compare for Reg
+pub impl Eq for Reg
+pub impl Hash for Reg
+pub impl Show for Reg
 
 pub(all) enum WReg {
   W0
@@ -317,10 +317,10 @@ pub(all) enum WReg {
   W30
   WZR
 }
-impl Compare for WReg
-impl Eq for WReg
-impl Hash for WReg
-impl Show for WReg
+pub impl Compare for WReg
+pub impl Eq for WReg
+pub impl Hash for WReg
+pub impl Show for WReg
 
 // Type aliases
 

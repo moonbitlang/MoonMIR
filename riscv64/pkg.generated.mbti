@@ -7,21 +7,21 @@ import(
 )
 
 // Values
-fn compile(@IR.Module) -> Riscv64Module raise
+pub fn compile(@IR.Module) -> Riscv64Module raise
 
-fn mir_block_to_riscv(@MoonMIR.BasicBlock, Int) -> Array[RvAsm] raise MIRToRiscvError
+pub fn mir_block_to_riscv(@MoonMIR.BasicBlock, Int) -> Array[RvAsm] raise MIRToRiscvError
 
-fn mir_function_to_riscv(@MoonMIR.Function) -> Array[RvAsm] raise MIRToRiscvError
+pub fn mir_function_to_riscv(@MoonMIR.Function) -> Array[RvAsm] raise MIRToRiscvError
 
-fn mir_global_to_riscv(@MoonMIR.GlobalValue) -> Array[RvAsm]
+pub fn mir_global_to_riscv(@MoonMIR.GlobalValue) -> Array[RvAsm]
 
-fn mir_inst_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
+pub fn mir_inst_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvError
 
-fn mir_module_to_riscv(@MoonMIR.Module) -> Array[RvAsm] raise MIRToRiscvError
+pub fn mir_module_to_riscv(@MoonMIR.Module) -> Array[RvAsm] raise MIRToRiscvError
 
 // Errors
 pub suberror MIRToRiscvError String
-impl Show for MIRToRiscvError
+pub impl Show for MIRToRiscvError
 
 // Types and methods
 pub(all) enum FReg {
@@ -58,19 +58,19 @@ pub(all) enum FReg {
   Ft10
   Ft11
 }
-impl Compare for FReg
-impl Eq for FReg
-impl Hash for FReg
-impl Show for FReg
+pub impl Compare for FReg
+pub impl Eq for FReg
+pub impl Hash for FReg
+pub impl Show for FReg
 
 pub(all) struct Mem {
   base : Reg
   offset : Int64
 }
-impl Compare for Mem
-impl Eq for Mem
-impl Hash for Mem
-impl Show for Mem
+pub impl Compare for Mem
+pub impl Eq for Mem
+pub impl Hash for Mem
+pub impl Show for Mem
 
 pub(all) enum Reg {
   Zero
@@ -106,15 +106,15 @@ pub(all) enum Reg {
   T5
   T6
 }
-impl Compare for Reg
-impl Eq for Reg
-impl Hash for Reg
-impl Show for Reg
+pub impl Compare for Reg
+pub impl Eq for Reg
+pub impl Hash for Reg
+pub impl Show for Reg
 
 pub struct Riscv64Module {
   insts : Array[RvAsm]
 }
-impl Show for Riscv64Module
+pub impl Show for Riscv64Module
 
 pub(all) enum RvAsm {
   Global(String)
@@ -276,7 +276,7 @@ pub(all) enum RvAsm {
   Label(String)
   Comment(String)
 }
-impl Show for RvAsm
+pub impl Show for RvAsm
 
 // Type aliases
 

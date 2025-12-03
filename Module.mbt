@@ -119,7 +119,7 @@ pub fn Module::add_global_string(
 /// ```mbt
 /// let mod = Module::new(ArchConfig::riscv64())
 /// let gv = mod.add_global_zero_data("buffer", 64)
-/// 
+///
 /// let expected =
 ///  #|global buffer {
 ///  #|  .zero 64

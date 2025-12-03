@@ -194,20 +194,20 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
   if need_save_ra {
     let offset = -self.extend_reg_stack(8L, 8L)
     let store_ra_inst = try! builder.build_storei(
-        64,
-        src=ReturnAddr,
-        base=FramePtr,
-        offset~,
-      )
+      64,
+      src=ReturnAddr,
+      base=FramePtr,
+      offset~,
+    )
     entry_bb.insts.insert(0, store_ra_inst)
     for term_bb in terminal_bbs {
       let builder = IRBuilder::new(self, term_bb)
       let load_ra_inst = try! builder.build_loadi(
-          64,
-          dst=ReturnAddr,
-          base=FramePtr,
-          offset~,
-        )
+        64,
+        dst=ReturnAddr,
+        base=FramePtr,
+        offset~,
+      )
       term_bb.push_inst_before_terminator(load_ra_inst)
     }
   }
@@ -223,43 +223,43 @@ fn Function::prologue_epilogue_insertion(self : Function) -> Unit {
   let total_stack_size = (total_stack_size + 16 - 1) / 16 * 16 // align to 16 bytes
   let builder = IRBuilder::new(self, entry_bb)
   let alloc_stack_inst = try! builder.build_ibinary_imm(
-      Add,
-      64,
-      dst=StackPtr,
-      src1=StackPtr,
-      src2=-total_stack_size,
-    )
+    Add,
+    64,
+    dst=StackPtr,
+    src1=StackPtr,
+    src2=-total_stack_size,
+  )
   let store_fp_inst = try! builder.build_storei(
-      64,
-      src=FramePtr,
-      base=FramePtr,
-      offset=fp_offset,
-    )
+    64,
+    src=FramePtr,
+    base=FramePtr,
+    offset=fp_offset,
+  )
   let set_fp_inst = try! builder.build_ibinary_imm(
-      Add,
-      64,
-      dst=FramePtr,
-      src1=StackPtr,
-      src2=total_stack_size,
-    )
+    Add,
+    64,
+    dst=FramePtr,
+    src1=StackPtr,
+    src2=total_stack_size,
+  )
   entry_bb.insts.insert(0, set_fp_inst)
   entry_bb.insts.insert(0, store_fp_inst)
   entry_bb.insts.insert(0, alloc_stack_inst)
   for term_bb in terminal_bbs {
     let builder = IRBuilder::new(self, term_bb)
     let load_fp_inst = try! builder.build_loadi(
-        64,
-        dst=FramePtr,
-        base=StackPtr,
-        offset=fp_offset + total_stack_size,
-      )
+      64,
+      dst=FramePtr,
+      base=StackPtr,
+      offset=fp_offset + total_stack_size,
+    )
     let dealloc_stack_inst = try! builder.build_ibinary_imm(
-        Add,
-        64,
-        dst=StackPtr,
-        src1=StackPtr,
-        src2=total_stack_size,
-      )
+      Add,
+      64,
+      dst=StackPtr,
+      src1=StackPtr,
+      src2=total_stack_size,
+    )
     term_bb.push_inst_before_terminator(load_fp_inst)
     term_bb.push_inst_before_terminator(dealloc_stack_inst)
   }
@@ -310,12 +310,12 @@ pub fn Function::adjust_mem_operands(self : Function) -> Unit {
     let builder = IRBuilder::new(self, bb)
     // Create: dst = StackPtr + var_stack_size
     let add_offset_inst = try! builder.build_ibinary_imm(
-        Add,
-        64,
-        dst~,
-        src1=StackPtr,
-        src2=var_stack_size,
-      )
+      Add,
+      64,
+      dst~,
+      src1=StackPtr,
+      src2=var_stack_size,
+    )
     // Insert before current instruction
     let _ = bb.insert_inst_before(before=inst, add_offset_inst)
     // Modify current instruction to: dst = dst + r
