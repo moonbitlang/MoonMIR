@@ -64,7 +64,7 @@ pub fn Function::new(
 }
 
 ///|
-pub fn Function::inst_iter(self : Self) -> Iterator[Instruction] {
+pub fn Function::inst_iter(self : Self) -> Iter[Instruction] {
   let body = self.body
   let mut bb_idx = 0
   let mut inst_idx = 0
@@ -80,7 +80,7 @@ pub fn Function::inst_iter(self : Self) -> Iterator[Instruction] {
       inst_idx = 0
     }
     None
-  })
+  }).iter()
 }
 
 ///|
@@ -128,7 +128,7 @@ pub fn Function::append_basic_block(
 ) -> BasicBlock {
   if self.bbmap.contains(label) {
     let msg =
-      $|Fatal Errpr happened in \{loc}
+      $|Fatal Error happened in \{loc}
       $|Duplicate basic block label: \{label} in function \{self.name}
     println(msg)
     panic()

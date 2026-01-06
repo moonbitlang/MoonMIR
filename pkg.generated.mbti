@@ -234,7 +234,7 @@ pub fn Function::get_entry_block(Self) -> BasicBlock?
 pub fn Function::get_operand_from_llvm_value(Self, &@IR.Value) -> Operand?
 pub fn Function::get_param(Self, Int) -> Operand?
 pub fn Function::has_inst_with_opcode(Self, OpCode) -> Bool
-pub fn Function::inst_iter(Self) -> Iterator[Instruction]
+pub fn Function::inst_iter(Self) -> Iter[Instruction]
 pub fn Function::keeped_ftreg1(Self) -> FRegister
 pub fn Function::keeped_ftreg2(Self) -> (FRegister, FRegister)
 pub fn Function::keeped_treg1(Self) -> IRegister

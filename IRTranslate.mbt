@@ -1611,7 +1611,7 @@ pub fn translate_llvm_switch_inst(
   // Strategy: Generate a chain of basic blocks, each checking one case
   // The first case is checked in the current basic block
   let mut prev_bb = current_bb
-  for i, case in cases.iterator2() {
+  for i, case in cases {
     let (case_value, case_dest) = case
     let case_imm = case_value.getValueAsInt64()
     guard func.get_operand_from_llvm_value(case_dest) is Some(case_op) else {
@@ -2322,7 +2322,7 @@ pub fn translate_llvm_call_inst(
   let mut call_freg_cnt = 0
   let mut variadic_stack_offset = 0L // Stack offset for variadic arguments
   let minsts : Array[Instruction] = Array::new()
-  for arg_idx, arg in args.iterator2() {
+  for arg_idx, arg in args {
     guard func.get_operand_from_llvm_value(arg) is Some(arg_op) else {
       raise IRTranslateError(
         "CallInst: argument operand not found in value_map",
