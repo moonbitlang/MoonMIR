@@ -65,16 +65,22 @@ pub fn Function::new(
 
 ///|
 pub fn Function::inst_iter(self : Self) -> Iter[Instruction] {
-  letrec f = yield_ => {
-    for bb in self.body {
-      for inst in bb.insts {
-        guard yield_(inst) is IterContinue else { return IterEnd }
+  let body = self.body
+  let mut bb_idx = 0
+  let mut inst_idx = 0
+  Iterator::new(fn() {
+    while bb_idx < body.length() {
+      let insts = body[bb_idx].insts
+      if inst_idx < insts.length() {
+        let inst = insts[inst_idx]
+        inst_idx += 1
+        return Some(inst)
       }
+      bb_idx += 1
+      inst_idx = 0
     }
-    IterContinue
-  }
-
-  Iter::new(f)
+    None
+  }).iter()
 }
 
 ///|
@@ -122,8 +128,8 @@ pub fn Function::append_basic_block(
 ) -> BasicBlock {
   if self.bbmap.contains(label) {
     let msg =
-      $|Fatal Errpr happened in \{loc}
-      #|Duplicate basic block label: \{label} in function \{self.name}
+      $|Fatal Error happened in \{loc}
+      $|Duplicate basic block label: \{label} in function \{self.name}
     println(msg)
     panic()
   }
