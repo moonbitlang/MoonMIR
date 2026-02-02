@@ -7,7 +7,7 @@
     "Kaida-Amethyst/MoonLLVM": "0.1.12"
   },
   "readme": "README.md",
-  "repository": "",
+  "repository": "https://github.com/moonbitlang/MoonMIR",
   "license": "Apache-2.0",
   "keywords": [],
   "description": ""
