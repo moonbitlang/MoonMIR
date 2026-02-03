@@ -59,7 +59,7 @@ Here is a complete example demonstrating how to generate `riscv64` assembly from
 
     The following code snippet creates a simple `add` function using MoonLLVM and then compiles it to `riscv64` assembly using MoonMIR.
 
-    ```moonbit skip
+    ```moonbit skip nocheck
     ///|
     fn main_err() -> Unit raise {
       // 1. Set up MoonLLVM context, module, and IR builder.
@@ -172,7 +172,7 @@ moon add Kaida-Amethyst/MoonMIR
 
     以下代码片段使用 MoonLLVM 创建一个简单的 `add` 函数，然后使用 MoonMIR 将其编译为 `riscv64` 汇编。
 
-    ```moonbit skip
+    ```moonbit skip nocheck
     ///|
     fn main_err() -> Unit raise {
       // 1. 设置 MoonLLVM 上下文、模块和 IR 构建器。

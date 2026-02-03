@@ -1,5 +1,7 @@
 ///|
-pub suberror MIRToAArch64Error String derive(Show)
+pub suberror MIRToAArch64Error {
+  MIRToAArch64Error(String)
+} derive(Show)
 
 ///|
 #callsite(autofill(loc))

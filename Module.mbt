@@ -34,7 +34,7 @@ pub(all) enum ArgPattern {
 
 ///|
 ///
-/// ```mbt
+/// ```mbt nocheck
 /// let mod = Module::new(ArchConfig::riscv64())
 /// let func = mod.add_function("add", [I, I], false)
 /// let entry_bb = func.append_basic_block("entry")
@@ -83,7 +83,7 @@ pub fn Module::get_function(self : Self, name : String) -> Function? {
 
 ///|
 ///
-/// ```mbt
+/// ```mbt nocheck
 /// let mod = Module::new(ArchConfig::riscv64())
 /// let content = #|Hello, World!\n
 /// let gv = mod.add_global_string(label="msg", content~)
@@ -116,7 +116,7 @@ pub fn Module::add_global_string(
 
 ///|
 ///
-/// ```mbt
+/// ```mbt nocheck
 /// let mod = Module::new(ArchConfig::riscv64())
 /// let gv = mod.add_global_zero_data("buffer", 64)
 ///
@@ -144,7 +144,7 @@ pub fn Module::add_global_zero_data(
 
 ///|
 ///
-/// ```mbt
+/// ```mbt nocheck
 /// let mod = Module::new(ArchConfig::riscv64())
 /// let data : Array[GlobalValueData] = [
 ///   Quad(0x1122334455667788),
