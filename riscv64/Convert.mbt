@@ -1,5 +1,7 @@
 ///|
-pub suberror MIRToRiscvError String derive(Show)
+pub suberror MIRToRiscvError {
+  MIRToRiscvError(String)
+} derive(Show)
 
 ///|
 #callsite(autofill(loc))

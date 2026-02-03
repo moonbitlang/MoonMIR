@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Kaida-Amethyst/MoonMIR/riscv64"
 
-import(
-  "Kaida-Amethyst/MoonLLVM/IR"
-  "Kaida-Amethyst/MoonMIR"
-)
+import {
+  "Kaida-Amethyst/MoonLLVM/IR",
+  "Kaida-Amethyst/MoonMIR",
+}
 
 // Values
 pub fn compile(@IR.Module) -> Riscv64Module raise
@@ -20,7 +20,9 @@ pub fn mir_inst_to_riscv(@MoonMIR.Instruction) -> Array[RvAsm] raise MIRToRiscvE
 pub fn mir_module_to_riscv(@MoonMIR.Module) -> Array[RvAsm] raise MIRToRiscvError
 
 // Errors
-pub suberror MIRToRiscvError String
+pub suberror MIRToRiscvError {
+  MIRToRiscvError(String)
+}
 pub impl Show for MIRToRiscvError
 
 // Types and methods
